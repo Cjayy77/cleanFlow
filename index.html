@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CleanFlow — Le ménage vérifié pour vos locations saisonnières</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --klein: #002FA7;
+    --klein-deep: #001F73;
+    --klein-tint: #EDF0FB;
+    --gold: #D9A441;
+    --ink: #10131A;
+    --muted: #5A6472;
+    --paper: #F5F6FA;
+    --line: #DCE1EE;
+    --white: #FFFFFF;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{ font-family:'Inter', sans-serif; color:var(--ink); background:var(--paper); }
+  .wrap{ max-width: 1160px; margin:0 auto; padding: 0 28px; }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; }
+  a{ color:inherit; }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:0.1em; color: var(--klein); margin-bottom:10px; font-weight:600;
+  }
+
+  /* NAV */
+  nav{ position:sticky; top:0; z-index:50; background: rgba(245,246,250,0.9); backdrop-filter: blur(8px); border-bottom:1px solid var(--line); }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:16px 28px; max-width:1160px; margin:0 auto; }
+  .brand{ font-family:'Space Grotesk'; font-weight:700; font-size:21px; letter-spacing:-0.01em; }
+  .brand span{ color: var(--klein); }
+  .nav-links{ display:flex; gap:26px; font-size:14px; font-weight:600; color: var(--muted); }
+  .nav-links a{ text-decoration:none; }
+  .nav-links a:hover{ color: var(--ink); }
+  .nav-cta{
+    background: var(--klein); color:var(--white); font-weight:700; font-size:13px;
+    padding: 10px 20px; border-radius: 6px; text-decoration:none;
+  }
+  @media (max-width:760px){ .nav-links{ display:none; } }
+
+  /* HERO — solid Klein block, referencing IKB monochrome panels */
+  .hero{ background: var(--klein); color: var(--white); padding: 100px 0 90px 0; position:relative; overflow:hidden; }
+  .hero-inner{ max-width: 720px; }
+  .hero h1{ font-size: clamp(32px,5.2vw,54px); font-weight:700; line-height:1.08; letter-spacing:-0.01em; margin-bottom:22px; }
+  .hero h1 em{ font-style:normal; color: var(--gold); }
+  .hero p{ font-size:17px; line-height:1.6; color: rgba(255,255,255,0.82); max-width:520px; margin-bottom:32px; }
+  .btn-row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .btn-gold{ background: var(--gold); color: var(--klein-deep); font-weight:700; padding:14px 26px; border-radius:6px; text-decoration:none; font-size:14px; display:inline-block; }
+  .btn-outline{ background:transparent; color:var(--white); font-weight:700; padding:14px 26px; border-radius:6px; text-decoration:none; font-size:14px; border:1.5px solid rgba(255,255,255,0.4); display:inline-block; }
+  .hero-note{ margin-top:40px; font-family:'JetBrains Mono'; font-size:12px; color: rgba(255,255,255,0.6); border-top:1px solid rgba(255,255,255,0.2); padding-top:20px; }
+
+  /* SECTION SHELL */
+  section{ padding: 84px 0; }
+  .section-head{ max-width: 580px; margin-bottom: 46px; }
+  .section-head h2{ font-size: clamp(26px,3.4vw,36px); font-weight:700; margin-bottom:12px; letter-spacing:-0.01em; }
+  .section-head p{ color: var(--muted); font-size:15px; line-height:1.6; }
+
+  /* ROLES — the four actors, stated plainly */
+  .roles-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:18px; }
+  @media (max-width:900px){ .roles-grid{ grid-template-columns: repeat(2,1fr); } }
+  @media (max-width:520px){ .roles-grid{ grid-template-columns: 1fr; } }
+  .role-card{ background: var(--white); border:1px solid var(--line); border-radius:10px; padding:26px 22px; }
+  .role-num{ font-family:'JetBrains Mono'; font-size:12px; color: var(--gold); font-weight:700; margin-bottom:14px; }
+  .role-card h4{ font-family:'Space Grotesk'; font-size:16px; font-weight:600; margin-bottom:8px; }
+  .role-card p{ font-size:13px; color: var(--muted); line-height:1.55; }
+
+  /* PROCESS — verification stamp motif, not live-GPS */
+  .process-wrap{ background: var(--white); border:1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .process-list{ display:flex; flex-direction:column; }
+  .process-item{ display:flex; gap:22px; align-items:flex-start; padding: 22px 14px; border-bottom:1px solid var(--line); }
+  .process-item:last-child{ border-bottom:none; }
+  .process-badge{
+    width:42px; height:42px; border-radius:50%; background: var(--klein-tint); border:2px solid var(--klein);
+    color: var(--klein); font-family:'JetBrains Mono'; font-weight:700; font-size:15px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .process-item.verify .process-badge{ background: var(--gold); border-color: var(--gold); color: var(--klein-deep); }
+  .process-text h4{ font-family:'Space Grotesk'; font-size:15px; font-weight:600; margin-bottom:4px; }
+  .process-text p{ font-size:13px; color: var(--muted); line-height:1.55; }
+
+  /* QUALITY / VERIFICATION highlight band */
+  .verify-band{ background: var(--klein-tint); border-radius:18px; padding: 44px 40px; display:grid; grid-template-columns: 1fr 1fr; gap:40px; align-items:center; }
+  @media (max-width:800px){ .verify-band{ grid-template-columns:1fr; } }
+  .verify-band h3{ font-size:22px; font-weight:700; color: var(--klein-deep); margin-bottom:14px; }
+  .verify-band p{ font-size:14px; color: var(--muted); line-height:1.65; }
+  .stamp-mock{ background: var(--white); border-radius:12px; padding:26px; border:1px dashed var(--klein); position:relative; }
+  .stamp-row{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:9px 0; border-bottom:1px solid var(--line); }
+  .stamp-row b{ color: var(--ink); font-weight:600; }
+  .stamp-status{ display:inline-flex; align-items:center; gap:6px; background: var(--klein); color:var(--white); font-size:11px; font-weight:700; padding:5px 12px; border-radius:999px; margin-top:14px; }
+
+  /* LINEN + ADMIN mini features */
+  .feature-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:24px; }
+  @media (max-width:800px){ .feature-grid{ grid-template-columns:1fr; } }
+  .feature-card{ background: var(--white); border:1px solid var(--line); border-radius:14px; padding:30px; }
+  .feature-card h4{ font-family:'Space Grotesk'; font-size:18px; font-weight:600; margin-bottom:10px; color: var(--klein-deep); }
+  .feature-card p{ font-size:14px; color:var(--muted); line-height:1.6; }
+
+  /* GOALS / BETA MILESTONE */
+  .goal-strip{ background: var(--klein); color:var(--white); border-radius:18px; padding: 40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px; }
+  .goal-item b{ display:block; font-family:'Space Grotesk'; font-size:26px; font-weight:700; color: var(--gold); }
+  .goal-item span{ font-size:12px; color: rgba(255,255,255,0.7); }
+
+  /* CTA */
+  .cta-band{ text-align:center; }
+  .cta-band h2{ font-size: clamp(26px,3.6vw,36px); margin-bottom:16px; }
+  .cta-band p{ color: var(--muted); max-width:480px; margin: 0 auto 28px auto; font-size:15px; }
+
+  footer{ padding: 44px 0 30px 0; border-top:1px solid var(--line); font-size:13px; color: var(--muted); }
+  .footer-grid{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="brand">Clean<span>Flow</span></div>
+    <div class="nav-links">
+      <a href="#roles">Comment ça marche</a>
+      <a href="#verification">Vérification</a>
+      <a href="#linge">Linge</a>
+      <a href="#beta">Bêta</a>
+    </div>
+    <a href="app.html" class="nav-cta">Réserver un ménage</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <div class="eyebrow" style="color:rgba(255,255,255,0.65);">// Paris · locations saisonnières</div>
+    <h1>Le ménage <em>vérifié</em>, avant chaque confirmation.</h1>
+    <p>CleanFlow connecte les propriétaires à des prestataires de ménage professionnels — chaque intervention est photographiée, contrôlée par notre équipe, puis confirmée. Pas de mauvaise surprise.</p>
+    <div class="btn-row">
+      <a href="app.html" class="btn-gold">Réserver un ménage</a>
+      <a href="#roles" class="btn-outline">Voir comment ça marche</a>
+    </div>
+    <div class="hero-note">Réservation avec calendrier · Photos obligatoires · Vérification avant confirmation client</div>
+  </div>
+</header>
+
+<section id="roles">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Qui fait quoi</div>
+      <h2>Quatre rôles, un processus clair</h2>
+      <p>Contrairement à une simple mise en relation, chaque intervention passe par un contrôle avant d'être confirmée.</p>
+    </div>
+    <div class="roles-grid">
+      <div class="role-card">
+        <div class="role-num">01 · Client</div>
+        <h4>Le propriétaire</h4>
+        <p>Ajoute son bien, réserve un ménage via un calendrier, et reçoit la confirmation une fois le contrôle qualité effectué.</p>
+      </div>
+      <div class="role-card">
+        <div class="role-num">02 · Prestataire</div>
+        <h4>L'entreprise de ménage</h4>
+        <p>Prend en charge la mission, réalise le ménage, et soumet un ensemble de photos spécifique imposé par CleanFlow.</p>
+      </div>
+      <div class="role-card">
+        <div class="role-num">03 · Livreur</div>
+        <h4>Le linge</h4>
+        <p>Livre le linge propre et récupère le linge sale directement dans l'appartement, selon le même calendrier.</p>
+      </div>
+      <div class="role-card">
+        <div class="role-num">04 · CleanFlow</div>
+        <h4>Le contrôle</h4>
+        <p>Vérifie les photos soumises, confirme la mission au client, et reste le point de contact en cas de problème.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="process-section">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Le parcours d'une réservation</div>
+      <h2>De la demande à la confirmation</h2>
+    </div>
+    <div class="process-wrap">
+      <div class="process-list">
+        <div class="process-item">
+          <div class="process-badge">1</div>
+          <div class="process-text">
+            <h4>Réservation</h4>
+            <p>Le client choisit une date sur le calendrier de son bien et voit le prix avant de confirmer.</p>
+          </div>
+        </div>
+        <div class="process-item">
+          <div class="process-badge">2</div>
+          <div class="process-text">
+            <h4>Prise en charge</h4>
+            <p>Un prestataire de ménage vérifié accepte la mission depuis son propre calendrier.</p>
+          </div>
+        </div>
+        <div class="process-item">
+          <div class="process-badge">3</div>
+          <div class="process-text">
+            <h4>Réalisation + photos</h4>
+            <p>Le prestataire effectue le ménage et soumet la liste de photos exigée par CleanFlow (pièce par pièce).</p>
+          </div>
+        </div>
+        <div class="process-item verify">
+          <div class="process-badge">✓</div>
+          <div class="process-text">
+            <h4>Vérification</h4>
+            <p>L'équipe CleanFlow contrôle les photos avant toute confirmation — aucune mission n'est validée automatiquement.</p>
+          </div>
+        </div>
+        <div class="process-item">
+          <div class="process-badge">5</div>
+          <div class="process-text">
+            <h4>Confirmation client</h4>
+            <p>Le propriétaire est notifié que le ménage est terminé et validé.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="verification">
+  <div class="wrap">
+    <div class="verify-band">
+      <div>
+        <div class="eyebrow">Ce qui nous différencie</div>
+        <h3>Rien n'est confirmé sans contrôle humain</h3>
+        <p>Chaque ménage doit être prouvé par un jeu de photos précis — pas de "c'est fait, fais-moi confiance". Notre équipe vérifie chaque dossier avant que le client ne soit notifié. C'est plus lent qu'une validation automatique, mais c'est la garantie que le propriétaire attend.</p>
+      </div>
+      <div class="stamp-mock">
+        <div class="eyebrow" style="margin-bottom:16px;">Dossier · Rue de la Pompe, 16e</div>
+        <div class="stamp-row"><span>Photos soumises</span><b>6 / 6</b></div>
+        <div class="stamp-row"><span>Prestataire</span><b>Net&Pro Paris</b></div>
+        <div class="stamp-row"><span>Contrôlé par</span><b>Équipe CleanFlow</b></div>
+        <div class="stamp-status">✓ Vérifié — en attente de confirmation client</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="linge">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Au-delà du ménage</div>
+      <h2>Ce que couvre aussi CleanFlow</h2>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h4>Gestion du linge</h4>
+        <p>Un livreur dépose le linge propre et récupère le linge sale directement dans le bien, synchronisé avec le calendrier de ménage — le propriétaire n'a rien à coordonner lui-même.</p>
+      </div>
+      <div class="feature-card">
+        <h4>Compte et suivi</h4>
+        <p>Chaque client dispose d'un compte sommaire : historique des interventions, statut de chaque réservation, et vue d'ensemble simple — sans complexité inutile pour la bêta.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="beta">
+  <div class="wrap">
+    <div class="goal-strip">
+      <div class="goal-item"><b>10 clients</b><span>objectif bêta — process fluide et fiable</span></div>
+      <div class="goal-item"><b>150 clients</b><span>objectif de croissance visé pour septembre</span></div>
+      <div class="goal-item"><b>0 automatisation</b><span>vérification humaine à 100% pendant la bêta</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="cta">
+  <div class="wrap">
+    <div class="cta-band">
+      <h2>Envie de tester CleanFlow sur votre bien ?</h2>
+      <p>La bêta démarre avec un petit nombre de propriétaires à Paris, pour s'assurer que le processus est fluide avant d'ouvrir plus largement.</p>
+      <a href="mailto:william@cleanflow-app.com" class="btn-gold" style="background: var(--klein); color:var(--white);">Rejoindre la bêta</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-grid">
+    <div><b style="font-family:'Space Grotesk'; color:var(--ink); font-size:16px;">CleanFlow</b><br>Wanecque William, fondateur</div>
+    <div>0624207668</div>
+    <div>Paris, France</div>
+    <div>© 2026 CleanFlow</div>
+  </div>
+</footer>
+
+</body>
+</html>
