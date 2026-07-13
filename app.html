@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CleanFlow — Squelette fonctionnel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --klein: #002FA7;
+    --klein-deep: #001F73;
+    --klein-tint: #EDF0FB;
+    --gold: #D9A441;
+    --ink: #10131A;
+    --muted: #5A6472;
+    --paper: #F5F6FA;
+    --line: #DCE1EE;
+    --white: #FFFFFF;
+    --red: #C1443D;
+    --green: #2F8558;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Inter', sans-serif; color:var(--ink); background:var(--paper); min-height:100vh; }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; }
+  .app-wrap{ max-width: 1140px; margin:0 auto; padding: 32px 20px 60px 20px; }
+
+  .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 26px; flex-wrap:wrap; gap:12px; }
+  .brand{ font-family:'Space Grotesk'; font-weight:700; font-size:24px; }
+  .brand span{ color: var(--klein); }
+  .role-select{ display:flex; gap:6px; background: var(--white); border:1px solid var(--line); border-radius:10px; padding:4px; }
+  .role-btn{ border:none; background:transparent; padding:9px 18px; border-radius:8px; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer; }
+  .role-btn.active{ background: var(--klein); color: var(--white); }
+
+  .screen{ display:none; animation: fadein .3s ease; }
+  .screen.active{ display:block; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  .grid2{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:22px; }
+  @media (max-width:860px){ .grid2{ grid-template-columns:1fr; } }
+
+  .card{ background: var(--white); border:1px solid var(--line); border-radius:14px; padding:26px; }
+  .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color: var(--klein); font-weight:700; margin-bottom:8px; }
+  h2.card-title{ font-size:20px; font-weight:600; margin-bottom:6px; }
+  p.desc{ color: var(--muted); font-size:13.5px; line-height:1.55; margin-bottom:18px; }
+
+  /* CLIENT: property + calendar */
+  .property-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+  .property-card{ display:flex; gap:12px; align-items:center; padding:12px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
+  .property-card.selected{ border-color: var(--klein); box-shadow: 0 0 0 1px var(--klein); background: var(--klein-tint); }
+  .p-thumb{ width:44px; height:44px; border-radius:8px; background: linear-gradient(135deg, var(--klein), var(--klein-deep)); flex-shrink:0; }
+  .p-name{ font-weight:700; font-size:13.5px; }
+  .p-meta{ font-size:11.5px; color:var(--muted); }
+
+  .cal-grid{ display:grid; grid-template-columns: repeat(7,1fr); gap:5px; margin: 14px 0 20px 0; }
+  .cal-day-label{ font-size:10px; text-align:center; color:var(--muted); font-weight:700; }
+  .cal-day{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:7px; font-size:12px; font-weight:600; background: var(--paper); color: var(--ink); cursor:pointer; border: 1px solid transparent; }
+  .cal-day.disabled{ color: var(--line); cursor:default; }
+  .cal-day.booked{ background: #FBEAE9; color: var(--red); }
+  .cal-day.selected{ background: var(--klein); color: var(--white); }
+
+  .toggle-row{ display:flex; gap:10px; margin-bottom:20px; }
+  .toggle-chip{ flex:1; text-align:center; padding:10px; border-radius:9px; border:1px solid var(--line); font-size:12.5px; font-weight:700; cursor:pointer; color: var(--muted); }
+  .toggle-chip.active{ background: var(--klein-tint); border-color: var(--klein); color: var(--klein); }
+
+  .price-box{ display:flex; justify-content:space-between; align-items:center; background: var(--paper); border-radius:10px; padding:14px 16px; margin-bottom:18px; }
+  .price-value{ font-family:'Space Grotesk'; font-size:22px; font-weight:700; color: var(--klein); }
+
+  .btn{ display:block; width:100%; text-align:center; background: var(--klein); color:var(--white); border:none; padding:13px; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn.gold{ background: var(--gold); color: var(--klein-deep); }
+  .btn.ghost{ background:transparent; border:1px solid var(--line); color: var(--ink); }
+
+  /* Dossier / status list, shared visual language across roles */
+  .dossier{ border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .dossier-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .dossier-addr{ font-weight:700; font-size:13.5px; }
+  .dossier-meta{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .status-pill{ font-size:10.5px; font-weight:700; padding:5px 10px; border-radius:999px; white-space:nowrap; }
+  .status-pill.wait{ background:#FFF3DC; color:#8A6416; }
+  .status-pill.review{ background: var(--klein-tint); color: var(--klein); }
+  .status-pill.done{ background:#E4F3EA; color: var(--green); }
+
+  /* PRESTATAIRE: mission list + photo checklist */
+  .mission-item{ border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .mission-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .mission-price{ font-family:'Space Grotesk'; font-weight:700; color: var(--klein); font-size:16px; }
+  .mission-actions{ display:flex; gap:8px; }
+  .chip-btn{ flex:1; padding:9px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:none; }
+  .chip-btn.accept{ background: var(--klein); color:var(--white); }
+  .chip-btn.decline{ background:transparent; border:1px solid var(--line); color:var(--muted); }
+
+  .photo-checklist{ display:flex; flex-direction:column; gap:8px; margin: 16px 0; }
+  .photo-slot{ display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px dashed var(--line); border-radius:9px; }
+  .photo-thumb{ width:40px; height:40px; border-radius:7px; background: repeating-linear-gradient(45deg,#E6E9F2,#E6E9F2 8px,#DCE1EE 8px,#DCE1EE 16px); flex-shrink:0; }
+  .photo-name{ font-size:12.5px; font-weight:600; flex:1; }
+  .photo-status{ font-size:10.5px; font-weight:700; color: var(--muted); }
+  .photo-slot.uploaded .photo-status{ color: var(--green); }
+  .photo-slot.uploaded{ border-style:solid; border-color: var(--green); }
+
+  /* ADMIN */
+  .queue-item{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border:1px solid var(--line); border-radius:10px; margin-bottom:10px; cursor:pointer; }
+  .queue-item.active{ border-color: var(--klein); background: var(--klein-tint); }
+  .queue-left{ display:flex; flex-direction:column; }
+  .queue-addr{ font-weight:700; font-size:13px; }
+  .queue-sub{ font-size:11px; color:var(--muted); }
+
+  .photo-review-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin: 16px 0; }
+  .photo-review-slot{ aspect-ratio:1; border-radius:8px; background: repeating-linear-gradient(45deg,#E6E9F2,#E6E9F2 8px,#DCE1EE 8px,#DCE1EE 16px); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--muted); text-align:center; padding:4px; position:relative; }
+  .photo-review-slot::after{ content:'✓'; position:absolute; top:4px; right:4px; width:16px; height:16px; background: var(--green); color:var(--white); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; }
+
+  .admin-actions{ display:flex; gap:10px; margin-top:20px; }
+
+  .ledger-table{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12.5px; }
+  .ledger-table th{ text-align:left; font-family:'JetBrains Mono'; font-size:10px; text-transform:uppercase; color:var(--muted); padding:8px 6px; border-bottom:1px solid var(--line); }
+  .ledger-table td{ padding:10px 6px; border-bottom:1px solid var(--line); }
+
+  footer{ margin-top:40px; text-align:center; font-size:11px; color:var(--muted); font-family:'JetBrains Mono'; }
+</style>
+</head>
+<body>
+<div class="app-wrap">
+  <div class="top">
+    <div class="brand"><a href="index.html" style="text-decoration:none; color:inherit;">Clean<span>Flow</span></a> <span style="color:var(--muted); font-family:'JetBrains Mono'; font-size:12px; font-weight:400;">// squelette bêta</span></div>
+    <div class="role-select">
+      <button class="role-btn active" data-role="client">Client</button>
+      <button class="role-btn" data-role="prestataire">Prestataire</button>
+      <button class="role-btn" data-role="admin">Contrôle (CleanFlow)</button>
+    </div>
+  </div>
+
+  <!-- CLIENT SCREEN -->
+  <div class="screen active" id="screen-client">
+    <div class="grid2">
+      <div class="card">
+        <div class="eyebrow">Réserver un ménage</div>
+        <h2 class="card-title">Choisir un bien et une date</h2>
+        <p class="desc">Sélectionne le logement, une date disponible, et confirme.</p>
+
+        <div class="property-list">
+          <div class="property-card selected">
+            <div class="p-thumb"></div>
+            <div><div class="p-name">Rue de la Pompe, 16e</div><div class="p-meta">72 m² · 2 chambres</div></div>
+          </div>
+          <div class="property-card">
+            <div class="p-thumb" style="background:linear-gradient(135deg,#D9A441,#B8862F);"></div>
+            <div><div class="p-name">Marais — Rue des Rosiers</div><div class="p-meta">45 m² · studio</div></div>
+          </div>
+        </div>
+
+        <div class="cal-grid">
+          <div class="cal-day-label">L</div><div class="cal-day-label">M</div><div class="cal-day-label">M</div>
+          <div class="cal-day-label">J</div><div class="cal-day-label">V</div><div class="cal-day-label">S</div><div class="cal-day-label">D</div>
+          <div class="cal-day disabled">29</div><div class="cal-day disabled">30</div>
+          <div class="cal-day">1</div><div class="cal-day">2</div><div class="cal-day booked">3</div>
+          <div class="cal-day">4</div><div class="cal-day">5</div>
+          <div class="cal-day">6</div><div class="cal-day">7</div><div class="cal-day">8</div>
+          <div class="cal-day selected">9</div><div class="cal-day booked">10</div><div class="cal-day">11</div><div class="cal-day">12</div>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-chip active">Ménage standard</div>
+          <div class="toggle-chip">+ Linge</div>
+        </div>
+
+        <div class="price-box">
+          <div>
+            <div style="font-size:11px; color:var(--muted); font-weight:700;">Prix total</div>
+            <div style="font-size:10.5px; color:var(--muted); font-family:'JetBrains Mono';">confirmé après vérification</div>
+          </div>
+          <div class="price-value">42€</div>
+        </div>
+
+        <button class="btn">Confirmer la réservation</button>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Mes réservations</div>
+        <h2 class="card-title">Suivi des dossiers</h2>
+        <p class="desc">Statut réel — pas de suivi en direct, mais une trace claire à chaque étape.</p>
+
+        <div class="dossier">
+          <div class="dossier-top">
+            <div><div class="dossier-addr">Rue de la Pompe, 16e</div><div class="dossier-meta">9 juillet · Net&Pro Paris</div></div>
+            <div class="status-pill review">En vérification</div>
+          </div>
+        </div>
+        <div class="dossier">
+          <div class="dossier-top">
+            <div><div class="dossier-addr">Marais — Rue des Rosiers</div><div class="dossier-meta">3 juillet · Clean Éclat</div></div>
+            <div class="status-pill done">Confirmé</div>
+          </div>
+        </div>
+        <div class="dossier">
+          <div class="dossier-top">
+            <div><div class="dossier-addr">Rue de la Pompe, 16e</div><div class="dossier-meta">10 juillet · en attente de prestataire</div></div>
+            <div class="status-pill wait">Réservé</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESTATAIRE SCREEN -->
+  <div class="screen" id="screen-prestataire">
+    <div class="grid2">
+      <div class="card">
+        <div class="eyebrow">Net&Pro Paris · 16e arrondissement</div>
+        <h2 class="card-title">Missions disponibles</h2>
+        <p class="desc">Missions publiées par des clients dans ta zone.</p>
+
+        <div class="mission-item">
+          <div class="mission-top">
+            <div><div class="dossier-addr">Rue de la Pompe, 16e</div><div class="dossier-meta">9 juillet · 72 m²</div></div>
+            <div class="mission-price">37€</div>
+          </div>
+          <div class="mission-actions">
+            <button class="chip-btn accept">Accepter</button>
+            <button class="chip-btn decline">Refuser</button>
+          </div>
+        </div>
+        <div class="mission-item">
+          <div class="mission-top">
+            <div><div class="dossier-addr">Avenue Foch, 16e</div><div class="dossier-meta">11 juillet · 54 m²</div></div>
+            <div class="mission-price">31€</div>
+          </div>
+          <div class="mission-actions">
+            <button class="chip-btn accept">Accepter</button>
+            <button class="chip-btn decline">Refuser</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Mission en cours</div>
+        <h2 class="card-title">Rue de la Pompe, 16e</h2>
+        <p class="desc">Photos exigées par CleanFlow avant envoi pour vérification. Les 6 sont obligatoires.</p>
+
+        <div class="photo-checklist">
+          <div class="photo-slot uploaded"><div class="photo-thumb"></div><div class="photo-name">Cuisine — avant</div><div class="photo-status">✓ envoyée</div></div>
+          <div class="photo-slot uploaded"><div class="photo-thumb"></div><div class="photo-name">Cuisine — après</div><div class="photo-status">✓ envoyée</div></div>
+          <div class="photo-slot uploaded"><div class="photo-thumb"></div><div class="photo-name">Salle de bain</div><div class="photo-status">✓ envoyée</div></div>
+          <div class="photo-slot"><div class="photo-thumb"></div><div class="photo-name">Chambre 1</div><div class="photo-status">+ ajouter</div></div>
+          <div class="photo-slot"><div class="photo-thumb"></div><div class="photo-name">Chambre 2</div><div class="photo-status">+ ajouter</div></div>
+          <div class="photo-slot"><div class="photo-thumb"></div><div class="photo-name">Linge changé</div><div class="photo-status">+ ajouter</div></div>
+        </div>
+
+        <button class="btn gold">Envoyer pour vérification (3/6)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN SCREEN -->
+  <div class="screen" id="screen-admin">
+    <div class="grid2">
+      <div class="card">
+        <div class="eyebrow">File de vérification</div>
+        <h2 class="card-title">Dossiers en attente</h2>
+        <p class="desc">Rien n'est confirmé au client sans validation manuelle.</p>
+
+        <div class="queue-item active">
+          <div class="queue-left"><div class="queue-addr">Rue de la Pompe, 16e</div><div class="queue-sub">Net&Pro Paris · 6/6 photos</div></div>
+          <div class="status-pill review">À vérifier</div>
+        </div>
+        <div class="queue-item">
+          <div class="queue-left"><div class="queue-addr">Rue Oberkampf, 11e</div><div class="queue-sub">Clean Éclat · 4/6 photos</div></div>
+          <div class="status-pill wait">Incomplet</div>
+        </div>
+        <div class="queue-item">
+          <div class="queue-left"><div class="queue-addr">Boulevard Voltaire, 11e</div><div class="queue-sub">Net&Pro Paris · 6/6 photos</div></div>
+          <div class="status-pill review">À vérifier</div>
+        </div>
+
+        <div class="eyebrow" style="margin-top:28px;">Compte sommaire</div>
+        <table class="ledger-table">
+          <tr><th>Client</th><th>Date</th><th>Montant</th><th>Statut</th></tr>
+          <tr><td>M. Dubois</td><td>03/07</td><td>42€</td><td>Confirmé</td></tr>
+          <tr><td>Mme Laurent</td><td>05/07</td><td>31€</td><td>Confirmé</td></tr>
+          <tr><td>M. Dubois</td><td>09/07</td><td>42€</td><td>En attente</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Dossier sélectionné</div>
+        <h2 class="card-title">Rue de la Pompe, 16e</h2>
+        <p class="desc">Net&Pro Paris · soumis le 9 juillet à 14h32</p>
+
+        <div class="photo-review-grid">
+          <div class="photo-review-slot">Cuisine avant</div>
+          <div class="photo-review-slot">Cuisine après</div>
+          <div class="photo-review-slot">Salle de bain</div>
+          <div class="photo-review-slot">Chambre 1</div>
+          <div class="photo-review-slot">Chambre 2</div>
+          <div class="photo-review-slot">Linge changé</div>
+        </div>
+
+        <div class="admin-actions">
+          <button class="btn">Vérifier et confirmer au client</button>
+        </div>
+        <div class="admin-actions" style="margin-top:10px;">
+          <button class="btn ghost">Renvoyer au prestataire</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>CleanFlow — squelette fonctionnel, données de démonstration</footer>
+</div>
+
+<script>
+  const roleBtns = document.querySelectorAll('.role-btn');
+  const screens = document.querySelectorAll('.screen');
+  roleBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      roleBtns.forEach(b=>b.classList.remove('active'));
+      screens.forEach(s=>s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('screen-'+btn.dataset.role).classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('.property-card').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      document.querySelectorAll('.property-card').forEach(x=>x.classList.remove('selected'));
+      c.classList.add('selected');
+    });
+  });
+
+  document.querySelectorAll('.cal-day:not(.disabled):not(.booked)').forEach(d=>{
+    d.addEventListener('click', ()=>{
+      document.querySelectorAll('.cal-day').forEach(x=>x.classList.remove('selected'));
+      d.classList.add('selected');
+    });
+  });
+
+  document.querySelectorAll('.toggle-chip').forEach(c=>{
+    c.addEventListener('click', ()=> c.classList.toggle('active'));
+  });
+
+  document.querySelectorAll('.queue-item').forEach(q=>{
+    q.addEventListener('click', ()=>{
+      document.querySelectorAll('.queue-item').forEach(x=>x.classList.remove('active'));
+      q.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
