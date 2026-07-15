@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CleanFlow — Prestataire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--klein:#002FA7;--klein-deep:#001F73;--klein-tint:#EDF0FB;--gold:#D9A441;--ink:#10131A;--muted:#5A6472;--paper:#F5F6FA;--line:#DCE1EE;--white:#FFFFFF;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);min-height:100vh;}
+  .app-wrap{max-width:1140px;margin:0 auto;padding:28px 18px 60px 18px;}
+  .top-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:28px;}
+  .brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;}
+  .brand span{color:var(--klein);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;padding:14px 18px;font-weight:700;font-size:14px;cursor:pointer;}
+  .btn.primary{background:var(--klein);color:var(--white);}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn.disabled{opacity:.65;cursor:not-allowed;}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:26px;margin-bottom:22px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.09em;color:var(--klein);margin-bottom:10px;}
+  h1,h2{font-family:'Space Grotesk',sans-serif;margin:0 0 10px;}
+  p{color:var(--muted);line-height:1.6;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+  @media(max-width:720px){.form-row{grid-template-columns:1fr;}}
+  label{display:block;font-size:13px;margin-bottom:6px;font-weight:600;}
+  input,textarea,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;background:var(--white);color:var(--ink);}
+  textarea{min-height:100px;resize:vertical;}
+  .empty-state{padding:26px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);text-align:center;}
+  .task-card{border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;}
+  .task-top{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .task-title{font-size:15px;font-weight:700;}
+  .task-meta{font-size:13px;color:var(--muted);margin-top:8px;}
+  .status-pill{font-size:11px;font-weight:700;border-radius:999px;padding:8px 12px;display:inline-flex;align-items:center;}
+  .status-pill.pending{background:#EDF2FE;color:#1D4ED8;}
+  .status-pill.accepted{background:#EAF0FB;color:#1D4ED8;}
+  .status-pill.submitted{background:var(--klein-tint);color:var(--klein);}
+  .fieldset{border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px;}
+  .fieldset legend{font-family:'Space Grotesk';font-weight:700;padding:0 6px;}
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+  .photo-slot{border:1px dashed var(--line);border-radius:12px;padding:12px;text-align:center;cursor:pointer;position:relative;min-height:100px;display:flex;align-items:center;justify-content:center;}
+  .photo-slot img{width:100%;height:100%;object-fit:cover;border-radius:10px;}
+  .photo-slot span{font-size:12px;color:var(--muted);}
+  .photo-slot.uploaded{border-style:solid;border-color:var(--klein);}
+  .status-banner{padding:16px;border-radius:14px;background:#FEF3F2;color:#B91C1C;margin-bottom:18px;}
+</style>
+</head>
+<body>
+<div class="app-wrap">
+  <div class="top-row">
+    <div>
+      <div class="brand">Clean<span>Flow</span></div>
+      <div class="eyebrow">Espace prestataire</div>
+    </div>
+    <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
+  </div>
+
+  <div class="card" id="authScreen">
+    <div class="eyebrow">Connexion requise</div>
+    <h1>Se connecter</h1>
+    <p>Accédez à votre interface prestataire. Si votre compte n’existe pas encore, demandez une invitation au support CleanFlow.</p>
+    <div id="authError" class="status-banner hidden"></div>
+    <form id="signInForm">
+      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" required></div>
+      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" required></div>
+      <button class="btn primary" type="submit">Se connecter</button>
+    </form>
+  </div>
+
+  <div id="appScreen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Bonjour</div>
+      <h1 id="userNameLabel">Prestataire</h1>
+      <p>Seules les missions disponibles et celles qui vous sont attribuées s’affichent ici.</p>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Missions à prendre</div>
+      <h2>Missions en attente</h2>
+      <div id="pendingList"></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Mission en cours</div>
+      <h2>Votre dossier actif</h2>
+      <div id="activeBooking"></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Incident</div>
+      <h2>Signaler un problème</h2>
+      <form id="incidentForm">
+        <div class="form-row"><label for="incidentType">Type</label><select id="incidentType" required><option value="broken_object">Objet cassé</option><option value="lost_object">Objet perdu</option><option value="other">Autre</option></select></div>
+        <div class="form-row"><label for="incidentDescription">Description</label><textarea id="incidentDescription" required></textarea></div>
+        <div class="form-row"><label for="incidentPhoto">Photo (optionnel)</label><input id="incidentPhoto" type="file" accept="image/*"></div>
+        <button class="btn primary" type="submit">Envoyer le signalement</button>
+      </form>
+      <div id="incidentStatus" class="status-banner hidden"></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="../prestataire.js"></script>
+</body>
+</html>

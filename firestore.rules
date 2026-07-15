@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function userRole() {
+      return userDoc(request.auth.uid).data.role;
+    }
+
+    function isClient() {
+      return isSignedIn() && userRole() == 'client';
+    }
+
+    function isPrestataire() {
+      return isSignedIn() && userRole() == 'prestataire';
+    }
+
+    function isLivreur() {
+      return isSignedIn() && userRole() == 'livreur';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role in ['client', 'prestataire', 'livreur', 'admin']
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role;
+    }
+
+    match /properties/{propertyId} {
+      allow read: if isSignedIn() && (isAdmin() || (isClient() && resource.data.ownerId == request.auth.uid));
+      allow create: if isClient()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.street is string
+        && request.resource.data.city is string
+        && request.resource.data.postalCode is string;
+      allow update, delete: if isClient() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (isClient() && resource.data.clientId == request.auth.uid)
+        || (isPrestataire() && (resource.data.prestataireId == request.auth.uid || resource.data.status == 'pending'))
+        || (isLivreur() && resource.data.linenRequested == true)
+      );
+
+      allow list: if isSignedIn() && (
+        isAdmin()
+        || (isClient() && request.query.where('clientId', '==', request.auth.uid))
+        || (isPrestataire() && request.query.where('status', '==', 'pending'))
+        || (isPrestataire() && request.query.where('prestataireId', '==', request.auth.uid))
+        || (isLivreur() && request.query.where('linenRequested', '==', true))
+      );
+
+      allow create: if isClient()
+        && request.resource.data.clientId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.serviceType in ['normal', 'deep']
+        && request.resource.data.price in [47, 60]
+        && request.resource.data.scheduledDate is string;
+
+      allow update: if isSignedIn() && (
+        (isClient() && resource.data.clientId == request.auth.uid
+          && request.resource.data.clientId == resource.data.clientId
+          && request.resource.data.prestataireId == resource.data.prestataireId
+          && request.resource.data.serviceType == resource.data.serviceType
+          && request.resource.data.price == resource.data.price)
+        || (isPrestataire() && resource.data.prestataireId in [null, request.auth.uid]
+          && request.resource.data.prestataireId == request.auth.uid
+          && request.resource.data.clientId == resource.data.clientId)
+        || isAdmin()
+      );
+    }
+
+    match /photos/{photoId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
+        || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
+      );
+      allow create: if isPrestataire()
+        && request.resource.data.uploadedBy == request.auth.uid
+        && request.resource.data.bookingId is string
+        && request.resource.data.verified == false;
+      allow update: if isAdmin()
+        && request.resource.data.verified == true
+        && request.resource.data.verifiedBy == request.auth.uid;
+    }
+
+    match /incidents/{incidentId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (isPrestataire() && resource.data.reportedBy == request.auth.uid)
+      );
+      allow create: if isPrestataire()
+        && request.resource.data.reportedBy == request.auth.uid
+        && request.resource.data.type in ['broken_object', 'lost_object', 'other']
+        && request.resource.data.status == 'open';
+      allow update: if isAdmin();
+    }
+  }
+}

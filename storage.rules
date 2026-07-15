@@ -1,0 +1,30 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /bookings/{bookingId}/{filePath=**} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function userRole() {
+        return get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+      }
+
+      function bookingDoc() {
+        return get(/databases/(default)/documents/bookings/$(bookingId));
+      }
+
+      allow read: if isSignedIn() && (
+        userRole() == 'admin'
+        || (userRole() == 'prestataire' && bookingDoc().data.prestataireId == request.auth.uid)
+        || (userRole() == 'client' && bookingDoc().data.clientId == request.auth.uid)
+      );
+
+      allow write: if isSignedIn() && userRole() == 'prestataire'
+        && bookingDoc().data.prestataireId == request.auth.uid;
+    }
+  }
+}
+
+// Manual cleanup expectation: remove booking photos older than 90 days.
+// This can be implemented with a scheduled Cloud Function or a manual review process.

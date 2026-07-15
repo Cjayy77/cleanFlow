@@ -1,535 +1,160 @@
-<!DOCTYPE html> 
-<html lang="fr"> 
-<head>   
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CleanFlow — Démo fonctionnelle</title>
+<title>CleanFlow — Espace client</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>  
+<style>
   :root{
-    --klein: #002FA7; --klein-deep: #001F73; --klein-tint: #EDF0FB; --gold: #D9A441;
-    --ink: #10131A; --muted: #5A6472; --paper: #F5F6FA; --line: #DCE1EE; --white: #FFFFFF;
-    --red: #C1443D; --green: #2F8558;
+    --klein: #002FA7;
+    --klein-deep: #001F73;
+    --klein-tint: #EDF0FB;
+    --gold: #D9A441;
+    --ink: #10131A;
+    --muted: #5A6472;
+    --paper: #F5F6FA;
+    --line: #DCE1EE;
+    --white: #FFFFFF;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{ font-family:'Inter', sans-serif; color:var(--ink); background:var(--paper); min-height:100vh; }
-  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; }
-  .app-wrap{ max-width: 1140px; margin:0 auto; padding: 32px 20px 60px 20px; }
-  .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; flex-wrap:wrap; gap:12px; }
-  .brand{ font-family:'Space Grotesk'; font-weight:700; font-size:24px; }
+  .app-wrap{ max-width: 1140px; margin:0 auto; padding: 28px 18px 60px 18px; }
+  .top-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:28px; }
+  .brand{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:24px; margin-bottom:0; }
   .brand span{ color: var(--klein); }
-  .top-right{ display:flex; gap:10px; align-items:center; }
-  .role-select{ display:flex; gap:6px; background: var(--white); border:1px solid var(--line); border-radius:10px; padding:4px; }
-  .role-btn{ border:none; background:transparent; padding:9px 18px; border-radius:8px; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer; }
-  .role-btn.active{ background: var(--klein); color: var(--white); }
-  .reset-btn{ border:1px solid var(--line); background:var(--white); color:var(--muted); font-size:12px; font-weight:700; padding:9px 14px; border-radius:8px; cursor:pointer; }
-  .reset-btn:hover{ color: var(--red); border-color: var(--red); }
-  .subnote{ font-family:'JetBrains Mono'; font-size:11px; color:var(--muted); margin-bottom:24px; }
-
-  .screen{ display:none; animation: fadein .3s ease; }
-  .screen.active{ display:block; }
-  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
-
-  .grid2{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:22px; }
-  @media (max-width:860px){ .grid2{ grid-template-columns:1fr; } }
-
-  .card{ background: var(--white); border:1px solid var(--line); border-radius:14px; padding:26px; }
-  .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color: var(--klein); font-weight:700; margin-bottom:8px; }
-  h2.card-title{ font-size:20px; font-weight:600; margin-bottom:6px; }
-  p.desc{ color: var(--muted); font-size:13.5px; line-height:1.55; margin-bottom:18px; }
-  .empty-state{ text-align:center; padding:34px 20px; color:var(--muted); font-size:13px; border:1px dashed var(--line); border-radius:10px; }
-
-  .property-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
-  .property-card{ display:flex; gap:12px; align-items:center; padding:12px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
-  .property-card.selected{ border-color: var(--klein); box-shadow: 0 0 0 1px var(--klein); background: var(--klein-tint); }
-  .p-thumb{ width:44px; height:44px; border-radius:8px; background: linear-gradient(135deg, var(--klein), var(--klein-deep)); flex-shrink:0; }
-  .p-name{ font-weight:700; font-size:13.5px; }
-  .p-meta{ font-size:11.5px; color:var(--muted); }
-
-  .cal-grid{ display:grid; grid-template-columns: repeat(7,1fr); gap:5px; margin: 14px 0 20px 0; }
-  .cal-day-label{ font-size:10px; text-align:center; color:var(--muted); font-weight:700; }
-  .cal-day{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:7px; font-size:12px; font-weight:600; background: var(--paper); color: var(--ink); cursor:pointer; border: 1px solid transparent; }
-  .cal-day.disabled{ color: var(--line); cursor:default; pointer-events:none; }
-  .cal-day.booked{ background: #FBEAE9; color: var(--red); cursor:not-allowed; pointer-events:none; }
-  .cal-day.selected{ background: var(--klein); color: var(--white); }
-
-  .toggle-row{ display:flex; gap:10px; margin-bottom:20px; }
-  .toggle-chip{ flex:1; text-align:center; padding:10px; border-radius:9px; border:1px solid var(--line); font-size:12.5px; font-weight:700; cursor:pointer; color: var(--muted); }
-  .toggle-chip.active{ background: var(--klein-tint); border-color: var(--klein); color: var(--klein); }
-
-  .price-box{ display:flex; justify-content:space-between; align-items:center; background: var(--paper); border-radius:10px; padding:14px 16px; margin-bottom:18px; }
-  .price-value{ font-family:'Space Grotesk'; font-size:22px; font-weight:700; color: var(--klein); }
-
-  .btn{ display:block; width:100%; text-align:center; background: var(--klein); color:var(--white); border:none; padding:13px; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; }
-  .btn:disabled{ background:var(--line); color:var(--muted); cursor:not-allowed; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:12px; padding:14px 18px; font-weight:700; font-size:14px; cursor:pointer; }
+  .btn.primary{ background: var(--klein); color:var(--white); }
   .btn.gold{ background: var(--gold); color: var(--klein-deep); }
-  .btn.gold:disabled{ background:var(--line); color:var(--muted); }
-  .btn.ghost{ background:transparent; border:1px solid var(--line); color: var(--ink); }
-
-  .dossier{ border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
-  .dossier-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2px; }
-  .dossier-addr{ font-weight:700; font-size:13.5px; }
-  .dossier-meta{ font-size:11.5px; color:var(--muted); margin-top:2px; }
-  .status-pill{ font-size:10.5px; font-weight:700; padding:5px 10px; border-radius:999px; white-space:nowrap; }
-  .status-pill.reserved{ background:#FFF3DC; color:#8A6416; }
-  .status-pill.assigned{ background:#EAF0FB; color:#3555A0; }
-  .status-pill.submitted{ background: var(--klein-tint); color: var(--klein); }
-  .status-pill.confirmed{ background:#E4F3EA; color: var(--green); }
-
-  .mission-item{ border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
-  .mission-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-  .mission-price{ font-family:'Space Grotesk'; font-weight:700; color: var(--klein); font-size:16px; }
-  .mission-actions{ display:flex; gap:8px; }
-  .chip-btn{ flex:1; padding:9px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:none; }
-  .chip-btn.accept{ background: var(--klein); color:var(--white); }
-  .chip-btn.decline{ background:transparent; border:1px solid var(--line); color:var(--muted); }
-
-  .photo-checklist{ display:flex; flex-direction:column; gap:8px; margin: 16px 0; }
-  .photo-slot{ display:flex; align-items:center; gap:12px; padding:8px 12px; border:1px dashed var(--line); border-radius:9px; cursor:pointer; background:none; width:100%; text-align:left; font-family:'Inter'; }
-  .photo-thumb{ width:40px; height:40px; border-radius:7px; background: repeating-linear-gradient(45deg,#E6E9F2,#E6E9F2 8px,#DCE1EE 8px,#DCE1EE 16px); flex-shrink:0; object-fit:cover; }
-  .photo-name{ font-size:12.5px; font-weight:600; flex:1; color:var(--ink); }
-  .photo-status{ font-size:10.5px; font-weight:700; color: var(--muted); }
-  .photo-slot.uploaded .photo-status{ color: var(--green); }
-  .photo-slot.uploaded{ border-style:solid; border-color: var(--green); }
-
-  .queue-item{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border:1px solid var(--line); border-radius:10px; margin-bottom:10px; cursor:pointer; }
-  .queue-item.active{ border-color: var(--klein); background: var(--klein-tint); }
-  .queue-left{ display:flex; flex-direction:column; }
-  .queue-addr{ font-weight:700; font-size:13px; }
-  .queue-sub{ font-size:11px; color:var(--muted); }
-
-  .photo-review-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin: 16px 0; }
-  .photo-review-slot{ aspect-ratio:1; border-radius:8px; background: repeating-linear-gradient(45deg,#E6E9F2,#E6E9F2 8px,#DCE1EE 8px,#DCE1EE 16px); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--muted); text-align:center; padding:4px; position:relative; overflow:hidden; }
-  .photo-review-slot img{ width:100%; height:100%; object-fit:cover; }
-  .photo-review-slot.filled::after{ content:'✓'; position:absolute; top:4px; right:4px; width:16px; height:16px; background: var(--green); color:var(--white); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; }
-
-  .admin-actions{ display:flex; flex-direction:column; gap:10px; margin-top:20px; }
-
-  .ledger-table{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12.5px; }
-  .ledger-table th{ text-align:left; font-family:'JetBrains Mono'; font-size:10px; text-transform:uppercase; color:var(--muted); padding:8px 6px; border-bottom:1px solid var(--line); }
-  .ledger-table td{ padding:10px 6px; border-bottom:1px solid var(--line); }
-
-  footer{ margin-top:40px; text-align:center; font-size:11px; color:var(--muted); font-family:'JetBrains Mono'; }
+  .btn.ghost{ background:transparent; border:1px solid var(--line); color:var(--ink); }
+  .btn:disabled{ opacity:.65; cursor:not-allowed; }
+  .card{ background: var(--white); border:1px solid var(--line); border-radius:18px; padding:26px; margin-bottom:22px; }
+  .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.09em; color: var(--klein); margin-bottom:10px; }
+  h1,h2{ font-family:'Space Grotesk', sans-serif; margin:0 0 10px; }
+  p{ color: var(--muted); line-height:1.6; }
+  .grid2{ display:grid; grid-template-columns: 1.2fr 0.8fr; gap:26px; }
+  @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
+  .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px; }
+  @media (max-width:720px){ .form-row{ grid-template-columns:1fr; } }
+  label{ display:block; font-size:13px; margin-bottom:6px; font-weight:600; }
+  input, textarea, select{ width:100%; border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:14px; background:var(--white); color:var(--ink); }
+  textarea{ min-height:120px; resize:vertical; }
+  .hidden{ display:none; }
+  .empty-state{ padding:26px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); text-align:center; }
+  .dossier{ border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:16px; }
+  .dossier-top{ display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+  .dossier-addr{ font-size:15px; font-weight:700; }
+  .dossier-meta{ font-size:13px; color:var(--muted); margin-top:8px; }
+  .property-card{ width:100%; text-align:left; border:1px solid var(--line); border-radius:14px; padding:16px; display:flex; gap:12px; align-items:center; background:var(--white); cursor:pointer; }
+  .property-card.selected{ border-color:var(--klein); background:rgba(0,47,167,.06); }
+  .p-thumb{ width:42px; height:42px; border-radius:12px; background: linear-gradient(135deg, var(--klein), var(--klein-deep)); flex-shrink:0; }
+  .p-name{ font-weight:700; }
+  .p-meta{ font-size:12px; color:var(--muted); }
+  .cal-grid{ display:grid; grid-template-columns: repeat(7,1fr); gap:8px; margin-top:16px; }
+  .cal-day-label{ font-size:11px; color:var(--muted); text-align:center; }
+  .cal-day{ border-radius:12px; padding:14px 0; text-align:center; background:var(--paper); border:1px solid transparent; cursor:pointer; font-weight:700; }
+  .cal-day.booked{ background:#FEF3F2; color:#B91C1C; cursor:not-allowed; }
+  .cal-day.selected{ background:var(--klein); color:var(--white); }
+  .form-footer{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:14px; align-items:center; }
+  .form-footer span{ color:var(--muted); font-size:13px; }
+  .service-option{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .service-option input{ width:16px; height:16px; }
+  .note-box{ font-size:13px; color:var(--muted); margin-top:10px; }
+  .status-banner{ margin-bottom:18px; padding:16px; border-radius:14px; background:#FEF3F2; color:#B91C1C; font-size:13px; }
+  .status-pill{ font-size:11px; font-weight:700; border-radius:999px; padding:8px 12px; }
+  .status-pill.pending{ background:#EDF2FE; color:#1D4ED8; }
+  .status-pill.accepted{ background:#EAF0FB; color:#1D4ED8; }
+  .status-pill.submitted{ background:var(--klein-tint); color:var(--klein); }
+  .status-pill.verified{ background:#E4F3EA; color:#166534; }
+  .status-pill.rejected{ background:#FEF3F2; color:#B91C1C; }
 </style>
 </head>
 <body>
 <div class="app-wrap">
-  <div class="top">
-    <div class="brand"><a href="index.html" style="text-decoration:none; color:inherit;">Clean<span>Flow</span></a></div>
-    <div class="top-right">
-      <div class="role-select">
-        <button class="role-btn active" data-role="client">Client</button>
-        <button class="role-btn" data-role="prestataire">Prestataire</button>
-        <button class="role-btn" data-role="admin">Contrôle (CleanFlow)</button>
-      </div>
-      <button class="reset-btn" id="resetBtn">Réinitialiser la démo</button>
+  <div class="top-row">
+    <div>
+      <div class="brand">Clean<span>Flow</span></div>
+      <div class="eyebrow">Espace client</div>
     </div>
+    <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
   </div>
-  <div class="subnote">// démo fonctionnelle — les 3 vues partagent le même état, en direct</div>
 
-  <!-- CLIENT SCREEN -->
-  <div class="screen active" id="screen-client">
+  <div class="card" id="authScreen">
+    <div class="eyebrow">Connexion requise</div>
+    <h1 id="authTitle">Connexion client</h1>
+    <p>Connectez-vous ou créez un compte client pour gérer vos réservations.</p>
+    <div id="authError" class="status-banner hidden"></div>
+    <form id="signInForm">
+      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" required></div>
+      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" required></div>
+      <button class="btn primary" type="submit">Se connecter</button>
+      <div class="note-box"><a href="#" id="formSwitch">Créer un compte client</a></div>
+    </form>
+    <form id="registerForm" class="hidden">
+      <div class="form-row"><label for="registerName">Nom</label><input id="registerName" type="text" required></div>
+      <div class="form-row"><label for="registerPhone">Téléphone</label><input id="registerPhone" type="tel" required></div>
+      <div class="form-row"><label for="registerEmail">Email</label><input id="registerEmail" type="email" required></div>
+      <div class="form-row"><label for="registerPassword">Mot de passe</label><input id="registerPassword" type="password" required></div>
+      <button class="btn primary" type="submit">Créer mon compte</button>
+      <div class="note-box"><a href="#" id="formSwitch">Se connecter</a></div>
+    </form>
+  </div>
+
+  <div id="appScreen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Bonjour</div>
+      <h1 id="userNameLabel">Client</h1>
+      <p>Votre compte client est sécurisé avec Firebase Authentication. Seules les interfaces clients sont accessibles ici.</p>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Nouveau bien</div>
+      <h2>Ajouter votre propriété</h2>
+      <form id="propertyForm">
+        <div class="form-row"><label for="propertyStreet">Rue et numéro</label><input id="propertyStreet" required></div>
+        <div class="form-row"><label for="propertyCity">Ville</label><input id="propertyCity" required></div>
+        <div class="form-row"><label for="propertyPostal">Code postal</label><input id="propertyPostal" required></div>
+        <div class="form-row"><label for="propertyNotes">Notes/consignes</label><textarea id="propertyNotes"></textarea></div>
+        <button class="btn primary" type="submit">Enregistrer le bien</button>
+      </form>
+    </div>
+
     <div class="grid2">
       <div class="card">
-        <div class="eyebrow">Réserver un ménage</div>
-        <h2 class="card-title">Choisir un bien et une date</h2>
-        <p class="desc">Les jours déjà réservés pour ce bien sont grisés en rouge.</p>
-
-        <div class="property-list" id="propertyList"></div>
-        <div class="cal-grid" id="calGrid"></div>
-
-        <div class="toggle-row">
-          <div class="toggle-chip active" id="chipStandard">Ménage standard</div>
-          <div class="toggle-chip" id="chipLinge">+ Linge</div>
-        </div>
-
-        <div class="price-box">
+        <div class="eyebrow">Votre portefeuille</div>
+        <h2>Biens enregistrés</h2>
+        <div id="propertyList"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Réservation</div>
+        <h2>Choisir une date</h2>
+        <div class="form-row"><label>Service</label><div>
+          <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal — 47€</label>
+          <label class="service-option"><input type="radio" name="serviceType" value="deep"> Nettoyage en profondeur — 60€</label>
+        </div></div>
+        <div class="form-row"><label>Linge</label><label class="service-option"><input id="linenToggle" type="checkbox"> Livraison/récupération de linge</label></div>
+        <div class="form-row"><label>Date sélectionnée</label><input id="selectedDateLabel" type="text" readonly value="Aucune date"></div>
+        <div class="cal-grid" id="calendarGrid"></div>
+        <div class="form-footer">
           <div>
-            <div style="font-size:11px; color:var(--muted); font-weight:700;">Prix total</div>
-            <div style="font-size:10.5px; color:var(--muted); font-family:'JetBrains Mono';">confirmé après vérification</div>
+            <div style="font-size:13px; color:var(--muted); font-weight:700;">Prix affiché avant confirmation</div>
+            <div id="priceValue" style="font-family:'Space Grotesk'; font-size:20px; color:var(--klein);">47€</div>
           </div>
-          <div class="price-value" id="priceValue">42€</div>
-        </div>
-
-        <button class="btn" id="bookBtn" disabled>Choisis une date pour réserver</button>
-      </div>
-
-      <div class="card">
-        <div class="eyebrow">Mes réservations</div>
-        <h2 class="card-title">Suivi des dossiers</h2>
-        <p class="desc">Statut réel de chaque réservation — mis à jour par les autres vues.</p>
-        <div id="clientDossierList"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PRESTATAIRE SCREEN -->
-  <div class="screen" id="screen-prestataire">
-    <div class="grid2">
-      <div class="card">
-        <div class="eyebrow">Net&amp;Pro Paris</div>
-        <h2 class="card-title">Missions disponibles</h2>
-        <p class="desc">Missions réservées par des clients, pas encore prises en charge.</p>
-        <div id="missionList"></div>
-      </div>
-
-      <div class="card">
-        <div class="eyebrow">Mission en cours</div>
-        <h2 class="card-title" id="activeMissionTitle">Aucune mission en cours</h2>
-        <p class="desc">Accepte une mission pour débloquer la checklist photo.</p>
-        <div id="photoChecklistWrap"></div>
-        <input type="file" id="fileInput" accept="image/*" style="display:none;">
-      </div>
-    </div>
-  </div>
-
-  <!-- ADMIN SCREEN -->
-  <div class="screen" id="screen-admin">
-    <div class="grid2">
-      <div class="card">
-        <div class="eyebrow">File de vérification</div>
-        <h2 class="card-title">Dossiers en cours</h2>
-        <p class="desc">Rien n'est confirmé au client sans validation manuelle.</p>
-        <div id="adminQueue"></div>
-
-        <div class="eyebrow" style="margin-top:28px;">Compte sommaire</div>
-        <table class="ledger-table" id="ledgerTable">
-          <tr><th>Client</th><th>Bien</th><th>Montant</th><th>Statut</th></tr>
-        </table>
-      </div>
-
-      <div class="card">
-        <div class="eyebrow">Dossier sélectionné</div>
-        <h2 class="card-title" id="adminSelectedTitle">Aucun dossier sélectionné</h2>
-        <p class="desc" id="adminSelectedSub"></p>
-        <div class="photo-review-grid" id="photoReviewGrid"></div>
-        <div class="admin-actions">
-          <button class="btn" id="verifyBtn" disabled>Vérifier et confirmer au client</button>
-          <button class="btn ghost" id="rejectBtn" disabled>Renvoyer au prestataire</button>
+          <button class="btn gold" id="bookBtn" type="button" disabled>Choisir une date pour réserver</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <footer>CleanFlow — démo fonctionnelle, état conservé localement dans ce navigateur</footer>
+    <div class="card">
+      <div class="eyebrow">Historique</div>
+      <h2>Réservations client</h2>
+      <div id="bookingsWrap"></div>
+    </div>
+
+    <div class="status-banner hidden" id="appStatus"></div>
+  </div>
 </div>
-
-<script>
-/* ---------- DATA MODEL ---------- */
-const PHOTO_SLOTS = [
-  {key:'kitchen_before', label:'Cuisine — avant'},
-  {key:'kitchen_after', label:'Cuisine — après'},
-  {key:'bathroom', label:'Salle de bain'},
-  {key:'bedroom1', label:'Chambre 1'},
-  {key:'bedroom2', label:'Chambre 2'},
-  {key:'linen', label:'Linge changé'},
-];
-const PROPERTIES = [
-  {id:'p1', name:'Rue de la Pompe, 16e', meta:'72 m² · 2 chambres'},
-  {id:'p2', name:'Marais — Rue des Rosiers', meta:'45 m² · studio'},
-];
-const STORAGE_KEY = 'cleanflow_demo_state_v1';
-
-function seedState(){
-  return {
-    bookings: [
-      { id: 'b1', propertyId:'p1', propertyName:'Rue de la Pompe, 16e', day:3, linen:false, price:42,
-        prestataire:'Net&Pro Paris', status:'confirmed', photos:{} },
-      { id: 'b2', propertyId:'p2', propertyName:'Marais — Rue des Rosiers', day:10, linen:true, price:50,
-        prestataire:null, status:'reserved', photos:{} },
-    ],
-    ui: { selectedProperty:'p1', selectedDay:null, linen:false, activeMissionId:null, adminSelectedId:null }
-  };
-}
-
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return seedState();
-    return JSON.parse(raw);
-  }catch(e){ return seedState(); }
-}
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-
-let state = loadState();
-
-/* ---------- HELPERS ---------- */
-function uid(){ return 'b' + Math.random().toString(36).slice(2,9); }
-function photosUploadedCount(b){ return PHOTO_SLOTS.filter(s => b.photos[s.key]).length; }
-function statusLabel(s){
-  return {reserved:'Réservé', assigned:'Pris en charge', submitted:'En vérification', confirmed:'Confirmé'}[s] || s;
-}
-
-/* ---------- RENDER: CLIENT ---------- */
-function renderPropertyList(){
-  const wrap = document.getElementById('propertyList');
-  wrap.innerHTML = '';
-  PROPERTIES.forEach(p=>{
-    const el = document.createElement('div');
-    el.className = 'property-card' + (state.ui.selectedProperty===p.id ? ' selected' : '');
-    el.innerHTML = `<div class="p-thumb"></div><div><div class="p-name">${p.name}</div><div class="p-meta">${p.meta}</div></div>`;
-    el.onclick = ()=>{ state.ui.selectedProperty = p.id; state.ui.selectedDay=null; saveState(); renderClient(); };
-    wrap.appendChild(el);
-  });
-}
-
-function renderCalendar(){
-  const wrap = document.getElementById('calGrid');
-  wrap.innerHTML = '';
-  ['L','M','M','J','V','S','D'].forEach(d=>{
-    const el = document.createElement('div'); el.className='cal-day-label'; el.textContent=d; wrap.appendChild(el);
-  });
-  const bookedDays = state.bookings
-    .filter(b=>b.propertyId===state.ui.selectedProperty)
-    .map(b=>b.day);
-  for(let i=0;i<2;i++){ const el=document.createElement('div'); el.className='cal-day disabled'; el.textContent=''; wrap.appendChild(el); }
-  for(let day=1; day<=19; day++){
-    const el = document.createElement('div');
-    const isBooked = bookedDays.includes(day);
-    el.className = 'cal-day' + (isBooked ? ' booked' : '') + (state.ui.selectedDay===day ? ' selected' : '');
-    el.textContent = day;
-    if(!isBooked){
-      el.onclick = ()=>{ state.ui.selectedDay = day; saveState(); renderClient(); };
-    }
-    wrap.appendChild(el);
-  }
-}
-
-function computePrice(){ return state.ui.linen ? 50 : 42; }
-
-function renderClientForm(){
-  document.getElementById('chipStandard').classList.toggle('active', !state.ui.linen);
-  document.getElementById('chipLinge').classList.toggle('active', state.ui.linen);
-  document.getElementById('priceValue').textContent = computePrice() + '€';
-  const btn = document.getElementById('bookBtn');
-  if(state.ui.selectedDay){
-    btn.disabled = false;
-    btn.textContent = 'Confirmer la réservation — ' + computePrice() + '€';
-  } else {
-    btn.disabled = true;
-    btn.textContent = 'Choisis une date pour réserver';
-  }
-}
-
-function renderClientDossiers(){
-  const wrap = document.getElementById('clientDossierList');
-  wrap.innerHTML = '';
-  if(state.bookings.length===0){
-    wrap.innerHTML = '<div class="empty-state">Aucune réservation pour l\'instant.</div>'; return;
-  }
-  [...state.bookings].sort((a,b)=>a.day-b.day).forEach(b=>{
-    const el = document.createElement('div'); el.className='dossier';
-    el.innerHTML = `
-      <div class="dossier-top">
-        <div>
-          <div class="dossier-addr">${b.propertyName}</div>
-          <div class="dossier-meta">Jour ${b.day} · ${b.prestataire || 'en attente de prestataire'}${b.linen ? ' · + linge' : ''}</div>
-        </div>
-        <div class="status-pill ${b.status}">${statusLabel(b.status)}</div>
-      </div>`;
-    wrap.appendChild(el);
-  });
-}
-
-function renderClient(){
-  renderPropertyList();
-  renderCalendar();
-  renderClientForm();
-  renderClientDossiers();
-}
-
-/* ---------- RENDER: PRESTATAIRE ---------- */
-function renderMissionList(){
-  const wrap = document.getElementById('missionList');
-  wrap.innerHTML = '';
-  const available = state.bookings.filter(b=>b.status==='reserved');
-  if(available.length===0){
-    wrap.innerHTML = '<div class="empty-state">Pas de nouvelle mission disponible.</div>'; return;
-  }
-  available.forEach(b=>{
-    const el = document.createElement('div'); el.className='mission-item';
-    el.innerHTML = `
-      <div class="mission-top">
-        <div><div class="dossier-addr">${b.propertyName}</div><div class="dossier-meta">Jour ${b.day}${b.linen ? ' · + linge' : ''}</div></div>
-        <div class="mission-price">${b.price}€</div>
-      </div>
-      <div class="mission-actions">
-        <button class="chip-btn accept">Accepter</button>
-        <button class="chip-btn decline">Refuser</button>
-      </div>`;
-    el.querySelector('.accept').onclick = ()=>{
-      b.status='assigned'; b.prestataire='Net&Pro Paris'; state.ui.activeMissionId=b.id; saveState(); renderAll();
-    };
-    el.querySelector('.decline').onclick = ()=>{ el.remove(); };
-    wrap.appendChild(el);
-  });
-}
-
-function renderPhotoChecklist(){
-  const titleEl = document.getElementById('activeMissionTitle');
-  const wrap = document.getElementById('photoChecklistWrap');
-  let mission = state.bookings.find(b=>b.id===state.ui.activeMissionId && b.status==='assigned');
-  if(!mission){
-    mission = state.bookings.find(b=>b.status==='assigned' && b.prestataire==='Net&Pro Paris');
-  }
-  if(!mission){
-    titleEl.textContent = 'Aucune mission en cours';
-    wrap.innerHTML = '<div class="empty-state">Accepte une mission ci-contre pour commencer.</div>';
-    return;
-  }
-  state.ui.activeMissionId = mission.id;
-  titleEl.textContent = mission.propertyName;
-
-  const list = document.createElement('div'); list.className='photo-checklist';
-  PHOTO_SLOTS.forEach(slot=>{
-    const uploaded = !!mission.photos[slot.key];
-    const btn = document.createElement('button');
-    btn.className = 'photo-slot' + (uploaded ? ' uploaded' : '');
-    btn.innerHTML = uploaded
-      ? `<img class="photo-thumb" src="${mission.photos[slot.key]}"><div class="photo-name">${slot.label}</div><div class="photo-status">✓ envoyée</div>`
-      : `<div class="photo-thumb"></div><div class="photo-name">${slot.label}</div><div class="photo-status">+ ajouter</div>`;
-    btn.onclick = ()=>{
-      const fileInput = document.getElementById('fileInput');
-      fileInput.onchange = (e)=>{
-        const file = e.target.files[0];
-        if(!file) return;
-        downscaleImage(file, 240, (dataUrl)=>{
-          mission.photos[slot.key] = dataUrl;
-          saveState(); renderAll();
-        });
-      };
-      fileInput.click();
-    };
-    list.appendChild(btn);
-  });
-  wrap.innerHTML = '';
-  wrap.appendChild(list);
-
-  const count = photosUploadedCount(mission);
-  const submitBtn = document.createElement('button');
-  submitBtn.className = 'btn gold';
-  submitBtn.textContent = `Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`;
-  submitBtn.disabled = count < PHOTO_SLOTS.length;
-  submitBtn.onclick = ()=>{
-    mission.status='submitted'; state.ui.activeMissionId=null; saveState(); renderAll();
-  };
-  wrap.appendChild(submitBtn);
-}
-
-function downscaleImage(file, maxDim, cb){
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    const img = new Image();
-    img.onload = ()=>{
-      let w = img.width, h = img.height;
-      if(w > h && w > maxDim){ h = h * (maxDim/w); w = maxDim; }
-      else if(h > maxDim){ w = w * (maxDim/h); h = maxDim; }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      cb(canvas.toDataURL('image/jpeg', 0.7));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-/* ---------- RENDER: ADMIN ---------- */
-function renderAdminQueue(){
-  const wrap = document.getElementById('adminQueue');
-  wrap.innerHTML = '';
-  const relevant = state.bookings.filter(b=>b.status==='assigned' || b.status==='submitted');
-  if(relevant.length===0){
-    wrap.innerHTML = '<div class="empty-state">Aucun dossier en attente de contrôle.</div>';
-  }
-  relevant.forEach(b=>{
-    const el = document.createElement('div');
-    el.className = 'queue-item' + (state.ui.adminSelectedId===b.id ? ' active' : '');
-    const count = photosUploadedCount(b);
-    el.innerHTML = `
-      <div class="queue-left"><div class="queue-addr">${b.propertyName}</div><div class="queue-sub">${b.prestataire} · ${count}/${PHOTO_SLOTS.length} photos</div></div>
-      <div class="status-pill ${b.status==='submitted' ? 'submitted' : 'assigned'}">${b.status==='submitted' ? 'À vérifier' : 'Incomplet'}</div>`;
-    el.onclick = ()=>{ state.ui.adminSelectedId = b.id; saveState(); renderAdmin(); };
-    wrap.appendChild(el);
-  });
-
-  const table = document.getElementById('ledgerTable');
-  table.innerHTML = '<tr><th>Bien</th><th>Jour</th><th>Montant</th><th>Statut</th></tr>';
-  state.bookings.forEach(b=>{
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${b.propertyName}</td><td>${b.day}</td><td>${b.price}€</td><td>${statusLabel(b.status)}</td>`;
-    table.appendChild(row);
-  });
-}
-
-function renderAdminDetail(){
-  const titleEl = document.getElementById('adminSelectedTitle');
-  const subEl = document.getElementById('adminSelectedSub');
-  const grid = document.getElementById('photoReviewGrid');
-  const verifyBtn = document.getElementById('verifyBtn');
-  const rejectBtn = document.getElementById('rejectBtn');
-
-  const b = state.bookings.find(x=>x.id===state.ui.adminSelectedId && (x.status==='assigned'||x.status==='submitted'));
-  if(!b){
-    titleEl.textContent = 'Aucun dossier sélectionné';
-    subEl.textContent = '';
-    grid.innerHTML = '';
-    verifyBtn.disabled = true; rejectBtn.disabled = true;
-    return;
-  }
-  titleEl.textContent = b.propertyName;
-  subEl.textContent = `${b.prestataire} · jour ${b.day} · ${photosUploadedCount(b)}/${PHOTO_SLOTS.length} photos soumises`;
-  grid.innerHTML = '';
-  PHOTO_SLOTS.forEach(slot=>{
-    const filled = !!b.photos[slot.key];
-    const div = document.createElement('div');
-    div.className = 'photo-review-slot' + (filled ? ' filled' : '');
-    div.innerHTML = filled ? `<img src="${b.photos[slot.key]}">` : slot.label;
-    grid.appendChild(div);
-  });
-  verifyBtn.disabled = !(b.status==='submitted' && photosUploadedCount(b)===PHOTO_SLOTS.length);
-  rejectBtn.disabled = b.status!=='submitted';
-  verifyBtn.onclick = ()=>{ b.status='confirmed'; state.ui.adminSelectedId=null; saveState(); renderAll(); };
-  rejectBtn.onclick = ()=>{ b.status='assigned'; saveState(); renderAll(); };
-}
-
-function renderAdmin(){ renderAdminQueue(); renderAdminDetail(); }
-
-/* ---------- BOOKING ACTION ---------- */
-document.getElementById('bookBtn').addEventListener('click', ()=>{
-  if(!state.ui.selectedDay) return;
-  const prop = PROPERTIES.find(p=>p.id===state.ui.selectedProperty);
-  state.bookings.push({
-    id: uid(), propertyId: prop.id, propertyName: prop.name, day: state.ui.selectedDay,
-    linen: state.ui.linen, price: computePrice(), prestataire: null, status: 'reserved', photos: {}
-  });
-  state.ui.selectedDay = null;
-  saveState(); renderAll();
-});
-document.getElementById('chipStandard').addEventListener('click', ()=>{ state.ui.linen=false; saveState(); renderClient(); });
-document.getElementById('chipLinge').addEventListener('click', ()=>{ state.ui.linen=true; saveState(); renderClient(); });
-
-/* ---------- NAV / RESET ---------- */
-const roleBtns = document.querySelectorAll('.role-btn');
-const screens = document.querySelectorAll('.screen');
-roleBtns.forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    roleBtns.forEach(b=>b.classList.remove('active'));
-    screens.forEach(s=>s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('screen-'+btn.dataset.role).classList.add('active');
-    renderAll();
-  });
-});
-document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if(confirm('Réinitialiser toutes les données de démo ?')){
-    state = seedState(); saveState(); renderAll();
-  }
-});
-
-function renderAll(){ renderClient(); renderMissionList(); renderPhotoChecklist(); renderAdmin(); }
-renderAll();
-</script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
