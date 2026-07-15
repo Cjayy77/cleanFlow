@@ -1,6 +1,17 @@
-import { auth, db, ROLE_CLIENT, createOrUpdateUserDoc, loadUserDoc, formatPrice } from './shared.js';
-import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
-import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+import {
+  ROLE_CLIENT,
+  createUserLocal,
+  loadUserDoc,
+  formatPrice,
+  onAuthStateChangedLocal,
+  signOutLocal,
+  signInLocal,
+  signInWithGoogleLocal,
+  getPropertiesByOwner,
+  getBookingsByClient,
+  addProperty,
+  addBooking,
+} from './shared.js';
 
 const authScreen = document.getElementById('authScreen');
 const appScreen = document.getElementById('appScreen');
@@ -61,15 +72,13 @@ function setAppStatus(text) {
 }
 
 async function createClientUser(email, password, name, phone) {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
-  const userDoc = await createOrUpdateUserDoc(credential.user, ROLE_CLIENT, { name, phone });
-  return userDoc;
+  return createUserLocal({ name, email, password, phone, role: ROLE_CLIENT });
 }
 
 function updateBookingStatusVisibility() {
   const price = selectedServiceType === 'deep' ? 60 : 47;
   priceValue.textContent = `${price}€`;
-  bookBtn.textContent = selectedDate ? `Réserver le ${selectedDate} — ${price}€` : 'Choisir une date pour réserver';
+  bookBtn.textContent = selectedDate ? `Réserver le ${selectedDate} - ${price}€` : 'Choisir une date pour réserver';
   bookBtn.disabled = !selectedPropertyId || !selectedDate;
 }
 
@@ -261,7 +270,7 @@ registerForm.addEventListener('submit', async event => {
 });
 
 signOutBtn.addEventListener('click', async () => {
-  await signOut(auth);
+  signOutLocal();
   currentUser = null;
   selectedPropertyId = null;
   selectedDate = null;
