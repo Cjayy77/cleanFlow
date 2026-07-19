@@ -88,6 +88,10 @@ phone: "06..."                (string)
 `/admin/`). Un dossier rejeté revient chez le prestataire avec la note de
 l'admin ; il corrige les photos et re-soumet.
 
+Le client peut annuler sa réservation (statut `cancelled`) uniquement tant
+qu'elle est `pending` — dès qu'un prestataire l'a acceptée, l'annulation
+passe par l'équipe. Cette contrainte est appliquée par les règles Firestore.
+
 > Note : le cahier des charges nommait ce statut `completed` ; le code
 > existant utilisait déjà `submitted`, convention conservée.
 

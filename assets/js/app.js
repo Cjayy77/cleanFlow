@@ -9,6 +9,7 @@ import {
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
+  withButtonLoading,
 } from './shared.js';
 import {
   collection,
@@ -16,6 +17,8 @@ import {
   where,
   onSnapshot,
   addDoc,
+  updateDoc,
+  doc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
@@ -24,6 +27,7 @@ import {
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
+const loadingScreen = document.getElementById('loadingScreen');
 const authScreen = document.getElementById('authScreen');
 const appScreen = document.getElementById('appScreen');
 const authError = document.getElementById('authError');
@@ -36,6 +40,9 @@ const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
 const propertyList = document.getElementById('propertyList');
 const calendarGrid = document.getElementById('calendarGrid');
+const calMonthLabel = document.getElementById('calMonthLabel');
+const calPrev = document.getElementById('calPrev');
+const calNext = document.getElementById('calNext');
 const selectedDateLabel = document.getElementById('selectedDateLabel');
 const serviceRadios = document.querySelectorAll('input[name="serviceType"]');
 const priceValue = document.getElementById('priceValue');
@@ -58,8 +65,15 @@ let properties = [];
 let bookings = [];
 let propertiesUnsub = null;
 let bookingsUnsub = null;
+let calendarMonth = startOfMonth(new Date());
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
 
 function showAuth(mode = 'signin', message = '') {
+  loadingScreen.classList.add('hidden');
+  signOutBtn.classList.add('hidden');
   authScreen.classList.remove('hidden');
   appScreen.classList.add('hidden');
   signInForm.classList.toggle('hidden', mode !== 'signin');
@@ -70,6 +84,8 @@ function showAuth(mode = 'signin', message = '') {
 }
 
 function showApp() {
+  loadingScreen.classList.add('hidden');
+  signOutBtn.classList.remove('hidden');
   authScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
   authError.textContent = '';
@@ -77,9 +93,9 @@ function showApp() {
   userNameLabel.textContent = currentUser.name || currentUser.email;
 }
 
-function setAppStatus(text) {
+function setAppStatus(text, type = 'info') {
   appStatus.textContent = text;
-  appStatus.classList.toggle('hidden', !text);
+  appStatus.className = `status-banner ${type}` + (text ? '' : ' hidden');
 }
 
 function updateBookingBar() {
@@ -128,28 +144,52 @@ function renderPropertyButtons() {
 
 function renderCalendar() {
   calendarGrid.innerHTML = '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const currentMonth = startOfMonth(today);
+  if (calendarMonth < currentMonth) calendarMonth = currentMonth;
+
+  const monthLabel = calendarMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  calMonthLabel.textContent = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+  calPrev.disabled = calendarMonth.getTime() === currentMonth.getTime();
+
   ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(label => {
     const div = document.createElement('div');
     div.className = 'cal-day-label';
     div.textContent = label;
     calendarGrid.appendChild(div);
   });
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
   const takenDates = bookings
-    .filter(b => b.propertyId === selectedPropertyId && b.status !== 'rejected')
+    .filter(b => b.propertyId === selectedPropertyId && !['rejected', 'cancelled'].includes(b.status))
     .map(b => b.scheduledDate);
-  for (let offset = 0; offset < 28; offset += 1) {
-    const day = new Date(start);
-    day.setDate(start.getDate() + offset);
-    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+
+  // Semaine française : lundi en première colonne.
+  const mondayOffset = (calendarMonth.getDay() + 6) % 7;
+  for (let i = 0; i < mondayOffset; i += 1) {
+    const filler = document.createElement('div');
+    filler.className = 'cal-day empty';
+    filler.setAttribute('aria-hidden', 'true');
+    calendarGrid.appendChild(filler);
+  }
+
+  const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum += 1) {
+    const day = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNum);
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const isPast = day < today;
     const isBooked = takenDates.includes(iso);
     const el = document.createElement('button');
     el.type = 'button';
-    el.className = 'cal-day' + (isBooked ? ' booked' : '') + (selectedDate === iso ? ' selected' : '') + (offset === 0 ? ' today' : '');
-    el.textContent = day.getDate();
-    el.disabled = isBooked;
-    if (!isBooked) {
+    el.className = 'cal-day'
+      + (isPast ? ' past' : '')
+      + (isBooked ? ' booked' : '')
+      + (selectedDate === iso ? ' selected' : '')
+      + (day.getTime() === today.getTime() ? ' today' : '');
+    el.textContent = dayNum;
+    el.disabled = isPast || isBooked;
+    el.setAttribute('aria-label', formatShortDate(iso) + (isBooked ? ' — déjà réservé' : ''));
+    if (!el.disabled) {
       el.onclick = () => {
         selectedDate = iso;
         selectedDateLabel.value = formatShortDate(iso);
@@ -160,6 +200,16 @@ function renderCalendar() {
     calendarGrid.appendChild(el);
   }
 }
+
+calPrev.addEventListener('click', () => {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+  renderCalendar();
+});
+
+calNext.addEventListener('click', () => {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+  renderCalendar();
+});
 
 function renderBookings() {
   bookingsWrap.innerHTML = '';
@@ -183,6 +233,25 @@ function renderBookings() {
       <div class="dossier-meta">${booking.price}€ · Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
     `;
     card.querySelector('.dossier-addr').textContent = address;
+    // Annulable uniquement tant qu'aucun prestataire n'a accepté la mission
+    // (même contrainte côté règles Firestore).
+    if (booking.status === 'pending') {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn ghost danger';
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = 'Annuler la réservation';
+      cancelBtn.onclick = async () => {
+        if (!window.confirm(`Annuler le ménage du ${formatShortDate(booking.scheduledDate)} ?`)) return;
+        try {
+          await withButtonLoading(cancelBtn, () =>
+            updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }));
+          setAppStatus('Réservation annulée. La date est de nouveau disponible.', 'success');
+        } catch (err) {
+          setAppStatus('Impossible d’annuler : la mission vient peut-être d’être acceptée par un prestataire. Contactez l’équipe Kleining.', 'error');
+        }
+      };
+      card.appendChild(cancelBtn);
+    }
     bookingsWrap.appendChild(card);
   });
 }
@@ -260,7 +329,8 @@ signInForm.addEventListener('submit', async event => {
   const email = document.getElementById('signInEmail').value.trim();
   const password = document.getElementById('signInPassword').value;
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    await withButtonLoading(signInForm.querySelector('button[type="submit"]'),
+      () => signInWithEmailAndPassword(auth, email, password));
   } catch (err) {
     showAuth('signin', authErrorMessage(err));
   }
@@ -274,7 +344,8 @@ registerForm.addEventListener('submit', async event => {
   const name = document.getElementById('registerName').value.trim();
   const phone = document.getElementById('registerPhone').value.trim();
   try {
-    await registerClient({ name, email, password, phone });
+    await withButtonLoading(registerForm.querySelector('button[type="submit"]'),
+      () => registerClient({ name, email, password, phone }));
   } catch (err) {
     showAuth('register', authErrorMessage(err));
   }
@@ -308,22 +379,23 @@ propertyForm.addEventListener('submit', async event => {
   const postalCode = propertyPostal.value.trim();
   const notes = propertyNotes.value.trim();
   if (!street || !city || !postalCode) {
-    setAppStatus('Veuillez renseigner l’adresse complète du bien.');
+    setAppStatus('Veuillez renseigner l’adresse complète du bien.', 'error');
     return;
   }
   try {
-    await addDoc(collection(db, 'properties'), {
-      ownerId: currentUser.uid,
-      street,
-      city,
-      postalCode,
-      notes,
-      createdAt: serverTimestamp(),
-    });
+    await withButtonLoading(propertyForm.querySelector('button[type="submit"]'), () =>
+      addDoc(collection(db, 'properties'), {
+        ownerId: currentUser.uid,
+        street,
+        city,
+        postalCode,
+        notes,
+        createdAt: serverTimestamp(),
+      }));
     propertyForm.reset();
-    setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.');
+    setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.', 'success');
   } catch (err) {
-    setAppStatus('Impossible d’ajouter le bien.');
+    setAppStatus('Impossible d’ajouter le bien.', 'error');
   }
 });
 
@@ -332,25 +404,26 @@ bookBtn.addEventListener('click', async () => {
   const property = properties.find(p => p.id === selectedPropertyId);
   if (!property) return;
   try {
-    await addDoc(collection(db, 'bookings'), {
-      clientId: currentUser.uid,
-      propertyId: selectedPropertyId,
-      propertyAddress: `${property.street}, ${property.city}`,
-      prestataireId: null,
-      serviceType: selectedServiceType,
-      price: formatPrice(selectedServiceType),
-      scheduledDate: selectedDate,
-      status: 'pending',
-      linenRequested,
-      createdAt: serverTimestamp(),
-    });
-    setAppStatus('Réservation enregistrée. Vous serez notifié une fois le ménage vérifié par l’équipe Kleining.');
+    await withButtonLoading(bookBtn, () =>
+      addDoc(collection(db, 'bookings'), {
+        clientId: currentUser.uid,
+        propertyId: selectedPropertyId,
+        propertyAddress: `${property.street}, ${property.city}`,
+        prestataireId: null,
+        serviceType: selectedServiceType,
+        price: formatPrice(selectedServiceType),
+        scheduledDate: selectedDate,
+        status: 'pending',
+        linenRequested,
+        createdAt: serverTimestamp(),
+      }));
+    setAppStatus('Réservation enregistrée. Vous serez notifié une fois le ménage vérifié par l’équipe Kleining.', 'success');
     selectedDate = null;
     selectedDateLabel.value = 'Aucune date';
     renderCalendar();
     updateBookingBar();
   } catch (err) {
-    setAppStatus('Impossible d’enregistrer la réservation.');
+    setAppStatus('Impossible d’enregistrer la réservation.', 'error');
   }
 });
 

@@ -128,12 +128,23 @@ export function formatBookingStatus(status) {
     case 'submitted': return 'Photos soumises';
     case 'verified': return 'Confirmé';
     case 'rejected': return 'À corriger';
+    case 'cancelled': return 'Annulée';
     default: return status.charAt(0).toUpperCase() + status.slice(1);
   }
 }
 
 export function formatPrice(serviceType) {
   return PRICES[serviceType] ?? PRICES.normal;
+}
+
+// État visuel de chargement d'un bouton pendant une action asynchrone.
+export async function withButtonLoading(button, task) {
+  if (button) button.classList.add('loading');
+  try {
+    return await task();
+  } finally {
+    if (button) button.classList.remove('loading');
+  }
 }
 
 export function authErrorMessage(error) {

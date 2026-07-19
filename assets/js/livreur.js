@@ -7,6 +7,7 @@ import {
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
+  withButtonLoading,
 } from './shared.js';
 import {
   collection,
@@ -20,6 +21,7 @@ import {
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
+const loadingScreen = document.getElementById('loadingScreen');
 const authScreen = document.getElementById('authScreen');
 const appScreen = document.getElementById('appScreen');
 const authError = document.getElementById('authError');
@@ -37,12 +39,16 @@ function setAuthMessage(message) {
 }
 
 function showAuth(message = '') {
+  loadingScreen.classList.add('hidden');
+  signOutBtn.classList.add('hidden');
   authScreen.classList.remove('hidden');
   appScreen.classList.add('hidden');
   setAuthMessage(message);
 }
 
 function showApp() {
+  loadingScreen.classList.add('hidden');
+  signOutBtn.classList.remove('hidden');
   authScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
   setAuthMessage('');
@@ -116,7 +122,8 @@ signInForm.addEventListener('submit', async event => {
   const email = document.getElementById('signInEmail').value.trim();
   const password = document.getElementById('signInPassword').value;
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    await withButtonLoading(signInForm.querySelector('button[type="submit"]'),
+      () => signInWithEmailAndPassword(auth, email, password));
   } catch (err) {
     setAuthMessage(authErrorMessage(err));
   }
