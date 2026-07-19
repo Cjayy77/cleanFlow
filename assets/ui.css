@@ -67,7 +67,7 @@ textarea{ min-height:110px; resize:vertical; }
 .empty-state{ padding:22px 0; color:var(--muted); font-size:14.5px; }
 .note-box{ font-size:13px; color:var(--muted); margin-top:12px; }
 
-.status-banner{ margin:14px 0; padding:14px 16px; border-radius:0; background:var(--danger-bg); color:var(--danger-ink); font-size:13px; }
+.status-banner{ margin:16px 0; padding:14px 16px; background:var(--danger-bg); color:var(--danger-ink); font-size:13px; border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink); }
 .status-banner.info{ background:var(--klein-tint); color:var(--klein-deep); }
 .status-banner.error{ background:var(--danger-bg); color:var(--danger-ink); }
 .status-banner.success{ background:var(--ok-bg); color:var(--ok-ink); }
