@@ -205,6 +205,35 @@ export async function withButtonLoading(button, task) {
   }
 }
 
+// Coupe une promesse qui ne répond pas (ex. upload vers un bucket Storage
+// inexistant : le SDK réessaie longtemps au lieu d'échouer franchement).
+export function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => {
+      const err = new Error('timeout');
+      err.code = 'app/timeout';
+      reject(err);
+    }, ms)),
+  ]);
+}
+
+export function storageErrorMessage(error) {
+  switch (error?.code) {
+    case 'storage/unauthorized':
+      return 'Envoi refusé par les règles de sécurité. Vérifiez que les règles Storage sont publiées dans la console Firebase.';
+    case 'storage/retry-limit-exceeded':
+    case 'app/timeout':
+      return 'Le stockage de photos ne répond pas. Il n’est probablement pas activé sur le projet Firebase (Storage, plan Blaze). Voir SETUP.md, étape 1.';
+    case 'storage/quota-exceeded':
+      return 'Quota de stockage dépassé.';
+    case 'storage/canceled':
+      return 'Envoi annulé.';
+    default:
+      return authErrorMessage(error);
+  }
+}
+
 export function authErrorMessage(error) {
   switch (error?.code) {
     case 'auth/invalid-credential':
@@ -219,6 +248,11 @@ export function authErrorMessage(error) {
       return 'Adresse email invalide.';
     case 'auth/too-many-requests':
       return 'Trop de tentatives. Réessayez dans quelques minutes.';
+    case 'auth/network-request-failed':
+    case 'unavailable':
+      return 'Problème de connexion. Vérifiez votre réseau et réessayez.';
+    case 'permission-denied':
+      return 'Accès refusé par la base de données. Les règles Firestore ne sont probablement pas publiées (voir SETUP.md, étape 3).';
     default:
       return error?.message || 'Une erreur est survenue.';
   }

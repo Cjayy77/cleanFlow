@@ -7,180 +7,199 @@
 <title>Kleining — Le ménage vérifié pour vos locations saisonnières</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500;1,9..144,600&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --klein: #002FA7;
     --klein-deep: #001F73;
-    --klein-tint: #EDF0FB;
-    --gold: #D9A441;
-    --ink: #14130F;
-    --muted: #6B6659;
-    --paper: #FBFAF6;
-    --line: #E3E0D6;
-    --rule: #14130F;
+    --klein-tint: #EEF2FC;
+    --gold: #E3A92F;
+    --ink: #101010;
+    --muted: #66655F;
+    --paper: #FAFAF7;
     --white: #FFFFFF;
+    --shadow: 8px 8px 0 var(--ink);
+    --shadow-sm: 4px 4px 0 var(--ink);
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; }
-  body{ font-family:'Instrument Sans', sans-serif; color:var(--ink); background:var(--paper); font-size:16px; line-height:1.5; }
-  .wrap{ max-width: 1200px; margin:0 auto; padding: 0 32px; }
-  h1,h2,h3,h4{ font-family:'Fraunces', serif; font-weight:500; letter-spacing:-0.015em; }
+  body{ font-family:'Plus Jakarta Sans', sans-serif; color:var(--ink); background:var(--paper); font-size:16px; line-height:1.6; }
+  .wrap{ max-width: 1140px; margin:0 auto; padding: 0 32px; }
+  h1,h2,h3,h4{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; letter-spacing:-0.02em; line-height:1.08; }
   a{ color:inherit; }
   ::selection{ background:var(--klein); color:var(--white); }
 
-  /* NAV — flat, hairline, no pill buttons */
-  nav{ position:sticky; top:0; z-index:50; background: rgba(251,250,246,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); }
-  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:0 32px; max-width:1200px; margin:0 auto; height:68px; }
-  .brand{ font-family:'Fraunces', serif; font-weight:600; font-size:23px; letter-spacing:-0.01em; }
-  .brand span{ color: var(--klein); font-style:italic; }
-  .nav-links{ display:flex; gap:30px; font-size:13.5px; font-weight:600; color: var(--muted); }
-  .nav-links a{ text-decoration:none; padding:24px 0; display:inline-block; letter-spacing:0.01em; }
+  /* Signature Kleining : le bloc à ombre portée dure */
+  .block{ background:var(--white); border:2px solid var(--ink); box-shadow: var(--shadow); }
+
+  /* NAV */
+  nav{ position:sticky; top:0; z-index:50; background: rgba(250,250,247,0.94); backdrop-filter: blur(10px); }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:0 32px; max-width:1140px; margin:0 auto; height:76px; }
+  .brand{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:22px; letter-spacing:-0.02em; }
+  .brand span{ color: var(--klein); }
+  .nav-links{ display:flex; gap:28px; font-size:14px; font-weight:600; color: var(--muted); }
+  .nav-links a{ text-decoration:none; padding:28px 0; display:inline-block; transition: color .15s ease-out; }
   .nav-links a:hover{ color: var(--klein); }
   .nav-cta{
     background: var(--klein); color:var(--white); font-weight:700; font-size:13px;
-    padding: 13px 24px; text-decoration:none; transition: background .18s ease-out;
+    padding: 12px 22px; text-decoration:none; border:2px solid var(--ink); box-shadow: var(--shadow-sm);
+    transition: transform .15s ease-out, box-shadow .15s ease-out;
   }
-  .nav-cta:hover{ background: var(--klein-deep); }
+  .nav-cta:hover{ transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--ink); }
+  .nav-cta:active{ transform: translate(3px,3px); box-shadow: 0 0 0 var(--ink); }
   @media (max-width:760px){
     .nav-inner{ flex-wrap:wrap; height:auto; padding-top:14px; }
     .nav-links{ order:3; width:100%; overflow-x:auto; white-space:nowrap; gap:22px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
-    .nav-links a{ padding:12px 0 14px; }
+    .nav-links a{ padding:10px 0 16px; }
     .nav-links::-webkit-scrollbar{ display:none; }
   }
 
-  /* A11y + motion */
-  :focus-visible{ outline:2px solid var(--klein); outline-offset:3px; }
+  /* Focus + motion */
+  :focus-visible{ outline:3px solid var(--klein); outline-offset:3px; }
   .hero :focus-visible, .verify-outer :focus-visible, .goal-outer :focus-visible{ outline-color: var(--gold); }
+
+  /* Boutons signature */
+  .btn-a{ display:inline-block; font-weight:700; font-size:14px; padding:16px 30px; text-decoration:none;
+    border:2px solid var(--ink); box-shadow: var(--shadow-sm);
+    transition: transform .15s ease-out, box-shadow .15s ease-out; }
+  .btn-a:hover{ transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--ink); }
+  .btn-a:active{ transform: translate(4px,4px); box-shadow: 0 0 0 var(--ink); }
+  .btn-a.gold{ background:var(--gold); color:var(--ink); }
+  .btn-a.klein{ background:var(--klein); color:var(--white); }
+  .btn-a.white{ background:var(--white); color:var(--ink); }
+
+  /* HERO */
+  .hero{ background: var(--klein); color: var(--white); padding: 120px 0 130px; position:relative; overflow:hidden; }
+  .hero .btn-a{ border-color:var(--klein-deep); box-shadow: 4px 4px 0 var(--klein-deep); }
+  .hero .btn-a:hover{ box-shadow: 6px 6px 0 var(--klein-deep); }
+  .hero .btn-a:active{ box-shadow: 0 0 0 var(--klein-deep); }
+  .hero-inner{ max-width: 800px; position:relative; z-index:2; }
+  .hero-kicker{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:rgba(255,255,255,0.7); margin-bottom:30px; }
+  .hero h1{ font-size: clamp(42px,6.4vw,76px); margin-bottom:28px; color:var(--white); }
+  .hero h1 em{ font-style:normal; color: var(--gold); position:relative; white-space:nowrap; }
+  .hero h1 em::after{ content:''; position:absolute; left:0; right:0; bottom:6px; height:5px; background:var(--gold); opacity:.5; }
+  .hero p{ font-size:18px; line-height:1.65; color: rgba(255,255,255,0.86); max-width:540px; margin-bottom:40px; }
+  .btn-row{ display:flex; gap:18px; flex-wrap:wrap; }
+  .btn-outline{ display:inline-block; font-weight:700; font-size:14px; padding:16px 30px; text-decoration:none; background:transparent; color:var(--white); border:2px solid rgba(255,255,255,0.5); transition: border-color .15s ease-out, background .15s ease-out; }
+  .btn-outline:hover{ border-color:var(--white); background:rgba(255,255,255,0.06); }
+  .hero-note{ margin-top:52px; font-family:'JetBrains Mono', monospace; font-size:12px; color: rgba(255,255,255,0.55); letter-spacing:0.03em; }
+  .hero-stamp{ position:absolute; right:6%; top:50%; transform: translateY(-50%) rotate(-12deg); width:240px; height:240px; z-index:1; }
+  @media (max-width:1100px){ .hero-stamp{ display:none; } }
+  .hero-stamp svg{ width:100%; height:100%; animation: stamp-spin 45s linear infinite; }
+  @keyframes stamp-spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
+  /* entrée du hero */
+  @keyframes rise{ from{ opacity:0; transform:translateY(22px); } to{ opacity:1; transform:none; } }
+  .hero-kicker, .hero h1, .hero p, .hero .btn-row, .hero-note{ animation: rise .7s ease-out backwards; }
+  .hero h1{ animation-delay:.08s; } .hero p{ animation-delay:.16s; } .hero .btn-row{ animation-delay:.24s; } .hero-note{ animation-delay:.34s; }
+
+  /* SECTIONS — beaucoup d'air, presque pas de filets */
+  section{ padding: 130px 0; }
+  .sec-head{ margin-bottom: 70px; max-width:640px; }
+  .sec-head h2{ font-size: clamp(30px,4.2vw,48px); }
+  .sec-head p{ margin-top:18px; color:var(--muted); font-size:16.5px; line-height:1.7; }
+
+  /* Révélation au scroll (activée seulement si JS présent) */
+  html.js .reveal{ opacity:0; transform:translateY(26px); transition: opacity .65s ease-out, transform .65s ease-out; }
+  html.js .reveal.in{ opacity:1; transform:none; }
+  html.js .reveal:nth-child(2){ transition-delay:.08s; }
+  html.js .reveal:nth-child(3){ transition-delay:.16s; }
+  html.js .reveal:nth-child(4){ transition-delay:.24s; }
+
+  /* 01 — ROLES : blocs signature */
+  .roles-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:26px; }
+  .role-card{ padding:30px 26px 34px; transition: transform .2s ease-out, box-shadow .2s ease-out; }
+  .role-card:hover{ transform: translate(-3px,-3px); box-shadow: 11px 11px 0 var(--ink); }
+  .role-num{ font-family:'JetBrains Mono', monospace; font-size:11px; color: var(--klein); font-weight:700; margin-bottom:20px; letter-spacing:0.12em; text-transform:uppercase; }
+  .role-card h4{ font-size:19px; margin-bottom:12px; }
+  .role-card p{ font-size:14px; color: var(--muted); line-height:1.65; }
+  @media (max-width:980px){ .roles-grid{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width:560px){ .roles-grid{ grid-template-columns:1fr; } }
+
+  /* 02 — PROCESS : chiffres, air, zéro boîte */
+  .process-list{ max-width:760px; }
+  .process-item{ display:grid; grid-template-columns: 96px 1fr; gap:34px; padding: 30px 0; align-items:start; }
+  .process-num{ font-family:'Plus Jakarta Sans', sans-serif; font-size:52px; font-weight:700; color:var(--klein); line-height:1; }
+  .process-item.verify .process-num{ color:var(--gold); }
+  .process-text h4{ font-size:20px; margin-bottom:8px; }
+  .process-item.verify .process-text h4::after{ content:'l’étape Kleining'; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--gold); margin-left:12px; letter-spacing:0.08em; text-transform:uppercase; }
+  .process-text p{ font-size:15px; color: var(--muted); line-height:1.7; }
+  @media (max-width:640px){ .process-item{ grid-template-columns:56px 1fr; gap:20px; } .process-num{ font-size:34px; } }
+
+  /* 03 — VERIFICATION : pleine largeur IKB, bloc à ombre or */
+  .verify-outer{ background: var(--klein); color:var(--white); padding: 130px 0; }
+  .verify-grid{ display:grid; grid-template-columns: 1.05fr 0.95fr; gap:80px; align-items:center; }
+  @media (max-width:860px){ .verify-grid{ grid-template-columns:1fr; gap:56px; } }
+  .verify-kicker{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); margin-bottom:24px; }
+  .verify-grid h3{ font-size: clamp(30px,3.8vw,46px); margin-bottom:24px; color:var(--white); }
+  .verify-grid h3 em{ font-style:normal; color:var(--gold); }
+  .verify-grid > div > p{ font-size:16px; color: rgba(255,255,255,0.84); line-height:1.75; max-width:520px; }
+  .stamp-mock{ background: var(--white); color:var(--ink); padding:34px; border:2px solid var(--ink); box-shadow: 12px 12px 0 var(--gold); }
+  .stamp-kicker{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--klein); margin-bottom:20px; }
+  .stamp-row{ display:flex; justify-content:space-between; align-items:center; font-size:13.5px; color:var(--muted); padding:13px 0; }
+  .stamp-row + .stamp-row{ border-top:1px solid #ECEAE2; }
+  .stamp-row b{ color: var(--ink); font-weight:600; }
+  .stamp-status{ display:inline-flex; align-items:center; gap:8px; background: var(--klein); color:var(--white); font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; padding:10px 14px; margin-top:20px; }
+
+  /* 04 — TARIFS : deux blocs signature */
+  .price-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:34px; }
+  @media (max-width:760px){ .price-grid{ grid-template-columns:1fr; } }
+  .price-col{ padding: 40px 38px 44px; transition: transform .2s ease-out, box-shadow .2s ease-out; }
+  .price-col:hover{ transform: translate(-3px,-3px); box-shadow: 11px 11px 0 var(--ink); }
+  .price-col.deep{ box-shadow: 8px 8px 0 var(--klein); }
+  .price-col.deep:hover{ box-shadow: 11px 11px 0 var(--klein); }
+  .price-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:16px; }
+  .price-col h4{ font-size:21px; }
+  .price-amount{ font-family:'Plus Jakarta Sans', sans-serif; font-size: clamp(52px,6vw,72px); font-weight:700; color:var(--klein); line-height:1; margin:20px 0 4px; letter-spacing:-0.03em; }
+  .price-amount small{ font-family:'Plus Jakarta Sans', sans-serif; font-size:14px; color:var(--muted); font-weight:500; letter-spacing:0; }
+  .price-col ul{ list-style:none; margin-top:26px; }
+  .price-col li{ font-size:14px; color:var(--muted); line-height:1.6; padding:10px 0 10px 26px; position:relative; }
+  .price-col li::before{ content:''; position:absolute; left:0; top:16px; width:10px; height:10px; background:var(--gold); border:2px solid var(--ink); }
+  .price-note{ margin-top:34px; font-size:14px; color:var(--muted); }
+
+  /* 05 — SERVICES : minimal, air seulement */
+  .feature-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 60px 80px; }
+  .feature-card h4{ font-size:20px; margin-bottom:12px; }
+  .feature-card h4::before{ content:''; display:inline-block; width:11px; height:11px; background:var(--klein); border:2px solid var(--ink); margin-right:14px; }
+  .feature-card p{ font-size:15px; color:var(--muted); line-height:1.75; max-width:480px; }
+  @media (max-width:760px){ .feature-grid{ grid-template-columns:1fr; gap:44px; } }
+
+  /* 06 — FAQ */
+  .faq-list{ max-width: 780px; }
+  .faq-list details{ border-bottom:1px solid #ECEAE2; }
+  .faq-list summary{ cursor:pointer; padding:24px 0; font-family:'Plus Jakarta Sans', sans-serif; font-size:18px; font-weight:600; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; transition: color .15s ease-out; }
+  .faq-list summary:hover{ color:var(--klein); }
+  .faq-list summary::-webkit-details-marker{ display:none; }
+  .faq-list summary::after{ content:'+'; font-family:'JetBrains Mono', monospace; color:var(--klein); font-size:22px; flex-shrink:0; transition: transform .2s ease-out; }
+  .faq-list details[open] summary::after{ transform: rotate(45deg); }
+  .faq-list details p{ padding:0 40px 26px 0; font-size:15px; color:var(--muted); line-height:1.75; max-width:660px; }
+
+  /* BANDEAU OR */
+  .goal-outer{ background: var(--gold); padding: 80px 0; border-top:2px solid var(--ink); border-bottom:2px solid var(--ink); }
+  .goal-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:44px; }
+  .goal-item b{ display:block; font-family:'Plus Jakarta Sans', sans-serif; font-size: clamp(22px,2.6vw,30px); font-weight:700; margin-bottom:8px; color:var(--ink); }
+  .goal-item span{ font-size:14px; color: rgba(16,16,16,0.72); line-height:1.55; display:block; max-width:260px; }
+  @media (max-width:760px){ .goal-grid{ grid-template-columns:1fr; gap:34px; } }
+
+  /* CTA — grand bloc signature */
+  .cta-card{ padding: 70px 64px; text-align:center; max-width:860px; margin:0 auto; }
+  .cta-card h2{ font-size: clamp(30px,4.4vw,50px); margin-bottom:20px; }
+  .cta-card h2 em{ font-style:normal; color:var(--klein); }
+  .cta-card p{ color: var(--muted); max-width:480px; margin:0 auto 36px; font-size:16px; line-height:1.7; }
+  @media (max-width:640px){ .cta-card{ padding:44px 26px; } }
+
+  footer{ padding: 56px 0 42px; background: var(--ink); font-size:13px; color: rgba(255,255,255,0.55); }
+  .footer-grid{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:18px; align-items:center; }
+  footer a{ color: rgba(255,255,255,0.85); }
+
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
     html{ scroll-behavior:auto; }
+    html.js .reveal{ opacity:1; transform:none; }
   }
-
-  /* HERO — one flat IKB plane, oversized editorial type */
-  .hero{ background: var(--klein); color: var(--white); padding: 130px 0 120px; position:relative; overflow:hidden; }
-  .hero-inner{ max-width: 860px; position:relative; z-index:2; }
-  .hero-kicker{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,255,255,0.65); margin-bottom:34px; display:flex; align-items:center; gap:14px; }
-  .hero-kicker::before{ content:''; width:44px; height:1px; background:var(--gold); }
-  .hero h1{ font-size: clamp(44px,7vw,86px); font-weight:500; line-height:1.02; margin-bottom:30px; }
-  .hero h1 em{ font-style:italic; color: var(--gold); font-weight:400; }
-  .hero p{ font-size:18px; line-height:1.65; color: rgba(255,255,255,0.85); max-width:540px; margin-bottom:42px; }
-  .btn-row{ display:flex; gap:2px; flex-wrap:wrap; }
-  .btn-gold{ background: var(--gold); color: var(--klein-deep); font-weight:700; padding:17px 32px; text-decoration:none; font-size:14px; display:inline-block; transition: background .18s ease-out; }
-  .btn-gold:hover{ background:#E3B25A; }
-  .btn-outline{ background:transparent; color:var(--white); font-weight:700; padding:17px 32px; text-decoration:none; font-size:14px; border:1px solid rgba(255,255,255,0.45); display:inline-block; transition: background .18s ease-out, border-color .18s ease-out; }
-  .btn-outline:hover{ background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.8); }
-  .hero-note{ margin-top:56px; font-family:'JetBrains Mono', monospace; font-size:12px; color: rgba(255,255,255,0.55); border-top:1px solid rgba(255,255,255,0.22); padding-top:22px; letter-spacing:0.04em; max-width:640px; }
-  .hero-stamp{ position:absolute; right:5%; top:50%; transform: translateY(-50%) rotate(-12deg); width:250px; height:250px; z-index:1; }
-  @media (max-width:1120px){ .hero-stamp{ display:none; } }
-  .hero-stamp svg{ width:100%; height:100%; animation: stamp-spin 45s linear infinite; }
-  @keyframes stamp-spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
-
-  /* SECTIONS — numbered catalog heads, hairline rules, no boxes */
-  section{ padding: 110px 0; }
-  .sec-head{ display:grid; grid-template-columns: 110px 1fr; gap:28px; border-top:2px solid var(--rule); padding-top:30px; margin-bottom:64px; }
-  .sec-index{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--klein); letter-spacing:0.12em; padding-top:14px; }
-  .sec-head h2{ font-size: clamp(32px,4.6vw,54px); line-height:1.04; }
-  .sec-head p{ margin-top:16px; color:var(--muted); max-width:560px; font-size:16px; line-height:1.65; }
-  @media (max-width:700px){ .sec-head{ grid-template-columns:1fr; gap:8px; } }
-
-  /* 01 — ROLES : colonnes séparées par des filets */
-  .roles-grid{ display:grid; grid-template-columns: repeat(4,1fr); }
-  .role-card{ border-left:1px solid var(--line); padding: 6px 28px 44px; }
-  .role-card:first-child{ border-left:none; padding-left:0; }
-  .role-num{ font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--gold); font-weight:700; margin-bottom:18px; letter-spacing:0.08em; }
-  .role-card h4{ font-size:21px; margin-bottom:12px; }
-  .role-card p{ font-size:14.5px; color: var(--muted); line-height:1.6; }
-  @media (max-width:900px){
-    .roles-grid{ grid-template-columns: 1fr 1fr; row-gap:36px; }
-    .role-card:nth-child(3){ border-left:none; padding-left:0; }
-  }
-  @media (max-width:540px){
-    .roles-grid{ grid-template-columns:1fr; }
-    .role-card{ border-left:none; padding:0 0 8px; border-top:1px solid var(--line); padding-top:24px; }
-    .role-card:first-child{ border-top:none; padding-top:6px; }
-  }
-
-  /* 02 — PROCESS : numéraux serifs géants */
-  .process-list{ border-top:1px solid var(--line); }
-  .process-item{ display:grid; grid-template-columns: 130px 1fr; gap:34px; padding: 38px 0; border-bottom:1px solid var(--line); align-items:start; }
-  .process-num{ font-family:'Fraunces', serif; font-style:italic; font-size:60px; font-weight:500; color:var(--klein); line-height:0.9; }
-  .process-item.verify .process-num{ color:var(--gold); }
-  .process-text h4{ font-size:21px; margin-bottom:8px; }
-  .process-item.verify .process-text h4::after{ content:'— l’étape Kleining'; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--gold); margin-left:12px; letter-spacing:0.08em; text-transform:uppercase; }
-  .process-text p{ font-size:15px; color: var(--muted); line-height:1.65; max-width:600px; }
-  @media (max-width:700px){ .process-item{ grid-template-columns:64px 1fr; gap:20px; } .process-num{ font-size:38px; } }
-
-  /* 03 — VERIFICATION : pleine largeur IKB */
-  .verify-outer{ background: var(--klein); color:var(--white); padding: 120px 0; border-top:6px solid var(--gold); }
-  .verify-grid{ display:grid; grid-template-columns: 1.05fr 0.95fr; gap:70px; align-items:center; }
-  @media (max-width:860px){ .verify-grid{ grid-template-columns:1fr; gap:48px; } }
-  .verify-kicker{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); margin-bottom:26px; }
-  .verify-grid h3{ font-size: clamp(30px,4vw,48px); line-height:1.08; margin-bottom:24px; }
-  .verify-grid h3 em{ font-style:italic; color:var(--gold); font-weight:400; }
-  .verify-grid > div > p{ font-size:16px; color: rgba(255,255,255,0.82); line-height:1.7; max-width:520px; }
-  .stamp-mock{ background: var(--white); color:var(--ink); padding:34px; box-shadow: 16px 16px 0 rgba(0,0,0,0.22); }
-  .stamp-kicker{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--klein); margin-bottom:20px; }
-  .stamp-row{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted); padding:12px 0; border-bottom:1px solid var(--line); }
-  .stamp-row b{ color: var(--ink); font-weight:600; }
-  .stamp-status{ display:inline-flex; align-items:center; gap:8px; background: var(--klein); color:var(--white); font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; letter-spacing:0.05em; padding:9px 14px; margin-top:20px; }
-
-  /* 04 — TARIFS : deux colonnes, filet vertical, chiffres géants */
-  .price-grid{ display:grid; grid-template-columns: 1fr 1fr; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-  .price-col{ padding: 52px 56px 52px 0; }
-  .price-col + .price-col{ border-left:1px solid var(--line); padding-left:56px; padding-right:0; }
-  .price-col h4{ font-size:22px; margin-bottom:6px; }
-  .price-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:18px; }
-  .price-amount{ font-family:'Fraunces', serif; font-size: clamp(58px,7vw,88px); font-weight:500; color:var(--klein); line-height:1; margin:18px 0 6px; }
-  .price-amount small{ font-family:'Instrument Sans', sans-serif; font-size:15px; color:var(--muted); font-weight:500; }
-  .price-col ul{ list-style:none; margin-top:28px; }
-  .price-col li{ font-size:14.5px; color:var(--muted); line-height:1.55; padding:12px 0; border-top:1px solid var(--line); }
-  .price-col li::before{ content:'—'; color:var(--gold); font-weight:700; margin-right:12px; }
-  .price-note{ margin-top:26px; font-size:14px; color:var(--muted); font-style:italic; font-family:'Fraunces', serif; }
-  @media (max-width:760px){
-    .price-grid{ grid-template-columns:1fr; }
-    .price-col{ padding:44px 0; }
-    .price-col + .price-col{ border-left:none; border-top:1px solid var(--line); padding-left:0; }
-  }
-
-  /* 05 — SERVICES : grille éditoriale, filets seulement */
-  .feature-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 0 72px; }
-  .feature-card{ border-top:1px solid var(--rule); padding: 26px 0 48px; }
-  .feature-card h4{ font-size:22px; color: var(--klein-deep); margin-bottom:12px; }
-  .feature-card p{ font-size:15px; color:var(--muted); line-height:1.7; max-width:480px; }
-  @media (max-width:760px){ .feature-grid{ grid-template-columns:1fr; gap:0; } .feature-card{ padding-bottom:36px; } }
-
-  /* 06 — FAQ : liste à filets, pas de boîtes */
-  .faq-list{ border-top:1px solid var(--rule); max-width: 820px; }
-  .faq-list details{ border-bottom:1px solid var(--line); }
-  .faq-list summary{ cursor:pointer; padding:24px 0; font-family:'Fraunces', serif; font-size:19px; font-weight:500; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; }
-  .faq-list summary:hover{ color:var(--klein); }
-  .faq-list summary::-webkit-details-marker{ display:none; }
-  .faq-list summary::after{ content:'+'; font-family:'JetBrains Mono', monospace; color:var(--gold); font-size:22px; flex-shrink:0; font-weight:400; }
-  .faq-list details[open] summary::after{ content:'−'; }
-  .faq-list details p{ padding:0 40px 26px 0; font-size:15px; color:var(--muted); line-height:1.7; max-width:680px; }
-
-  /* BANDEAU — pleine largeur or */
-  .goal-outer{ background: var(--gold); color: var(--klein-deep); padding: 74px 0; }
-  .goal-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:40px; }
-  .goal-item b{ display:block; font-family:'Fraunces', serif; font-size: clamp(24px,2.8vw,34px); font-weight:600; margin-bottom:8px; }
-  .goal-item span{ font-size:13.5px; color: rgba(0,31,115,0.75); line-height:1.5; display:block; max-width:260px; }
-  @media (max-width:760px){ .goal-grid{ grid-template-columns:1fr; gap:30px; } }
-
-  /* CTA */
-  .cta-band{ text-align:left; max-width:820px; }
-  .cta-band h2{ font-size: clamp(36px,5.4vw,64px); line-height:1.05; margin-bottom:24px; }
-  .cta-band h2 em{ font-style:italic; color:var(--klein); font-weight:400; }
-  .cta-band p{ color: var(--muted); max-width:520px; margin-bottom:36px; font-size:16px; line-height:1.65; }
-  .btn-klein{ background: var(--klein); color:var(--white); font-weight:700; padding:17px 32px; text-decoration:none; font-size:14px; display:inline-block; transition: background .18s ease-out; }
-  .btn-klein:hover{ background: var(--klein-deep); }
-
-  footer{ padding: 54px 0 40px; background: var(--klein-deep); font-size:13px; color: rgba(255,255,255,0.6); border-top:6px solid var(--gold); }
-  .footer-grid{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:18px; align-items:center; }
-  footer a{ color: rgba(255,255,255,0.85); }
 </style>
 </head>
 <body>
+<script>document.documentElement.classList.add('js');</script>
 
 <nav>
   <div class="nav-inner">
@@ -200,9 +219,9 @@
   <div class="wrap hero-inner">
     <div class="hero-kicker">Paris · Locations saisonnières</div>
     <h1>Le ménage <em>vérifié</em>, avant chaque confirmation.</h1>
-    <p>Kleining connecte les propriétaires à des prestataires de ménage professionnels — chaque intervention est photographiée, contrôlée par notre équipe, puis confirmée. Pas de mauvaise surprise.</p>
+    <p>Des prestataires professionnels, un dossier photo pour chaque intervention, une vérification par notre équipe avant confirmation. Pas de mauvaise surprise.</p>
     <div class="btn-row">
-      <a href="/app/" class="btn-gold">Réserver un ménage</a>
+      <a href="/app/" class="btn-a gold">Réserver un ménage</a>
       <a href="#roles" class="btn-outline">Voir comment ça marche</a>
     </div>
     <div class="hero-note">Prix fixes, sans engagement · Photos obligatoires · Vérification humaine avant confirmation client</div>
@@ -214,11 +233,11 @@
       </defs>
       <circle cx="100" cy="100" r="96" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2"/>
       <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-dasharray="3 5"/>
-      <circle cx="100" cy="100" r="52" fill="none" stroke="#D9A441" stroke-width="2"/>
+      <circle cx="100" cy="100" r="52" fill="none" stroke="#E3A92F" stroke-width="2"/>
       <text font-family="'JetBrains Mono', monospace" font-size="12.5" letter-spacing="3.5" fill="rgba(255,255,255,0.85)">
         <textPath href="#stamp-ring">MÉNAGE VÉRIFIÉ · KLEINING · PARIS · CONTRÔLE HUMAIN ·</textPath>
       </text>
-      <text x="100" y="114" text-anchor="middle" font-family="'Fraunces', serif" font-size="44" fill="#D9A441">✓</text>
+      <text x="100" y="116" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-size="46" fill="#E3A92F">✓</text>
     </svg>
   </div>
 </header>
@@ -227,33 +246,30 @@
 
 <section id="roles">
   <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-index">01 / Qui fait quoi</div>
-      <div>
-        <h2>Quatre rôles, un processus clair</h2>
-        <p>Contrairement à une simple mise en relation, chaque intervention passe par un contrôle avant d'être confirmée.</p>
-      </div>
+    <div class="sec-head reveal">
+      <h2>Quatre rôles, un processus clair</h2>
+      <p>Chaque intervention passe par un contrôle avant d'être confirmée.</p>
     </div>
     <div class="roles-grid">
-      <div class="role-card">
-        <div class="role-num">01 · Client</div>
+      <div class="role-card block reveal">
+        <div class="role-num">Client</div>
         <h4>Le propriétaire</h4>
-        <p>Ajoute son bien, réserve un ménage via un calendrier, et reçoit la confirmation une fois le contrôle qualité effectué.</p>
+        <p>Ajoute son bien, réserve sur le calendrier et reçoit la confirmation après contrôle qualité.</p>
       </div>
-      <div class="role-card">
-        <div class="role-num">02 · Prestataire</div>
+      <div class="role-card block reveal">
+        <div class="role-num">Prestataire</div>
         <h4>L'entreprise de ménage</h4>
-        <p>Prend en charge la mission, réalise le ménage, et soumet un ensemble de photos spécifique imposé par Kleining.</p>
+        <p>Accepte la mission, réalise le ménage et soumet le jeu de photos imposé par Kleining.</p>
       </div>
-      <div class="role-card">
-        <div class="role-num">03 · Livreur</div>
+      <div class="role-card block reveal">
+        <div class="role-num">Livreur</div>
         <h4>Le linge</h4>
-        <p>Livre le linge propre et récupère le linge sale directement dans l'appartement, selon le même calendrier.</p>
+        <p>Livre le linge propre et récupère le sale, directement dans l'appartement, au même calendrier.</p>
       </div>
-      <div class="role-card">
-        <div class="role-num">04 · Kleining</div>
+      <div class="role-card block reveal">
+        <div class="role-num">Kleining</div>
         <h4>Le contrôle</h4>
-        <p>Vérifie les photos soumises, confirme la mission au client, et reste le point de contact en cas de problème.</p>
+        <p>Vérifie les photos, confirme la mission au client et reste le point de contact en cas de problème.</p>
       </div>
     </div>
   </div>
@@ -261,46 +277,43 @@
 
 <section id="process-section" style="padding-top:0;">
   <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-index">02 / Le parcours</div>
-      <div>
-        <h2>De la demande à la confirmation</h2>
-      </div>
+    <div class="sec-head reveal">
+      <h2>De la demande à la confirmation</h2>
     </div>
     <div class="process-list">
-      <div class="process-item">
+      <div class="process-item reveal">
         <div class="process-num">1</div>
         <div class="process-text">
           <h4>Réservation</h4>
-          <p>Le client choisit une date sur le calendrier de son bien et voit le prix avant de confirmer.</p>
+          <p>Le client choisit une date sur le calendrier de son bien. Le prix est affiché avant de confirmer.</p>
         </div>
       </div>
-      <div class="process-item">
+      <div class="process-item reveal">
         <div class="process-num">2</div>
         <div class="process-text">
           <h4>Prise en charge</h4>
-          <p>Un prestataire de ménage vérifié accepte la mission depuis son propre calendrier.</p>
+          <p>Un prestataire vérifié accepte la mission depuis son calendrier.</p>
         </div>
       </div>
-      <div class="process-item">
+      <div class="process-item reveal">
         <div class="process-num">3</div>
         <div class="process-text">
           <h4>Réalisation + photos</h4>
-          <p>Le prestataire effectue le ménage et soumet la liste de photos exigée par Kleining (pièce par pièce).</p>
+          <p>Le prestataire effectue le ménage et soumet les photos exigées, pièce par pièce.</p>
         </div>
       </div>
-      <div class="process-item verify">
+      <div class="process-item verify reveal">
         <div class="process-num">✓</div>
         <div class="process-text">
           <h4>Vérification</h4>
-          <p>L'équipe Kleining contrôle les photos avant toute confirmation — aucune mission n'est validée automatiquement.</p>
+          <p>L'équipe Kleining contrôle les photos avant toute confirmation. Rien n'est validé automatiquement.</p>
         </div>
       </div>
-      <div class="process-item">
+      <div class="process-item reveal">
         <div class="process-num">5</div>
         <div class="process-text">
           <h4>Confirmation client</h4>
-          <p>Le propriétaire est notifié que le ménage est terminé et validé.</p>
+          <p>Le propriétaire reçoit la confirmation : ménage terminé et validé.</p>
         </div>
       </div>
     </div>
@@ -311,12 +324,12 @@
 
 <div class="verify-outer" id="verification">
   <div class="wrap verify-grid">
-    <div>
-      <div class="verify-kicker">03 / Ce qui nous différencie</div>
+    <div class="reveal">
+      <div class="verify-kicker">Notre différence</div>
       <h3>Rien n'est confirmé <em>sans contrôle humain</em></h3>
-      <p>Chaque ménage doit être prouvé par un jeu de photos précis — pas de "c'est fait, fais-moi confiance". Notre équipe vérifie chaque dossier avant que le client ne soit notifié. C'est plus lent qu'une validation automatique, mais c'est la garantie que le propriétaire attend.</p>
+      <p>Chaque ménage est prouvé par un jeu de photos précis. Notre équipe vérifie le dossier avant de vous notifier. C'est la garantie que vous attendez.</p>
     </div>
-    <div class="stamp-mock">
+    <div class="stamp-mock reveal">
       <div class="stamp-kicker">Dossier · Rue de la Pompe, 16e</div>
       <div class="stamp-row"><span>Photos soumises</span><b>6 / 6</b></div>
       <div class="stamp-row"><span>Prestataire</span><b>Net&Pro Paris</b></div>
@@ -330,15 +343,12 @@
 
 <section id="tarifs">
   <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-index">04 / Tarifs de la bêta</div>
-      <div>
-        <h2>Deux formules, prix fixes</h2>
-        <p>Pas d'abonnement pendant la bêta : vous payez au ménage, et le prix est affiché avant chaque confirmation.</p>
-      </div>
+    <div class="sec-head reveal">
+      <h2>Deux formules, prix fixes</h2>
+      <p>Pas d'abonnement. Vous payez au ménage, le prix est affiché avant confirmation.</p>
     </div>
     <div class="price-grid">
-      <div class="price-col">
+      <div class="price-col block reveal">
         <div class="price-tag">Formule courante</div>
         <h4>Nettoyage normal</h4>
         <div class="price-amount">47€ <small>/ intervention</small></div>
@@ -349,7 +359,7 @@
           <li>Contrôle humain par l'équipe Kleining avant confirmation</li>
         </ul>
       </div>
-      <div class="price-col">
+      <div class="price-col block deep reveal">
         <div class="price-tag">Formule renforcée</div>
         <h4>Nettoyage en profondeur</h4>
         <div class="price-amount">60€ <small>/ intervention</small></div>
@@ -361,34 +371,31 @@
         </ul>
       </div>
     </div>
-    <div class="price-note">Option linge (livraison du propre, récupération du sale) réservable avec chaque ménage depuis le calendrier.</div>
+    <div class="price-note reveal">Option linge (livraison du propre, récupération du sale) réservable avec chaque ménage depuis le calendrier.</div>
   </div>
 </section>
 
 <section id="linge" style="padding-top:0;">
   <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-index">05 / Au-delà du ménage</div>
-      <div>
-        <h2>Ce que couvre aussi Kleining</h2>
-      </div>
+    <div class="sec-head reveal">
+      <h2>Ce que couvre aussi Kleining</h2>
     </div>
     <div class="feature-grid">
-      <div class="feature-card">
+      <div class="feature-card reveal">
         <h4>Gestion du linge</h4>
-        <p>Un livreur dépose le linge propre et récupère le linge sale directement dans le bien, synchronisé avec le calendrier de ménage — le propriétaire n'a rien à coordonner lui-même.</p>
+        <p>Un livreur dépose le linge propre et récupère le sale, au rythme du calendrier de ménage. Vous n'avez rien à coordonner.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card reveal">
         <h4>Compte et suivi</h4>
-        <p>Chaque client dispose d'un compte sommaire : historique des interventions, statut de chaque réservation, et vue d'ensemble simple — sans complexité inutile pour la bêta.</p>
+        <p>Historique des interventions, statut de chaque réservation, vue d'ensemble simple.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card reveal">
         <h4>Le dossier photo exigé</h4>
-        <p>Chaque mission doit être prouvée par un jeu de photos imposé : cuisine avant/après, salle de bain, chambres, linge changé. Une photo manquante ou floue, et le dossier est renvoyé au prestataire.</p>
+        <p>Cuisine avant/après, salle de bain, chambres, linge changé. Une photo manquante ou floue et le dossier repart chez le prestataire.</p>
       </div>
-      <div class="feature-card">
+      <div class="feature-card reveal">
         <h4>Incidents déclarés, pas cachés</h4>
-        <p>Objet cassé ou perdu pendant une intervention ? Le prestataire doit le déclarer immédiatement, avec photo. L'équipe Kleining vous contacte avec les détails — la transparence fait partie du service.</p>
+        <p>Objet cassé ou perdu ? Le prestataire le déclare immédiatement, photo à l'appui. Notre équipe vous contacte avec les détails.</p>
       </div>
     </div>
   </div>
@@ -396,40 +403,37 @@
 
 <section id="faq" style="padding-top:0;">
   <div class="wrap">
-    <div class="sec-head">
-      <div class="sec-index">06 / Questions fréquentes</div>
-      <div>
-        <h2>Ce que les propriétaires nous demandent</h2>
-      </div>
+    <div class="sec-head reveal">
+      <h2>Ce que les propriétaires nous demandent</h2>
     </div>
-    <div class="faq-list">
+    <div class="faq-list reveal">
       <details>
         <summary>Dans quelles villes intervenez-vous ?</summary>
-        <p>La bêta démarre à Paris. L'ouverture à d'autres villes se fera une fois le processus rodé avec les premiers propriétaires.</p>
+        <p>À Paris pour la bêta. D'autres villes suivront une fois le processus rodé.</p>
       </details>
       <details>
         <summary>Qui réalise le ménage ?</summary>
-        <p>Des entreprises de ménage professionnelles partenaires, sélectionnées par Kleining — pas une mise en relation anonyme avec des inconnus. Chaque prestataire travaille avec son propre calendrier de missions.</p>
+        <p>Des entreprises de ménage professionnelles, sélectionnées par Kleining. Pas de mise en relation anonyme.</p>
       </details>
       <details>
         <summary>Que se passe-t-il si le contrôle photo révèle un problème ?</summary>
-        <p>Le dossier est renvoyé au prestataire avec une note précise, il corrige, puis re-soumet ses photos. Vous n'êtes jamais notifié « ménage terminé » tant qu'un membre de l'équipe Kleining n'a pas validé le dossier — rien ne s'approuve automatiquement.</p>
+        <p>Le dossier repart chez le prestataire avec une note précise. Il corrige, puis re-soumet ses photos. Vous n'êtes notifié qu'après validation par notre équipe.</p>
       </details>
       <details>
         <summary>Pourquoi pas une conciergerie classique ?</summary>
-        <p>Les conciergeries traditionnelles prélèvent souvent une commission importante sur vos revenus locatifs et imposent des contrats rigides. Kleining fonctionne au ménage, à prix fixe, sans engagement et sans commission sur vos revenus : vous ne payez que ce que vous réservez.</p>
+        <p>Les conciergeries prélèvent une commission sur vos revenus et imposent des contrats rigides. Kleining fonctionne au ménage, à prix fixe, sans engagement. Vous ne payez que ce que vous réservez.</p>
       </details>
       <details>
         <summary>Comment fonctionne le paiement ?</summary>
-        <p>Pendant la bêta, le règlement est géré simplement et directement avec l'équipe Kleining, aux prix fixes affichés (47€ ou 60€). Le paiement en ligne arrivera après la bêta.</p>
+        <p>Pendant la bêta, le règlement se fait directement avec l'équipe, aux prix affichés. Le paiement en ligne arrivera ensuite.</p>
       </details>
       <details>
         <summary>Et si un objet est cassé ou perdu ?</summary>
-        <p>Le prestataire a l'obligation de le déclarer immédiatement via l'application, avec description et photo. L'équipe Kleining consulte chaque déclaration et vous recontacte avec les détails.</p>
+        <p>Le prestataire le déclare immédiatement dans l'application, avec description et photo. Notre équipe vous recontacte avec les détails.</p>
       </details>
       <details>
         <summary>Comment rejoindre la bêta ?</summary>
-        <p>Écrivez-nous — la bêta est limitée à un petit nombre de propriétaires parisiens pour garantir un processus fluide. Les premiers inscrits seront prioritaires.</p>
+        <p>Écrivez-nous. Les places sont limitées et les premiers inscrits sont prioritaires.</p>
       </details>
     </div>
   </div>
@@ -439,19 +443,19 @@
 
 <div class="goal-outer" id="beta">
   <div class="wrap goal-grid">
-    <div class="goal-item"><b>Places limitées</b><span>bêta parisienne en petit comité, qualité d'abord</span></div>
-    <div class="goal-item"><b>100% humain</b><span>chaque dossier photo vérifié par notre équipe</span></div>
-    <div class="goal-item"><b>0 engagement</b><span>paiement au ménage, prix fixes, sans abonnement</span></div>
+    <div class="goal-item reveal"><b>Places limitées</b><span>bêta parisienne en petit comité, qualité d'abord</span></div>
+    <div class="goal-item reveal"><b>100% humain</b><span>chaque dossier photo vérifié par notre équipe</span></div>
+    <div class="goal-item reveal"><b>0 engagement</b><span>paiement au ménage, prix fixes, sans abonnement</span></div>
   </div>
 </div>
 
 <main>
 <section id="cta">
   <div class="wrap">
-    <div class="cta-band">
+    <div class="cta-card block reveal">
       <h2>Envie de tester Kleining <em>sur votre bien ?</em></h2>
-      <p>La bêta démarre avec un petit nombre de propriétaires à Paris, pour s'assurer que le processus est fluide avant d'ouvrir plus largement.</p>
-      <a href="mailto:william@cleanflow-app.com" class="btn-klein">Rejoindre la bêta</a>
+      <p>La bêta est ouverte à un petit nombre de propriétaires parisiens. Réservez votre place.</p>
+      <a href="mailto:william@cleanflow-app.com" class="btn-a klein">Rejoindre la bêta</a>
     </div>
   </div>
 </section>
@@ -459,7 +463,7 @@
 
 <footer>
   <div class="wrap footer-grid">
-    <div><b style="font-family:'Fraunces', serif; color:var(--white); font-size:17px;"><span style="color:var(--gold); font-style:italic;">Klein</span>ing</b><br>Wanecque William, fondateur</div>
+    <div><b style="font-family:'Plus Jakarta Sans', sans-serif; color:var(--white); font-size:17px;"><span style="color:var(--gold);">Klein</span>ing</b><br>Wanecque William, fondateur</div>
     <div>0624207668</div>
     <div>Paris, France</div>
     <div><a href="/legal/cgu.html">CGU</a> · <a href="/legal/confidentialite.html">Confidentialité</a></div>
@@ -467,5 +471,23 @@
   </div>
 </footer>
 
+<script>
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+</script>
 </body>
 </html>
