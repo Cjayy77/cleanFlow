@@ -21,6 +21,7 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -56,6 +57,10 @@ const propertyStreet = document.getElementById('propertyStreet');
 const propertyCity = document.getElementById('propertyCity');
 const propertyPostal = document.getElementById('propertyPostal');
 const propertyNotes = document.getElementById('propertyNotes');
+const propertyFormTitle = document.getElementById('propertyFormTitle');
+const propertySubmitBtn = document.getElementById('propertySubmitBtn');
+const cancelEditWrap = document.getElementById('cancelEditWrap');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
 const linenToggle = document.getElementById('linenToggle');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
@@ -78,7 +83,26 @@ let bookings = [];
 let propertiesUnsub = null;
 let bookingsUnsub = null;
 let authNotice = null;
+let editingPropertyId = null;
 let calendarMonth = startOfMonth(new Date());
+
+// Une réservation encore en cours bloque la suppression du bien concerné.
+const ACTIVE_BOOKING_STATUSES = ['pending', 'accepted', 'submitted', 'rejected'];
+
+function setPropertyFormMode(property = null) {
+  editingPropertyId = property ? property.id : null;
+  propertyFormTitle.textContent = property ? 'Modifier la propriété' : 'Ajouter une propriété';
+  propertySubmitBtn.textContent = property ? 'Enregistrer les modifications' : 'Enregistrer le bien';
+  cancelEditWrap.classList.toggle('hidden', !property);
+  propertyStreet.value = property ? property.street : '';
+  propertyCity.value = property ? property.city : '';
+  propertyPostal.value = property ? property.postalCode : '';
+  propertyNotes.value = property ? (property.notes || '') : '';
+  if (property) {
+    propertyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    propertyStreet.focus();
+  }
+}
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -150,9 +174,12 @@ function renderPropertyButtons() {
     return;
   }
   properties.forEach(prop => {
-    const button = document.createElement('button');
-    button.className = 'property-card' + (selectedPropertyId === prop.id ? ' selected' : '');
-    button.type = 'button';
+    const row = document.createElement('div');
+    row.className = 'property-card' + (selectedPropertyId === prop.id ? ' selected' : '');
+
+    const selectBtn = document.createElement('button');
+    selectBtn.className = 'property-select';
+    selectBtn.type = 'button';
     const name = document.createElement('div');
     name.className = 'p-name';
     name.textContent = `${prop.street}, ${prop.city}`;
@@ -164,9 +191,10 @@ function renderPropertyButtons() {
     const text = document.createElement('div');
     text.appendChild(name);
     text.appendChild(meta);
-    button.appendChild(thumb);
-    button.appendChild(text);
-    button.onclick = () => {
+    selectBtn.appendChild(thumb);
+    selectBtn.appendChild(text);
+    selectBtn.setAttribute('aria-label', `Sélectionner ${prop.street}, ${prop.city}`);
+    selectBtn.onclick = () => {
       selectedPropertyId = prop.id;
       selectedDate = null;
       selectedDateLabel.value = 'Aucune date';
@@ -174,7 +202,46 @@ function renderPropertyButtons() {
       updateBookingBar();
       renderPropertyButtons();
     };
-    propertyList.appendChild(button);
+
+    const actions = document.createElement('div');
+    actions.className = 'property-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'mini-btn';
+    editBtn.type = 'button';
+    editBtn.textContent = 'Modifier';
+    editBtn.setAttribute('aria-label', `Modifier ${prop.street}`);
+    editBtn.onclick = () => setPropertyFormMode(prop);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'mini-btn danger';
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = 'Supprimer';
+    deleteBtn.setAttribute('aria-label', `Supprimer ${prop.street}`);
+    deleteBtn.onclick = async () => {
+      const hasActiveBooking = bookings.some(b => b.propertyId === prop.id && ACTIVE_BOOKING_STATUSES.includes(b.status));
+      if (hasActiveBooking) {
+        setAppStatus('Impossible de supprimer ce bien : une réservation est en cours. Annulez-la d’abord ou attendez sa confirmation.', 'error');
+        return;
+      }
+      if (!window.confirm(`Supprimer ${prop.street}, ${prop.city} ? Cette action est définitive.`)) return;
+      try {
+        await deleteDoc(doc(db, 'properties', prop.id));
+        if (selectedPropertyId === prop.id) {
+          selectedPropertyId = null;
+          selectedDate = null;
+          selectedDateLabel.value = 'Aucune date';
+        }
+        if (editingPropertyId === prop.id) setPropertyFormMode(null);
+        setAppStatus('Bien supprimé.', 'success');
+      } catch (err) {
+        setAppStatus(`Impossible de supprimer le bien : ${authErrorMessage(err)}`, 'error');
+      }
+    };
+    actions.appendChild(editBtn);
+    actions.appendChild(deleteBtn);
+
+    row.appendChild(selectBtn);
+    row.appendChild(actions);
+    propertyList.appendChild(row);
   });
 }
 
@@ -469,20 +536,36 @@ propertyForm.addEventListener('submit', async event => {
     return;
   }
   try {
-    await withButtonLoading(propertyForm.querySelector('button[type="submit"]'), () =>
-      addDoc(collection(db, 'properties'), {
-        ownerId: currentUser.uid,
-        street,
-        city,
-        postalCode,
-        notes,
-        createdAt: serverTimestamp(),
-      }));
-    propertyForm.reset();
-    setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.', 'success');
+    if (editingPropertyId) {
+      const propertyId = editingPropertyId;
+      await withButtonLoading(propertySubmitBtn, () =>
+        updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, notes }));
+      const hasActiveBooking = bookings.some(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
+      setPropertyFormMode(null);
+      setAppStatus(hasActiveBooking
+        ? 'Bien modifié. Une réservation est en cours sur ce bien : si l’adresse a réellement changé, prévenez l’équipe Kleining.'
+        : 'Bien modifié.', 'success');
+    } else {
+      await withButtonLoading(propertySubmitBtn, () =>
+        addDoc(collection(db, 'properties'), {
+          ownerId: currentUser.uid,
+          street,
+          city,
+          postalCode,
+          notes,
+          createdAt: serverTimestamp(),
+        }));
+      propertyForm.reset();
+      setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.', 'success');
+    }
   } catch (err) {
-    setAppStatus(`Impossible d’ajouter le bien : ${authErrorMessage(err)}`, 'error');
+    setAppStatus(`Impossible d’enregistrer le bien : ${authErrorMessage(err)}`, 'error');
   }
+});
+
+cancelEditBtn.addEventListener('click', event => {
+  event.preventDefault();
+  setPropertyFormMode(null);
 });
 
 bookBtn.addEventListener('click', async () => {
