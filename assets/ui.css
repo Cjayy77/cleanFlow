@@ -133,6 +133,13 @@ textarea{ min-height:110px; resize:vertical; }
 .photo-slot.uploading::after{ content:''; position:absolute; top:50%; left:50%; width:22px; height:22px; margin:-11px 0 0 -11px; border:3px solid var(--line); border-top-color:var(--klein); border-radius:50%; animation:spin .7s linear infinite; }
 .photo-caption{ position:absolute; bottom:0; left:0; right:0; background:rgba(0,31,115,0.85); color:var(--white); font-size:11px; padding:5px; text-decoration:none; }
 
+.stat-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+@media (max-width:720px){ .stat-grid{ grid-template-columns:1fr 1fr; } }
+.stat{ border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink); padding:16px 18px; background:var(--paper); }
+.stat b{ display:block; font-size:28px; font-weight:800; line-height:1.1; color:var(--klein); }
+.stat span{ font-family:'JetBrains Mono', monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); display:block; margin-top:6px; }
+.task-card.done{ opacity:.55; }
+
 .incident-item{ border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:0; padding:14px; margin-bottom:10px; font-size:14px; }
 
 /* Pages légales */
