@@ -15,14 +15,18 @@
       <div class="brand"><span class="k">Klein</span>ing</div>
       <div class="role-tag">Espace client</div>
     </div>
-    <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
+    <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
   </div>
 
-  <div class="card" id="authScreen">
+  <div class="card" id="loadingScreen">
+    <div class="loading-state" role="status"><span class="spinner" aria-hidden="true"></span>Chargement…</div>
+  </div>
+
+  <div class="card hidden" id="authScreen">
     <div class="eyebrow">Connexion requise</div>
     <h1 id="authTitle">Connexion client</h1>
     <p>Connectez-vous ou créez un compte client pour gérer vos réservations de ménage.</p>
-    <div id="authError" class="status-banner hidden"></div>
+    <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
       <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
@@ -83,6 +87,11 @@
           <label class="service-option"><input id="linenToggle" type="checkbox"> Livraison / récupération du linge</label>
         </div>
         <div class="form-row"><label>Date sélectionnée</label><input id="selectedDateLabel" type="text" readonly value="Aucune date"></div>
+        <div class="cal-header">
+          <button class="btn ghost cal-nav" id="calPrev" type="button" aria-label="Mois précédent">‹</button>
+          <div class="cal-month" id="calMonthLabel" aria-live="polite"></div>
+          <button class="btn ghost cal-nav" id="calNext" type="button" aria-label="Mois suivant">›</button>
+        </div>
         <div class="cal-grid" id="calendarGrid"></div>
         <div class="form-footer">
           <div>
@@ -100,7 +109,7 @@
       <div id="bookingsWrap"></div>
     </div>
 
-    <div class="status-banner info hidden" id="appStatus"></div>
+    <div class="status-banner info hidden" id="appStatus" role="status"></div>
   </div>
 </div>
 <script type="module" src="../assets/js/app.js"></script>

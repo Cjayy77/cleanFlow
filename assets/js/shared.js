@@ -136,6 +136,16 @@ export function formatPrice(serviceType) {
   return PRICES[serviceType] ?? PRICES.normal;
 }
 
+// État visuel de chargement d'un bouton pendant une action asynchrone.
+export async function withButtonLoading(button, task) {
+  if (button) button.classList.add('loading');
+  try {
+    return await task();
+  } finally {
+    if (button) button.classList.remove('loading');
+  }
+}
+
 export function authErrorMessage(error) {
   switch (error?.code) {
     case 'auth/invalid-credential':

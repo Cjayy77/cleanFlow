@@ -37,11 +37,29 @@
   .nav-links{ display:flex; gap:26px; font-size:14px; font-weight:600; color: var(--muted); }
   .nav-links a{ text-decoration:none; }
   .nav-links a:hover{ color: var(--ink); }
+  .nav-links a{ padding:12px 0; display:inline-block; }
   .nav-cta{
     background: var(--klein); color:var(--white); font-weight:700; font-size:13px;
-    padding: 10px 20px; border-radius: 6px; text-decoration:none;
+    padding: 12px 20px; border-radius: 6px; text-decoration:none; transition: background .18s ease-out, transform .18s ease-out;
   }
-  @media (max-width:760px){ .nav-links{ display:none; } }
+  .nav-cta:hover{ background: var(--klein-deep); transform:translateY(-1px); }
+  @media (max-width:760px){
+    .nav-inner{ flex-wrap:wrap; row-gap:0; padding-bottom:8px; }
+    .nav-links{ order:3; width:100%; overflow-x:auto; white-space:nowrap; gap:20px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .nav-links::-webkit-scrollbar{ display:none; }
+  }
+
+  /* Focus clavier + interactions */
+  :focus-visible{ outline:2px solid var(--klein); outline-offset:2px; border-radius:4px; }
+  .hero :focus-visible, .goal-strip :focus-visible{ outline-color: var(--gold); }
+  .btn-gold, .btn-outline{ transition: transform .18s ease-out, filter .18s ease-out, background .18s ease-out; }
+  .btn-gold:hover{ filter:brightness(0.95); transform:translateY(-1px); }
+  .btn-outline:hover{ background:rgba(255,255,255,0.1); transform:translateY(-1px); }
+  .btn-gold:active, .btn-outline:active, .nav-cta:active{ transform:translateY(0) scale(0.98); }
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
+    html{ scroll-behavior:auto; }
+  }
 
   /* HERO — solid Klein block, referencing IKB monochrome panels */
   .hero{ background: var(--klein); color: var(--white); padding: 110px 0 100px 0; position:relative; overflow:hidden; border-bottom:6px solid var(--gold); }
@@ -188,6 +206,8 @@
     </svg>
   </div>
 </header>
+
+<main>
 
 <section id="roles">
   <div class="wrap">
@@ -406,6 +426,8 @@
     </div>
   </div>
 </section>
+
+</main>
 
 <footer>
   <div class="wrap footer-grid">

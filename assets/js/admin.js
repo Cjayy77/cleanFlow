@@ -11,6 +11,7 @@ import {
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
+  withButtonLoading,
 } from './shared.js';
 import {
   collection,
@@ -29,6 +30,7 @@ import {
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
+const loadingScreen = document.getElementById('loadingScreen');
 const authScreen = document.getElementById('authScreen');
 const appScreen = document.getElementById('appScreen');
 const authError = document.getElementById('authError');
@@ -61,12 +63,16 @@ function setAdminStatus(message = '') {
 }
 
 function showAuth(message = '') {
+  loadingScreen.classList.add('hidden');
+  signOutBtn.classList.add('hidden');
   authScreen.classList.remove('hidden');
   appScreen.classList.add('hidden');
   setAuthMessage(message);
 }
 
 function showApp() {
+  loadingScreen.classList.add('hidden');
+  signOutBtn.classList.remove('hidden');
   authScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
   setAuthMessage('');
@@ -227,12 +233,19 @@ function refreshQueue() {
 async function resolveBooking(status) {
   if (!selectedBooking) return;
   const note = rejectNote.value.trim();
+  if (status === 'rejected' && !note) {
+    setAdminStatus('Ajoutez une note avant de renvoyer le dossier : le prestataire doit savoir quoi corriger.');
+    rejectNote.focus();
+    return;
+  }
   const update = { status };
   if (note) update.adminNote = note;
   if (status === 'verified') {
     update.verifiedBy = currentUser.uid;
     update.verifiedAt = serverTimestamp();
   }
+  const actionBtn = status === 'verified' ? verifyBtn : rejectBtn;
+  actionBtn.classList.add('loading');
   try {
     await updateDoc(doc(db, 'bookings', selectedBooking.id), update);
     if (status === 'verified' && selectedBooking.photos) {
@@ -252,6 +265,8 @@ async function resolveBooking(status) {
       : 'Dossier renvoyé au prestataire pour correction.');
   } catch (err) {
     setAdminStatus('Impossible de mettre à jour le dossier.');
+  } finally {
+    actionBtn.classList.remove('loading');
   }
 }
 
@@ -284,7 +299,8 @@ signInForm.addEventListener('submit', async event => {
   const email = document.getElementById('signInEmail').value.trim();
   const password = document.getElementById('signInPassword').value;
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    await withButtonLoading(signInForm.querySelector('button[type="submit"]'),
+      () => signInWithEmailAndPassword(auth, email, password));
   } catch (err) {
     setAuthMessage(authErrorMessage(err));
   }

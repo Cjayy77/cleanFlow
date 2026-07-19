@@ -16,14 +16,18 @@
       <div class="brand"><span class="k">Klein</span>ing</div>
       <div class="role-tag">Interface livreur</div>
     </div>
-    <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
+    <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
   </div>
 
-  <div class="card" id="authScreen">
+  <div class="card" id="loadingScreen">
+    <div class="loading-state" role="status"><span class="spinner" aria-hidden="true"></span>Chargement…</div>
+  </div>
+
+  <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion livreur</h1>
     <p>Espace réservé au service linge. Votre compte est créé par l’équipe Kleining.</p>
-    <div id="authError" class="status-banner hidden"></div>
+    <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
       <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
