@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Kleining — Livreur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+<div class="app-wrap">
+  <div class="top-row">
+    <div>
+      <div class="brand"><span class="k">Klein</span>ing</div>
+      <div class="role-tag">Interface livreur</div>
+    </div>
+    <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
+  </div>
+
+  <div class="card" id="authScreen">
+    <div class="eyebrow">Accès réservé</div>
+    <h1>Connexion livreur</h1>
+    <p>Espace réservé au service linge. Votre compte est créé par l’équipe Kleining.</p>
+    <div id="authError" class="status-banner hidden"></div>
+    <form id="signInForm">
+      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
+      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
+      <button class="btn primary" type="submit">Se connecter</button>
+    </form>
+  </div>
+
+  <div id="appScreen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Bonjour</div>
+      <h1 id="userNameLabel">Livreur</h1>
+      <p>Tournées de linge à venir : dépôt du linge propre et récupération du linge sale, synchronisés avec le calendrier de ménage.</p>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Tournées</div>
+      <h2>Linge à livrer / récupérer</h2>
+      <div id="taskList"></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="../assets/js/livreur.js"></script>
+</body>
+</html>

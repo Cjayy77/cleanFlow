@@ -3,69 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CleanFlow — Espace client</title>
+<title>Kleining — Espace client</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root{--klein:#002FA7;--klein-deep:#001F73;--klein-tint:#EDF0FB;--gold:#D9A441;--ink:#10131A;--muted:#5A6472;--paper:#F5F6FA;--line:#DCE1EE;--white:#FFFFFF;}
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);min-height:100vh;}
-  .app-wrap{max-width:1140px;margin:0 auto;padding:28px 18px 60px 18px;}
-  .top-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:28px;}
-  .brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;}
-  .brand span{color:var(--klein);}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;padding:14px 18px;font-weight:700;font-size:14px;cursor:pointer;}
-  .btn.primary{background:var(--klein);color:var(--white);}
-  .btn.gold{background:var(--gold);color:var(--klein-deep);}
-  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
-  .btn:disabled{opacity:.65;cursor:not-allowed;}
-  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:26px;margin-bottom:22px;}
-  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.09em;color:var(--klein);margin-bottom:10px;}
-  h1,h2{font-family:'Space Grotesk',sans-serif;margin:0 0 10px;}
-  p{color:var(--muted);line-height:1.6;}
-  .grid2{display:grid;grid-template-columns:1.2fr 0.8fr;gap:26px;}
-  @media(max-width:900px){.grid2{grid-template-columns:1fr;}}
-  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
-  @media(max-width:720px){.form-row{grid-template-columns:1fr;}}
-  label{display:block;font-size:13px;margin-bottom:6px;font-weight:600;}
-  input,textarea,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;background:var(--white);color:var(--ink);}
-  textarea{min-height:120px;resize:vertical;}
-  .hidden{display:none;}
-  .empty-state{padding:26px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);text-align:center;}
-  .dossier{border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;}
-  .dossier-top{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-  .dossier-addr{font-size:15px;font-weight:700;}
-  .dossier-meta{font-size:13px;color:var(--muted);margin-top:8px;}
-  .property-card{width:100%;text-align:left;border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;gap:12px;align-items:center;background:var(--white);cursor:pointer;}
-  .property-card.selected{border-color:var(--klein);background:rgba(0,47,167,.06);}
-  .p-thumb{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--klein),var(--klein-deep));flex-shrink:0;}
-  .p-name{font-weight:700;}
-  .p-meta{font-size:12px;color:var(--muted);}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:16px;}
-  .cal-day-label{font-size:11px;color:var(--muted);text-align:center;}
-  .cal-day{border-radius:12px;padding:14px 0;text-align:center;background:var(--paper);border:1px solid transparent;cursor:pointer;font-weight:700;}
-  .cal-day.booked{background:#FEF3F2;color:#B91C1C;cursor:not-allowed;}
-  .cal-day.selected{background:var(--klein);color:var(--white);}
-  .form-footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:center;}
-  .form-footer span{color:var(--muted);font-size:13px;}
-  .service-option{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-  .service-option input{width:16px;height:16px;}
-  .note-box{font-size:13px;color:var(--muted);margin-top:10px;}
-  .status-banner{margin-bottom:18px;padding:16px;border-radius:14px;background:#FEF3F2;color:#B91C1C;font-size:13px;}
-  .status-pill{font-size:11px;font-weight:700;border-radius:999px;padding:8px 12px;}
-  .status-pill.pending{background:#EDF2FE;color:#1D4ED8;}
-  .status-pill.accepted{background:#EAF0FB;color:#1D4ED8;}
-  .status-pill.submitted{background:var(--klein-tint);color:var(--klein);}
-  .status-pill.verified{background:#E4F3EA;color:#166534;}
-  .status-pill.rejected{background:#FEF3F2;color:#B91C1C;}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/ui.css">
 </head>
 <body>
 <div class="app-wrap">
   <div class="top-row">
     <div>
-      <div class="brand">Clean<span>Flow</span></div>
-      <div class="eyebrow">Espace client</div>
+      <div class="brand"><span class="k">Klein</span>ing</div>
+      <div class="role-tag">Espace client</div>
     </div>
     <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
   </div>
@@ -73,21 +21,24 @@
   <div class="card" id="authScreen">
     <div class="eyebrow">Connexion requise</div>
     <h1 id="authTitle">Connexion client</h1>
-    <p>Connectez-vous ou créez un compte client pour gérer vos réservations. Un seul rôle par compte.</p>
+    <p>Connectez-vous ou créez un compte client pour gérer vos réservations de ménage.</p>
     <div id="authError" class="status-banner hidden"></div>
     <form id="signInForm">
-      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" required></div>
-      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" required></div>
+      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
+      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
       <button class="btn primary" type="submit">Se connecter</button>
-      <div class="note-box"><a href="#" id="formSwitch">Créer un compte client</a></div>
+      <div class="note-box"><a href="#" id="switchToRegister">Créer un compte client</a></div>
     </form>
     <form id="registerForm" class="hidden">
-      <div class="form-row"><label for="registerName">Nom</label><input id="registerName" type="text" required></div>
-      <div class="form-row"><label for="registerPhone">Téléphone</label><input id="registerPhone" type="tel" required></div>
-      <div class="form-row"><label for="registerEmail">Email</label><input id="registerEmail" type="email" required></div>
-      <div class="form-row"><label for="registerPassword">Mot de passe</label><input id="registerPassword" type="password" required></div>
+      <div class="form-cols">
+        <div class="form-row"><label for="registerName">Nom</label><input id="registerName" type="text" required></div>
+        <div class="form-row"><label for="registerPhone">Téléphone</label><input id="registerPhone" type="tel" required></div>
+      </div>
+      <div class="form-row"><label for="registerEmail">Email</label><input id="registerEmail" type="email" autocomplete="email" required></div>
+      <div class="form-row"><label for="registerPassword">Mot de passe</label><input id="registerPassword" type="password" autocomplete="new-password" minlength="6" required></div>
       <button class="btn primary" type="submit">Créer mon compte</button>
-      <div class="note-box"><a href="#" id="formSwitch">Se connecter</a></div>
+      <div class="note-box">En créant un compte, vous acceptez les <a href="/legal/cgu.html" target="_blank" rel="noopener">CGU</a> et la <a href="/legal/confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a> (photos d’intervention conservées 90 jours).</div>
+      <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte — me connecter</a></div>
     </form>
   </div>
 
@@ -95,41 +46,48 @@
     <div class="card">
       <div class="eyebrow">Bonjour</div>
       <h1 id="userNameLabel">Client</h1>
-      <p>Votre compte client est sécurisé avec Firebase Authentication. Seules les interfaces clients sont accessibles ici.</p>
-    </div>
-
-    <div class="card">
-      <div class="eyebrow">Nouveau bien</div>
-      <h2>Ajouter votre propriété</h2>
-      <form id="propertyForm">
-        <div class="form-row"><label for="propertyStreet">Rue et numéro</label><input id="propertyStreet" required></div>
-        <div class="form-row"><label for="propertyCity">Ville</label><input id="propertyCity" required></div>
-        <div class="form-row"><label for="propertyPostal">Code postal</label><input id="propertyPostal" required></div>
-        <div class="form-row"><label for="propertyNotes">Notes / consignes</label><textarea id="propertyNotes"></textarea></div>
-        <button class="btn primary" type="submit">Enregistrer le bien</button>
-      </form>
+      <p>Réservez un ménage, suivez sa vérification par l’équipe Kleining, et recevez la confirmation une fois le contrôle photo effectué.</p>
     </div>
 
     <div class="grid2">
-      <div class="card">
-        <div class="eyebrow">Votre portefeuille</div>
-        <h2>Biens enregistrés</h2>
-        <div id="propertyList"></div>
+      <div>
+        <div class="card">
+          <div class="eyebrow">Vos biens</div>
+          <h2>Biens enregistrés</h2>
+          <div id="propertyList"></div>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Nouveau bien</div>
+          <h2>Ajouter une propriété</h2>
+          <form id="propertyForm">
+            <div class="form-row"><label for="propertyStreet">Rue et numéro</label><input id="propertyStreet" required></div>
+            <div class="form-cols">
+              <div class="form-row"><label for="propertyCity">Ville</label><input id="propertyCity" required></div>
+              <div class="form-row"><label for="propertyPostal">Code postal</label><input id="propertyPostal" required></div>
+            </div>
+            <div class="form-row"><label for="propertyNotes">Notes / consignes d’accès</label><textarea id="propertyNotes"></textarea></div>
+            <button class="btn primary" type="submit">Enregistrer le bien</button>
+          </form>
+        </div>
       </div>
       <div class="card">
         <div class="eyebrow">Réservation</div>
         <h2>Choisir une date</h2>
-        <div class="form-row"><label>Service</label><div>
+        <div class="form-row">
+          <label>Service</label>
           <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal — 47€</label>
           <label class="service-option"><input type="radio" name="serviceType" value="deep"> Nettoyage en profondeur — 60€</label>
-        </div></div>
-        <div class="form-row"><label>Linge</label><label class="service-option"><input id="linenToggle" type="checkbox"> Livraison / récupération de linge</label></div>
+        </div>
+        <div class="form-row">
+          <label>Linge</label>
+          <label class="service-option"><input id="linenToggle" type="checkbox"> Livraison / récupération du linge</label>
+        </div>
         <div class="form-row"><label>Date sélectionnée</label><input id="selectedDateLabel" type="text" readonly value="Aucune date"></div>
         <div class="cal-grid" id="calendarGrid"></div>
         <div class="form-footer">
           <div>
-            <div style="font-size:13px; color:var(--muted); font-weight:700;">Prix affiché avant confirmation</div>
-            <div id="priceValue" style="font-family:'Space Grotesk'; font-size:20px; color:var(--klein);">47€</div>
+            <div class="price-label">Prix affiché avant confirmation</div>
+            <div class="price-value" id="priceValue">47€</div>
           </div>
           <button class="btn gold" id="bookBtn" type="button" disabled>Choisir une date pour réserver</button>
         </div>
@@ -138,13 +96,13 @@
 
     <div class="card">
       <div class="eyebrow">Historique</div>
-      <h2>Réservations client</h2>
+      <h2>Vos réservations</h2>
       <div id="bookingsWrap"></div>
     </div>
 
-    <div class="status-banner hidden" id="appStatus"></div>
+    <div class="status-banner info hidden" id="appStatus"></div>
   </div>
 </div>
-<script type="module" src="../app.js"></script>
+<script type="module" src="../assets/js/app.js"></script>
 </body>
 </html>

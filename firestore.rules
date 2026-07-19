@@ -5,12 +5,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc(uid) {
-      return get(/databases/$(database)/documents/users/$(uid));
-    }
-
     function userRole() {
-      return userDoc(request.auth.uid).data.role;
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     function isClient() {
@@ -30,11 +26,15 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      // Auto-inscription : rôle 'client' uniquement. Les comptes
+      // prestataire/livreur/admin sont créés manuellement via la console
+      // (voir SETUP.md) — jamais depuis l'application.
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == userId
-        && request.resource.data.role in ['client', 'prestataire', 'livreur', 'admin']
+        && request.resource.data.role == 'client'
         && request.resource.data.email == request.auth.token.email;
       allow update: if isSignedIn()
         && request.auth.uid == userId
@@ -43,7 +43,7 @@ service cloud.firestore {
     }
 
     match /properties/{propertyId} {
-      allow read: if isSignedIn() && (isAdmin() || (isClient() && resource.data.ownerId == request.auth.uid));
+      allow read: if isSignedIn() && (isAdmin() || resource.data.ownerId == request.auth.uid);
       allow create: if isClient()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.street is string
@@ -53,6 +53,9 @@ service cloud.firestore {
     }
 
     match /bookings/{bookingId} {
+      // Les requêtes de liste côté app filtrent toujours sur un seul champ
+      // (clientId / prestataireId / status=='pending' / linenRequested), ce qui
+      // rend chaque branche ci-dessous prouvable par Firestore.
       allow read: if isSignedIn() && (
         isAdmin()
         || (isClient() && resource.data.clientId == request.auth.uid)
@@ -60,31 +63,34 @@ service cloud.firestore {
         || (isLivreur() && resource.data.linenRequested == true)
       );
 
-      allow list: if isSignedIn() && (
-        isAdmin()
-        || (isClient() && request.query.where('clientId', '==', request.auth.uid))
-        || (isPrestataire() && request.query.where('status', '==', 'pending'))
-        || (isPrestataire() && request.query.where('prestataireId', '==', request.auth.uid))
-        || (isLivreur() && request.query.where('linenRequested', '==', true))
-      );
-
       allow create: if isClient()
         && request.resource.data.clientId == request.auth.uid
         && request.resource.data.status == 'pending'
-        && request.resource.data.serviceType in ['normal', 'deep']
-        && request.resource.data.price in [47, 60]
-        && request.resource.data.scheduledDate is string;
+        && request.resource.data.prestataireId == null
+        && ((request.resource.data.serviceType == 'normal' && request.resource.data.price == 47)
+            || (request.resource.data.serviceType == 'deep' && request.resource.data.price == 60))
+        && request.resource.data.scheduledDate is string
+        && request.resource.data.linenRequested is bool
+        && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;
 
       allow update: if isSignedIn() && (
-        (isClient() && resource.data.clientId == request.auth.uid
-          && request.resource.data.clientId == resource.data.clientId
-          && request.resource.data.prestataireId == resource.data.prestataireId
-          && request.resource.data.serviceType == resource.data.serviceType
-          && request.resource.data.price == resource.data.price)
-        || (isPrestataire() && resource.data.prestataireId in [null, request.auth.uid]
+        // Prestataire : accepter une mission en attente…
+        (isPrestataire()
+          && resource.data.status == 'pending'
+          && resource.data.prestataireId == null
+          && request.resource.data.status == 'accepted'
           && request.resource.data.prestataireId == request.auth.uid
-          && request.resource.data.clientId == resource.data.clientId)
-        || isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'prestataireId']))
+        // …ou soumettre / re-soumettre son propre dossier.
+        || (isPrestataire()
+          && resource.data.prestataireId == request.auth.uid
+          && resource.data.status in ['accepted', 'rejected']
+          && request.resource.data.status == 'submitted'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+        // Admin : verdict de vérification uniquement.
+        || (isAdmin()
+          && request.resource.data.status in ['verified', 'rejected']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'adminNote', 'verifiedBy', 'verifiedAt']))
       );
     }
 
@@ -94,10 +100,12 @@ service cloud.firestore {
         || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
         || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
       );
-      allow create: if isPrestataire()
+      // create + update : re-téléverser un emplacement remplace la photo
+      // précédente (dossier rejeté à corriger).
+      allow create, update: if isPrestataire()
         && request.resource.data.uploadedBy == request.auth.uid
-        && request.resource.data.bookingId is string
-        && request.resource.data.verified == false;
+        && request.resource.data.verified == false
+        && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
       allow update: if isAdmin()
         && request.resource.data.verified == true
         && request.resource.data.verifiedBy == request.auth.uid;
