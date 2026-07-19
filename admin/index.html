@@ -67,6 +67,32 @@
         <div id="incidentList"></div>
       </div>
     </div>
+
+    <div class="card">
+      <div class="eyebrow">Équipe</div>
+      <h2>Créer un compte interne</h2>
+      <p>Crée en une fois l’identifiant de connexion et le rôle associé. Transmettez ensuite l’URL de l’interface et les identifiants à la personne concernée.</p>
+      <div id="teamStatus" class="status-banner info hidden" role="status"></div>
+      <form id="teamForm">
+        <div class="form-row">
+          <label for="teamRole">Rôle</label>
+          <select id="teamRole">
+            <option value="prestataire">Prestataire — accès /prestataire/</option>
+            <option value="livreur">Livreur — accès /livreur/</option>
+            <option value="admin">Admin — accès /admin/</option>
+          </select>
+        </div>
+        <div class="form-cols">
+          <div class="form-row"><label for="teamName">Nom (personne ou entreprise)</label><input id="teamName" type="text" required></div>
+          <div class="form-row"><label for="teamPhone">Téléphone</label><input id="teamPhone" type="tel" required></div>
+        </div>
+        <div class="form-cols">
+          <div class="form-row"><label for="teamEmail">Email de connexion</label><input id="teamEmail" type="email" required></div>
+          <div class="form-row"><label for="teamPassword">Mot de passe provisoire</label><input id="teamPassword" type="text" minlength="6" required></div>
+        </div>
+        <button class="btn primary" type="submit">Créer le compte</button>
+      </form>
+    </div>
   </div>
 </div>
 <script type="module" src="../assets/js/admin.js"></script>

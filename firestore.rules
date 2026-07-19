@@ -29,13 +29,17 @@ service cloud.firestore {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
       // Auto-inscription : rôle 'client' uniquement. Les comptes
-      // prestataire/livreur/admin sont créés manuellement via la console
-      // (voir SETUP.md) — jamais depuis l'application.
-      allow create: if isSignedIn()
-        && request.auth.uid == userId
-        && request.resource.data.uid == userId
-        && request.resource.data.role == 'client'
-        && request.resource.data.email == request.auth.token.email;
+      // prestataire/livreur/admin sont créés par un admin depuis /admin/
+      // (ou via la console pour le tout premier admin — voir SETUP.md).
+      allow create: if isSignedIn() && (
+        (request.auth.uid == userId
+          && request.resource.data.uid == userId
+          && request.resource.data.role == 'client'
+          && request.resource.data.email == request.auth.token.email)
+        || (isAdmin()
+          && request.resource.data.uid == userId
+          && request.resource.data.role in ['prestataire', 'livreur', 'admin'])
+      );
       allow update: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid

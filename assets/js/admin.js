@@ -12,6 +12,7 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  createTeamAccount,
 } from './shared.js';
 import {
   collection,
@@ -314,3 +315,29 @@ signOutBtn.addEventListener('click', async () => {
 
 verifyBtn.addEventListener('click', () => resolveBooking('verified'));
 rejectBtn.addEventListener('click', () => resolveBooking('rejected'));
+
+const teamForm = document.getElementById('teamForm');
+const teamStatus = document.getElementById('teamStatus');
+const ROLE_URLS = { prestataire: '/prestataire/', livreur: '/livreur/', admin: '/admin/' };
+
+function setTeamStatus(message, type = 'info') {
+  teamStatus.textContent = message;
+  teamStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
+}
+
+teamForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const role = document.getElementById('teamRole').value;
+  const name = document.getElementById('teamName').value.trim();
+  const phone = document.getElementById('teamPhone').value.trim();
+  const email = document.getElementById('teamEmail').value.trim();
+  const password = document.getElementById('teamPassword').value;
+  try {
+    await withButtonLoading(teamForm.querySelector('button[type="submit"]'), () =>
+      createTeamAccount({ role, name, email, password, phone }));
+    teamForm.reset();
+    setTeamStatus(`Compte ${role} créé pour ${name}. Transmettez à la personne l’adresse ${window.location.origin}${ROLE_URLS[role]} avec l’email ${email} et le mot de passe provisoire.`, 'success');
+  } catch (err) {
+    setTeamStatus(authErrorMessage(err), 'error');
+  }
+});

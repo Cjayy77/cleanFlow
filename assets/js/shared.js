@@ -1,7 +1,7 @@
 // Kleining — couche de données Firebase partagée par les quatre interfaces.
 // Firestore = données, Firebase Auth = connexion, Firebase Storage = photos.
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   getFirestore,
   doc,
@@ -135,6 +135,30 @@ export function formatBookingStatus(status) {
 
 export function formatPrice(serviceType) {
   return PRICES[serviceType] ?? PRICES.normal;
+}
+
+// Création d'un compte interne (prestataire/livreur/admin) par un admin.
+// Utilise une seconde instance Firebase pour créer l'identifiant sans
+// déconnecter l'admin ; le document users est écrit avec la session admin
+// (les règles n'autorisent que les admins à créer ces rôles).
+export async function createTeamAccount({ role, name, email, password, phone }) {
+  const secondary = initializeApp(firebaseConfig, `team-account-${Date.now()}`);
+  const secondaryAuth = getAuth(secondary);
+  try {
+    const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    await setDoc(doc(db, 'users', credential.user.uid), {
+      uid: credential.user.uid,
+      role,
+      name,
+      email,
+      phone,
+      createdAt: serverTimestamp(),
+    });
+    return credential.user.uid;
+  } finally {
+    await signOut(secondaryAuth).catch(() => {});
+    await deleteApp(secondary).catch(() => {});
+  }
 }
 
 // État visuel de chargement d'un bouton pendant une action asynchrone.
