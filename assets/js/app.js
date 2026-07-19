@@ -65,6 +65,7 @@ let properties = [];
 let bookings = [];
 let propertiesUnsub = null;
 let bookingsUnsub = null;
+let authNotice = null;
 let calendarMonth = startOfMonth(new Date());
 
 function startOfMonth(date) {
@@ -289,27 +290,32 @@ onAuthStateChanged(auth, async user => {
     currentUser = null;
     if (propertiesUnsub) propertiesUnsub();
     if (bookingsUnsub) bookingsUnsub();
-    showAuth('signin');
+    if (authNotice) {
+      showAuth(authNotice.mode, authNotice.message);
+      authNotice = null;
+    } else {
+      showAuth('signin');
+    }
     return;
   }
   try {
     const docData = await loadUserDoc(user.uid);
     if (!docData) {
+      authNotice = { mode: 'register', message: 'Compte introuvable. Veuillez créer un compte client.' };
       await signOut(auth);
-      showAuth('register', 'Compte introuvable. Veuillez créer un compte client.');
       return;
     }
     if (docData.role !== ROLE_CLIENT) {
+      authNotice = { mode: 'signin', message: 'Ce compte n’est pas autorisé sur l’interface client.' };
       await signOut(auth);
-      showAuth('signin', 'Ce compte n’est pas autorisé sur l’interface client.');
       return;
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
     subscribeData();
   } catch (error) {
+    authNotice = { mode: 'signin', message: authErrorMessage(error) };
     await signOut(auth);
-    showAuth('signin', authErrorMessage(error));
   }
 });
 

@@ -72,6 +72,7 @@ export async function registerClient({ name, email, password, phone }) {
     name,
     email,
     phone,
+    accountStatus: 'approved',
     createdAt: serverTimestamp(),
   });
   return credential.user;
@@ -137,21 +138,24 @@ export function formatPrice(serviceType) {
   return PRICES[serviceType] ?? PRICES.normal;
 }
 
-// Création d'un compte interne (prestataire/livreur/admin) par un admin.
-// Utilise une seconde instance Firebase pour créer l'identifiant sans
-// déconnecter l'admin ; le document users est écrit avec la session admin
-// (les règles n'autorisent que les admins à créer ces rôles).
-export async function createTeamAccount({ role, name, email, password, phone }) {
-  const secondary = initializeApp(firebaseConfig, `team-account-${Date.now()}`);
+// Demande d'accès prestataire/livreur/admin : crée le compte en statut
+// "pending", invisible et sans droits tant qu'un admin ne l'a pas approuvé
+// dans /admin/. Passe par une seconde instance Firebase pour ne pas toucher
+// à la session en cours sur la page.
+export async function requestTeamAccess({ role, name, email, password, phone, inviteCode }) {
+  const secondary = initializeApp(firebaseConfig, `access-request-${Date.now()}`);
   const secondaryAuth = getAuth(secondary);
+  const secondaryDb = getFirestore(secondary);
   try {
     const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-    await setDoc(doc(db, 'users', credential.user.uid), {
+    await setDoc(doc(secondaryDb, 'users', credential.user.uid), {
       uid: credential.user.uid,
       role,
       name,
       email,
       phone,
+      inviteCode: inviteCode || '',
+      accountStatus: 'pending',
       createdAt: serverTimestamp(),
     });
     return credential.user.uid;

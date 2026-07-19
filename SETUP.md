@@ -53,16 +53,24 @@ domaine personnalisé. Sans cela, la connexion échouera depuis le site.
    directory (site statique servi tel quel — `vercel.json` est déjà fourni).
 3. Chaque push sur la branche de production redéploie automatiquement.
 
-## 6. Créer les comptes internes
+## 6. Comptes internes : demande → vérification → décision
 
-Seuls les **clients** peuvent s'inscrire eux-mêmes (sur `/app/`). Les comptes
-prestataire, livreur et admin se créent depuis l'interface `/admin/`, carte
-**« Équipe — Créer un compte interne »** : rôle + nom + email + mot de passe
-provisoire, un clic, terminé. L'interface crée l'identifiant ET le rôle d'un
-coup.
+Seuls les **clients** peuvent s'inscrire librement (sur `/app/`). Les rôles
+prestataire, livreur et admin passent par un flux d'approbation :
+
+1. La personne ouvre son interface (`/prestataire/`, `/livreur/` ou
+   `/admin/`) → **« Demander un accès »** → remplit le formulaire et choisit
+   son propre mot de passe. Aucun identifiant ne circule entre vous.
+2. (Recommandé) Transmettez-lui au préalable un **code d'invitation** —
+   n'importe quel code convenu entre vous (ex. `KLN-NET-07`). Elle le saisit
+   dans sa demande : c'est votre preuve que c'est bien elle.
+3. Dans `/admin/`, carte **« Demandes d'accès »** : contrôlez le code et les
+   coordonnées, puis **Approuver** ou **Refuser**. Tant que la demande n'est
+   pas approuvée, le compte ne peut strictement rien lire ni écrire — c'est
+   imposé par les règles Firestore, pas seulement par l'interface.
 
 **Seul le tout premier compte admin** doit être créé à la main dans la
-console (il faut bien un admin pour ouvrir `/admin/` la première fois) :
+console (il faut un admin pour approuver les autres) :
 
 1. Console Firebase → **Authentication** → *Users* → **Add user** →
    votre email + un mot de passe → **Add user**.
@@ -73,11 +81,12 @@ console (il faut bien un admin pour ouvrir `/admin/` la première fois) :
    auto-généré) → ajoutez les champs (tous de type *string*) :
    - `uid` = l'UID collé encore une fois
    - `role` = `admin`
+   - `accountStatus` = `approved`
    - `name` = votre nom
    - `email` = le même email qu'à l'étape 1
    - `phone` = votre numéro
-4. Ouvrez `/admin/` sur votre site, connectez-vous : vous y êtes. Tous les
-   autres comptes se créent désormais depuis la carte Équipe.
+4. Ouvrez `/admin/` sur votre site, connectez-vous : vous y êtes. Toutes les
+   autres personnes passent par la demande d'accès.
 
 ## 7. Les quatre interfaces
 

@@ -26,12 +26,27 @@
   <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion prestataire</h1>
-    <p>Espace réservé aux entreprises de ménage partenaires. Votre compte est créé par l’équipe Kleining.</p>
+    <p>Espace réservé aux entreprises de ménage partenaires. L’accès se fait sur demande, vérifiée et approuvée par l’équipe Kleining.</p>
     <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
       <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
       <button class="btn primary" type="submit">Se connecter</button>
+      <div class="note-box"><a href="#" id="switchToRequest">Demander un accès prestataire</a></div>
+    </form>
+    <form id="requestForm" class="hidden">
+      <p>Votre demande sera vérifiée par l’équipe Kleining avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestName">Nom de l'entreprise</label><input id="requestName" type="text" required></div>
+        <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
+      </div>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
+        <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
+      </div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Kleining)</label><input id="requestCode" type="text"></div>
+      <button class="btn primary" type="submit">Envoyer la demande</button>
+      <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte — me connecter</a></div>
     </form>
   </div>
 

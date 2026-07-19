@@ -26,12 +26,27 @@
   <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion admin</h1>
-    <p>Espace réservé à l’équipe Kleining pour le contrôle des dossiers photo.</p>
+    <p>Espace réservé à l’équipe Kleining pour le contrôle des dossiers photo. Tout nouvel accès doit être approuvé par un admin existant.</p>
     <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
       <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
       <button class="btn primary" type="submit">Se connecter</button>
+      <div class="note-box"><a href="#" id="switchToRequest">Demander un accès admin</a></div>
+    </form>
+    <form id="requestForm" class="hidden">
+      <p>Votre demande sera vérifiée par l’équipe Kleining avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestName">Nom</label><input id="requestName" type="text" required></div>
+        <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
+      </div>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
+        <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
+      </div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Kleining)</label><input id="requestCode" type="text"></div>
+      <button class="btn primary" type="submit">Envoyer la demande</button>
+      <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte — me connecter</a></div>
     </form>
   </div>
 
@@ -69,29 +84,11 @@
     </div>
 
     <div class="card">
-      <div class="eyebrow">Équipe</div>
-      <h2>Créer un compte interne</h2>
-      <p>Crée en une fois l’identifiant de connexion et le rôle associé. Transmettez ensuite l’URL de l’interface et les identifiants à la personne concernée.</p>
+      <div class="eyebrow">Accès</div>
+      <h2>Demandes d’accès</h2>
+      <p>Chaque demande prestataire, livreur ou admin doit être vérifiée avant approbation : contrôlez le code d’invitation que vous avez transmis à la personne, ou contactez-la directement. Un compte refusé n’a accès à rien.</p>
       <div id="teamStatus" class="status-banner info hidden" role="status"></div>
-      <form id="teamForm">
-        <div class="form-row">
-          <label for="teamRole">Rôle</label>
-          <select id="teamRole">
-            <option value="prestataire">Prestataire — accès /prestataire/</option>
-            <option value="livreur">Livreur — accès /livreur/</option>
-            <option value="admin">Admin — accès /admin/</option>
-          </select>
-        </div>
-        <div class="form-cols">
-          <div class="form-row"><label for="teamName">Nom (personne ou entreprise)</label><input id="teamName" type="text" required></div>
-          <div class="form-row"><label for="teamPhone">Téléphone</label><input id="teamPhone" type="tel" required></div>
-        </div>
-        <div class="form-cols">
-          <div class="form-row"><label for="teamEmail">Email de connexion</label><input id="teamEmail" type="email" required></div>
-          <div class="form-row"><label for="teamPassword">Mot de passe provisoire</label><input id="teamPassword" type="text" minlength="6" required></div>
-        </div>
-        <button class="btn primary" type="submit">Créer le compte</button>
-      </form>
+      <div id="accessRequests"></div>
     </div>
   </div>
 </div>

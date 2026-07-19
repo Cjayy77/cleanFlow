@@ -5,45 +5,62 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Un rôle ne compte que si le compte a été approuvé par un admin.
+    // (Les documents créés avant l'ajout du champ accountStatus sont
+    // considérés approuvés.)
+    function hasRole(role) {
+      return isSignedIn()
+        && userData().role == role
+        && userData().get('accountStatus', 'approved') == 'approved';
     }
 
     function isClient() {
-      return isSignedIn() && userRole() == 'client';
+      return hasRole('client');
     }
 
     function isPrestataire() {
-      return isSignedIn() && userRole() == 'prestataire';
+      return hasRole('prestataire');
     }
 
     function isLivreur() {
-      return isSignedIn() && userRole() == 'livreur';
+      return hasRole('livreur');
     }
 
     function isAdmin() {
-      return isSignedIn() && userRole() == 'admin';
+      return hasRole('admin');
     }
 
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
-      // Auto-inscription : rôle 'client' uniquement. Les comptes
-      // prestataire/livreur/admin sont créés par un admin depuis /admin/
-      // (ou via la console pour le tout premier admin — voir SETUP.md).
-      allow create: if isSignedIn() && (
-        (request.auth.uid == userId
-          && request.resource.data.uid == userId
-          && request.resource.data.role == 'client'
-          && request.resource.data.email == request.auth.token.email)
-        || (isAdmin()
-          && request.resource.data.uid == userId
-          && request.resource.data.role in ['prestataire', 'livreur', 'admin'])
-      );
-      allow update: if isSignedIn()
+      // Auto-inscription : les clients naissent approuvés ; les rôles
+      // prestataire/livreur/admin naissent en 'pending' et n'ont aucun
+      // droit tant qu'un admin ne les a pas approuvés dans /admin/.
+      allow create: if isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && (
+          (request.resource.data.role == 'client'
+            && request.resource.data.accountStatus == 'approved')
+          || (request.resource.data.role in ['prestataire', 'livreur', 'admin']
+            && request.resource.data.accountStatus == 'pending')
+        );
+      allow update: if isSignedIn() && (
+        // Soi-même : profil modifiable, mais ni uid, ni rôle, ni statut.
+        (request.auth.uid == userId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.get('accountStatus', 'approved') == resource.data.get('accountStatus', 'approved'))
+        // Admin : décision d'accès uniquement (approuver ou refuser).
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accountStatus'])
+          && request.resource.data.accountStatus in ['approved', 'rejected'])
+      );
     }
 
     match /properties/{propertyId} {
