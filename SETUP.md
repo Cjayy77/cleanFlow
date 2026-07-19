@@ -1,65 +1,87 @@
-# Kleining — Mise en route Firebase
+# Kleining — Mise en route (100% depuis le navigateur)
 
-Tout le code est prêt : il ne manque que la configuration de votre projet
-Firebase. Comptez ~15 minutes.
+Hébergement : **Vercel** (site statique). Backend : **Firebase** (Auth,
+Firestore, Storage). Aucune ligne de commande nécessaire — tout se fait
+depuis les consoles web.
 
-## 1. Créer le projet Firebase
+Déjà fait ✅ : projet Firebase créé, Firestore activé, connexion e-mail
+activée. Reste à faire :
 
-1. Allez sur https://console.firebase.google.com → **Ajouter un projet** (nom : `kleining`).
-2. Dans le projet, activez :
-   - **Authentication** → onglet *Sign-in method* → activer **E-mail/Mot de passe**.
-   - **Firestore Database** → *Créer une base* → mode **production** → région `europe-west9` (Paris).
-   - **Storage** → *Commencer* → mode production, même région.
+## 1. Activer Storage (photos de mission)
 
-## 2. Brancher l'application
+Console Firebase → **Storage** → *Commencer* (même région que Firestore).
+> ⚠️ Depuis fin 2024, activer Storage sur un nouveau projet demande le plan
+> **Blaze** (paiement à l'usage). Aux volumes de la bêta (quelques dizaines de
+> photos par semaine), le coût réel est de l'ordre de zéro, mais une carte
+> bancaire est requise.
 
-1. Dans *Paramètres du projet* → *Vos applications* → **Ajouter une application Web** (`</>`), sans hosting coché.
-2. Copiez l'objet `firebaseConfig` affiché et collez ses valeurs dans **`firebase-config.js`** (remplacez chaque `REPLACE_WITH_...`).
-3. Tant que ce fichier n'est pas rempli, toutes les pages affichent un écran « configuration requise » au lieu de planter.
+## 2. Brancher l'application sur votre projet
 
-## 3. Déployer les règles et le site
+1. Console Firebase → ⚙️ *Paramètres du projet* → *Vos applications* →
+   **Ajouter une application Web** (`</>`), sans cocher Hosting.
+2. Copiez l'objet `firebaseConfig` affiché.
+3. Reportez chaque valeur dans **`firebase-config.js`** — directement depuis
+   GitHub : ouvrez le fichier, cliquez sur le crayon (*Edit in place*),
+   collez, validez le commit. Cette config n'est pas un secret : elle est
+   faite pour être publique côté client ; la sécurité vient des règles
+   Firestore/Storage.
+4. Tant que le fichier n'est pas rempli, toutes les pages affichent un écran
+   « configuration requise » au lieu de planter.
 
-```bash
-npm install -g firebase-tools
-firebase login
-firebase use --add        # sélectionnez le projet kleining
-firebase deploy           # déploie hosting + firestore.rules + storage.rules
-```
+## 3. Publier les règles de sécurité (copier-coller)
 
-Les règles Firestore/Storage font appliquer la séparation des rôles **côté
-serveur** : un client ne peut pas lire les données prestataire/admin même en
-appelant l'API directement.
+Les règles font appliquer la séparation des rôles **côté serveur** — étape
+indispensable avant de mettre de vraies données.
 
-## 4. Créer les comptes internes
+1. Ouvrez `firestore.rules` sur GitHub → bouton *Raw* → tout copier.
+   Console Firebase → **Firestore Database** → onglet **Règles** → remplacez
+   tout le contenu → **Publier**.
+2. Idem avec `storage.rules` : console → **Storage** → onglet **Règles** →
+   coller → **Publier**.
 
-Seuls les **clients** peuvent s'inscrire eux-mêmes (sur `/app/`). Les règles
+## 4. Autoriser le domaine Vercel pour la connexion
+
+Console Firebase → **Authentication** → *Settings* → **Authorized domains** →
+ajoutez votre domaine Vercel (ex. `kleining.vercel.app`) et, plus tard, votre
+domaine personnalisé. Sans cela, la connexion échouera depuis le site.
+
+## 5. Déployer sur Vercel
+
+1. vercel.com → **Add New… → Project** → importez le dépôt GitHub
+   `Cjayy77/cleanFlow`.
+2. Framework preset : **Other** ; aucun build command, aucun output
+   directory (site statique servi tel quel — `vercel.json` est déjà fourni).
+3. Chaque push sur la branche de production redéploie automatiquement.
+
+## 6. Créer les comptes internes
+
+Seuls les **clients** peuvent s'inscrire eux-mêmes (sur `/app/`) ; les règles
 refusent tout autre rôle à l'auto-inscription. Pour chaque compte
 prestataire, livreur ou admin :
 
-1. **Authentication** → *Users* → **Add user** (email + mot de passe). Copiez l'**UID** créé.
-2. **Firestore** → collection `users` → **Ajouter un document** avec l'UID comme ID de document :
+1. Console Firebase → **Authentication** → *Users* → **Add user**
+   (email + mot de passe). Copiez l'**UID** créé.
+2. **Firestore Database** → collection `users` → **Ajouter un document**,
+   avec l'UID comme **ID du document** :
 
 ```
-uid:   <le même UID>
-role:  "admin"        (ou "prestataire" / "livreur")
-name:  "Équipe Kleining"
-email: <le même email>
-phone: "06..."
+uid:   <le même UID>          (string)
+role:  "admin"                (ou "prestataire" / "livreur")
+name:  "Équipe Kleining"      (string)
+email: <le même email>        (string)
+phone: "06..."                (string)
 ```
 
-## 5. Les quatre interfaces
+## 7. Les quatre interfaces
 
 | Rôle | URL | Accès |
 |---|---|---|
-| Client | `/app/` | lien public depuis le site vitrine, auto-inscription |
+| Client | `/app/` | lien public, auto-inscription |
 | Prestataire | `/prestataire/` | lien direct à partager, compte créé à la main |
 | Livreur | `/livreur/` | lien direct à partager, compte créé à la main |
 | Admin (vérification) | `/admin/` | lien direct à partager, compte créé à la main |
 
-Aucune des trois interfaces privées n'est liée depuis la navigation publique,
-et chacune vérifie le rôle du compte connecté (en plus des règles serveur).
-
-## 6. Parcours d'une réservation
+## 8. Parcours d'une réservation
 
 `pending` (réservé par le client) → `accepted` (prestataire) → `submitted`
 (photos envoyées) → `verified` **ou** `rejected` (décision humaine dans
@@ -69,16 +91,16 @@ l'admin ; il corrige les photos et re-soumet.
 > Note : le cahier des charges nommait ce statut `completed` ; le code
 > existant utilisait déjà `submitted`, convention conservée.
 
-## 7. Rétention des photos — 90 jours (processus manuel)
+## 9. Rétention des photos — 90 jours (processus manuel)
 
 Pas de Cloud Function pour la bêta (choix documenté) : une fois par mois,
 dans **Storage → `bookings/`**, supprimer les dossiers des réservations de
-plus de 90 jours. Les documents `photos` correspondants peuvent être purgés
-dans Firestore au même moment.
+plus de 90 jours, et purger les documents `photos` correspondants dans
+Firestore.
 
 ## Hors périmètre bêta (volontairement non construit)
 
-- Paiements (marquage manuel), tracking GPS, vérification automatique/IA,
-  import Airbnb, intégrations calendrier tierces.
+- Paiements (gérés directement avec l'équipe), tracking GPS, vérification
+  automatique/IA, import Airbnb, intégrations calendrier tierces.
 - Notification e-mail du client à la validation : à confirmer avec l'équipe
   (pour l'instant le statut « Confirmé » apparaît dans l'espace client).

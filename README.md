@@ -12,14 +12,17 @@ app/                  Espace client (auto-inscription)
 prestataire/          Interface prestataire (lien direct, compte créé à la main)
 livreur/              Interface livreur (lien direct, compte créé à la main)
 admin/                File de vérification Kleining (lien direct, compte créé à la main)
+legal/                CGU + politique de confidentialité
 assets/               ui.css partagé + JS des quatre interfaces
 firebase-config.js    Config du projet Firebase (à remplir — voir SETUP.md)
-firestore.rules       Règles Firestore (séparation des rôles côté serveur)
-storage.rules         Règles Storage (photos de mission, incidents)
+firestore.rules       Règles Firestore (à coller dans la console — voir SETUP.md)
+storage.rules         Règles Storage (à coller dans la console — voir SETUP.md)
+vercel.json           Config de l'hébergement Vercel
 ```
 
-Backend : Firebase (Auth, Firestore, Storage), sans framework ni build —
-des modules ES chargés depuis le CDN. Voir **SETUP.md** pour la mise en route.
+Hébergement : **Vercel** (site statique, zéro build). Backend : **Firebase**
+(Auth, Firestore, Storage) via modules ES chargés depuis le CDN. Toute la
+mise en route se fait depuis le navigateur : voir **SETUP.md**.
 
-⚠️ Ce dépôt est déployé publiquement par Firebase Hosting (`"public": "."`).
-N'y commitez jamais de documents internes (business plan, prévisionnel, etc.).
+⚠️ Ce dépôt est déployé publiquement tel quel par Vercel. N'y commitez
+jamais de documents internes (business plan, prévisionnel, etc.).
