@@ -337,7 +337,7 @@ function subscribeData() {
     updateBookingBar();
     updateOnboardingState();
     renderBookings();
-  }, () => setAppStatus('Impossible de charger vos biens.', 'error'));
+  }, error => setAppStatus(`Impossible de charger vos biens : ${authErrorMessage(error)}`, 'error'));
 
   const bookingsQuery = query(collection(db, 'bookings'), where('clientId', '==', currentUser.uid));
   bookingsUnsub = onSnapshot(bookingsQuery, snapshot => {
@@ -347,7 +347,7 @@ function subscribeData() {
     renderBookings();
     renderCalendar();
     updateOnboardingState();
-  }, () => setAppStatus('Impossible de charger vos réservations.', 'error'));
+  }, error => setAppStatus(`Impossible de charger vos réservations : ${authErrorMessage(error)}`, 'error'));
 }
 
 onAuthStateChanged(auth, async user => {
@@ -481,7 +481,7 @@ propertyForm.addEventListener('submit', async event => {
     propertyForm.reset();
     setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.', 'success');
   } catch (err) {
-    setAppStatus('Impossible d’ajouter le bien.', 'error');
+    setAppStatus(`Impossible d’ajouter le bien : ${authErrorMessage(err)}`, 'error');
   }
 });
 
@@ -515,7 +515,7 @@ bookBtn.addEventListener('click', async () => {
     renderCalendar();
     updateBookingBar();
   } catch (err) {
-    setAppStatus('Impossible d’enregistrer la réservation.', 'error');
+    setAppStatus(`Impossible d’enregistrer la réservation : ${authErrorMessage(err)}`, 'error');
   }
 });
 

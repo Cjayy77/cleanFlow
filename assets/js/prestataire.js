@@ -16,6 +16,8 @@ import {
   requestTeamAccess,
   queueEmail,
   TEAM_EMAIL,
+  withTimeout,
+  storageErrorMessage,
 } from './shared.js';
 import {
   collection,
@@ -51,6 +53,12 @@ const incidentStatus = document.getElementById('incidentStatus');
 const incidentType = document.getElementById('incidentType');
 const incidentDescription = document.getElementById('incidentDescription');
 const incidentPhoto = document.getElementById('incidentPhoto');
+const workStatus = document.getElementById('workStatus');
+
+function setWorkStatus(message, type = 'error') {
+  workStatus.textContent = message;
+  workStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
+}
 
 // Statuts sur lesquels le prestataire peut encore agir ('rejected' = dossier
 // renvoyé par l'admin pour correction, à re-soumettre).
@@ -69,9 +77,9 @@ function setAuthMessage(message, type = '') {
   authError.className = 'status-banner' + (type ? ` ${type}` : '') + (message ? '' : ' hidden');
 }
 
-function setIncidentMessage(message = '') {
+function setIncidentMessage(message = '', type = 'info') {
   incidentStatus.textContent = message;
-  incidentStatus.classList.toggle('hidden', !message);
+  incidentStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
 }
 
 function showAuth(message = '', type = '') {
@@ -141,7 +149,7 @@ function renderPendingList() {
           status: 'accepted',
         });
       } catch (e) {
-        setAuthMessage('Impossible d’accepter la mission.');
+        setWorkStatus(`Impossible d’accepter la mission : ${storageErrorMessage(e)}`);
       }
     });
     pendingList.appendChild(card);
@@ -197,12 +205,15 @@ function renderActiveBooking() {
         fileInput.onchange = async event => {
           const file = event.target.files[0];
           if (!file) return;
+          setWorkStatus('');
+          slotEl.classList.add('uploading');
           try {
-            await uploadBookingImage({ bookingId: activeBooking.id, slot: slot.key, file, uploadedBy: currentUser.uid });
+            await withTimeout(uploadBookingImage({ bookingId: activeBooking.id, slot: slot.key, file, uploadedBy: currentUser.uid }), 30000);
             await loadPhotosForBooking(activeBooking.id);
             renderActiveBooking();
           } catch (e) {
-            setAuthMessage('Impossible de téléverser la photo.');
+            slotEl.classList.remove('uploading');
+            setWorkStatus(`Photo « ${slot.label} » non envoyée : ${storageErrorMessage(e)}`);
           }
         };
         fileInput.click();
@@ -230,7 +241,7 @@ function renderActiveBooking() {
         text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · soumis par ${currentUser.name || currentUser.email}. À contrôler dans /admin/.`,
       });
     } catch (e) {
-      setAuthMessage('Impossible d’envoyer le dossier.');
+      setWorkStatus(`Impossible d’envoyer le dossier : ${storageErrorMessage(e)}`);
     }
   };
   activeBookingContainer.appendChild(button);
@@ -252,7 +263,7 @@ function loadAssignedBookings() {
       activePhotoRecords = {};
     }
     renderActiveBooking();
-  }, () => setAuthMessage('Impossible de charger vos missions.'));
+  }, error => setWorkStatus(`Impossible de charger vos missions : ${storageErrorMessage(error)}`));
 }
 
 function loadPendingBookings() {
@@ -263,7 +274,7 @@ function loadPendingBookings() {
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
     renderPendingList();
-  }, () => setAuthMessage('Impossible de charger les missions disponibles.'));
+  }, error => setWorkStatus(`Impossible de charger les missions disponibles : ${storageErrorMessage(error)}`));
 }
 
 onAuthStateChanged(auth, async user => {
@@ -355,15 +366,15 @@ incidentForm.addEventListener('submit', async event => {
       if (file) {
         const incidentPath = `incidents/${activeBooking.id}/${Date.now()}_${file.name}`;
         const incidentRef = ref(storage, incidentPath);
-        await uploadBytes(incidentRef, file, { contentType: file.type || 'image/jpeg' });
-        incidentPayload.photoRefs = [await getDownloadURL(incidentRef)];
+        await withTimeout(uploadBytes(incidentRef, file, { contentType: file.type || 'image/jpeg' }), 30000);
+        incidentPayload.photoRefs = [await withTimeout(getDownloadURL(incidentRef), 15000)];
       }
       await addDoc(collection(db, 'incidents'), incidentPayload);
     });
     incidentForm.reset();
-    setIncidentMessage('Signalement envoyé à l’équipe Kleining.');
+    setIncidentMessage('Signalement envoyé à l’équipe Kleining.', 'success');
   } catch (err) {
-    setIncidentMessage('Impossible d’envoyer le signalement.');
+    setIncidentMessage(`Impossible d’envoyer le signalement : ${storageErrorMessage(err)}`, 'error');
   }
 });
 

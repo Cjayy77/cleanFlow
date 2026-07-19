@@ -64,9 +64,9 @@ function setAuthMessage(message, type = '') {
   authError.className = 'status-banner' + (type ? ` ${type}` : '') + (message ? '' : ' hidden');
 }
 
-function setAdminStatus(message = '') {
+function setAdminStatus(message = '', type = 'info') {
   adminStatus.textContent = message;
-  adminStatus.classList.toggle('hidden', !message);
+  adminStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
 }
 
 function showAuth(message = '', type = '') {
@@ -104,7 +104,11 @@ function buildBookingQueueItem(booking) {
   item.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
   item.onclick = async () => {
     selectedBooking = booking;
-    await refreshBookingDetail();
+    try {
+      await refreshBookingDetail();
+    } catch (e) {
+      setAdminStatus(`Impossible de charger le détail du dossier : ${authErrorMessage(e)}`, 'error');
+    }
     renderBookingQueue();
     renderBookingDetail();
   };
@@ -236,7 +240,7 @@ function refreshQueue() {
     }
     renderBookingQueue();
     renderBookingDetail();
-  }, () => setAdminStatus('Impossible de charger la file de vérification.'));
+  }, error => setAdminStatus(`Impossible de charger la file de vérification : ${authErrorMessage(error)}`, 'error'));
 }
 
 async function resolveBooking(status) {
@@ -292,7 +296,7 @@ async function resolveBooking(status) {
       ? 'Dossier validé. Le client est notifié par email.'
       : 'Dossier renvoyé au prestataire pour correction (notifié par email).');
   } catch (err) {
-    setAdminStatus('Impossible de mettre à jour le dossier.');
+    setAdminStatus(`Impossible de mettre à jour le dossier : ${authErrorMessage(err)}`, 'error');
   } finally {
     actionBtn.classList.remove('loading');
   }
@@ -440,7 +444,7 @@ function subscribeAccessRequests() {
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
     renderAccessRequests(requests);
-  }, () => setTeamStatus('Impossible de charger les demandes d’accès.', 'error'));
+  }, error => setTeamStatus(`Impossible de charger les demandes d’accès : ${authErrorMessage(error)}`, 'error'));
 }
 
 switchToRequest.addEventListener('click', event => {

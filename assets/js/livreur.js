@@ -34,6 +34,12 @@ const switchToSignIn = document.getElementById('switchToSignIn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
 const taskList = document.getElementById('taskList');
+const workStatus = document.getElementById('workStatus');
+
+function setWorkStatus(message, type = 'error') {
+  workStatus.textContent = message;
+  workStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
+}
 
 let currentUser = null;
 let authNotice = null;
@@ -98,7 +104,7 @@ function loadLaundryTasks() {
       .filter(booking => ['pending', 'accepted', 'submitted', 'verified'].includes(booking.status))
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
     renderTasks(bookings);
-  }, () => setAuthMessage('Impossible de charger les tournées de linge.'));
+  }, error => setWorkStatus(`Impossible de charger les tournées de linge : ${authErrorMessage(error)}`));
 }
 
 onAuthStateChanged(auth, async user => {
