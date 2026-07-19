@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Kleining — Prestataire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+<div class="app-wrap">
+  <div class="top-row">
+    <div>
+      <div class="brand"><span class="k">Klein</span>ing</div>
+      <div class="role-tag">Interface prestataire</div>
+    </div>
+    <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
+  </div>
+
+  <div class="card" id="authScreen">
+    <div class="eyebrow">Accès réservé</div>
+    <h1>Connexion prestataire</h1>
+    <p>Espace réservé aux entreprises de ménage partenaires. Votre compte est créé par l’équipe Kleining.</p>
+    <div id="authError" class="status-banner hidden"></div>
+    <form id="signInForm">
+      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
+      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
+      <button class="btn primary" type="submit">Se connecter</button>
+    </form>
+  </div>
+
+  <div id="appScreen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Bonjour</div>
+      <h1 id="userNameLabel">Prestataire</h1>
+      <p>Acceptez des missions, réalisez le ménage, puis soumettez le jeu de photos exigé. L’équipe Kleining contrôle chaque dossier avant confirmation au client.</p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="eyebrow">Missions disponibles</div>
+        <h2>Nouvelles demandes</h2>
+        <div id="pendingList"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Mission en cours</div>
+        <div id="activeBooking"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Incident</div>
+      <h2>Signaler un incident</h2>
+      <p>Objet cassé, objet perdu ou autre problème pendant la mission en cours.</p>
+      <div id="incidentStatus" class="status-banner info hidden"></div>
+      <form id="incidentForm">
+        <div class="form-row">
+          <label for="incidentType">Type d’incident</label>
+          <select id="incidentType">
+            <option value="broken_object">Objet cassé</option>
+            <option value="lost_object">Objet perdu</option>
+            <option value="other">Autre</option>
+          </select>
+        </div>
+        <div class="form-row"><label for="incidentDescription">Description</label><textarea id="incidentDescription" required></textarea></div>
+        <div class="form-row"><label for="incidentPhoto">Photo (optionnelle)</label><input id="incidentPhoto" type="file" accept="image/*"></div>
+        <button class="btn primary" type="submit">Envoyer le signalement</button>
+      </form>
+    </div>
+  </div>
+</div>
+<script type="module" src="../assets/js/prestataire.js"></script>
+</body>
+</html>

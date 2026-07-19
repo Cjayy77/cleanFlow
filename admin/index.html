@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Kleining — Vérification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/ui.css">
+</head>
+<body>
+<div class="app-wrap">
+  <div class="top-row">
+    <div>
+      <div class="brand"><span class="k">Klein</span>ing</div>
+      <div class="role-tag">File de vérification — équipe Kleining</div>
+    </div>
+    <button class="btn ghost" id="signOutBtn">Se déconnecter</button>
+  </div>
+
+  <div class="card" id="authScreen">
+    <div class="eyebrow">Accès réservé</div>
+    <h1>Connexion admin</h1>
+    <p>Espace réservé à l’équipe Kleining pour le contrôle des dossiers photo.</p>
+    <div id="authError" class="status-banner hidden"></div>
+    <form id="signInForm">
+      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
+      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
+      <button class="btn primary" type="submit">Se connecter</button>
+    </form>
+  </div>
+
+  <div id="appScreen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Contrôle qualité</div>
+      <h1 id="userNameLabel">Équipe Kleining</h1>
+      <p>Aucun dossier ne se valide automatiquement : chaque jeu de photos est contrôlé ici avant que le client ne soit notifié.</p>
+    </div>
+
+    <div id="adminStatus" class="status-banner info hidden"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="eyebrow">File d’attente</div>
+        <h2>Dossiers soumis</h2>
+        <div id="bookingQueue"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Dossier sélectionné</div>
+        <h2 id="bookingTitle">Aucun dossier sélectionné</h2>
+        <p id="bookingMeta">Sélectionnez un dossier dans la file pour contrôler les photos.</p>
+        <div class="photo-grid" id="photoGrid"></div>
+        <div class="form-row">
+          <label for="rejectNote">Note (obligatoire en cas de rejet, visible par le prestataire)</label>
+          <textarea id="rejectNote" placeholder="Ex. : photo de la salle de bain floue, à reprendre."></textarea>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn primary" id="verifyBtn" type="button" disabled>Valider le dossier</button>
+          <button class="btn ghost" id="rejectBtn" type="button" disabled>Renvoyer au prestataire</button>
+        </div>
+        <div class="eyebrow" style="margin-top:26px;">Incidents signalés</div>
+        <div id="incidentList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="../assets/js/admin.js"></script>
+</body>
+</html>
