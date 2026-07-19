@@ -55,22 +55,29 @@ domaine personnalisé. Sans cela, la connexion échouera depuis le site.
 
 ## 6. Créer les comptes internes
 
-Seuls les **clients** peuvent s'inscrire eux-mêmes (sur `/app/`) ; les règles
-refusent tout autre rôle à l'auto-inscription. Pour chaque compte
-prestataire, livreur ou admin :
+Seuls les **clients** peuvent s'inscrire eux-mêmes (sur `/app/`). Les comptes
+prestataire, livreur et admin se créent depuis l'interface `/admin/`, carte
+**« Équipe — Créer un compte interne »** : rôle + nom + email + mot de passe
+provisoire, un clic, terminé. L'interface crée l'identifiant ET le rôle d'un
+coup.
 
-1. Console Firebase → **Authentication** → *Users* → **Add user**
-   (email + mot de passe). Copiez l'**UID** créé.
-2. **Firestore Database** → collection `users` → **Ajouter un document**,
-   avec l'UID comme **ID du document** :
+**Seul le tout premier compte admin** doit être créé à la main dans la
+console (il faut bien un admin pour ouvrir `/admin/` la première fois) :
 
-```
-uid:   <le même UID>          (string)
-role:  "admin"                (ou "prestataire" / "livreur")
-name:  "Équipe Kleining"      (string)
-email: <le même email>        (string)
-phone: "06..."                (string)
-```
+1. Console Firebase → **Authentication** → *Users* → **Add user** →
+   votre email + un mot de passe → **Add user**.
+2. La liste affiche le nouvel utilisateur : copiez la valeur de la colonne
+   **User UID** (icône copier au survol).
+3. **Firestore Database** → **+ Démarrer une collection** → ID de collection :
+   `users` → ID du **document** : collez l'UID (ne laissez pas l'ID
+   auto-généré) → ajoutez les champs (tous de type *string*) :
+   - `uid` = l'UID collé encore une fois
+   - `role` = `admin`
+   - `name` = votre nom
+   - `email` = le même email qu'à l'étape 1
+   - `phone` = votre numéro
+4. Ouvrez `/admin/` sur votre site, connectez-vous : vous y êtes. Tous les
+   autres comptes se créent désormais depuis la carte Équipe.
 
 ## 7. Les quatre interfaces
 
