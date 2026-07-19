@@ -78,6 +78,10 @@ textarea{ min-height:110px; resize:vertical; }
 .status-pill.submitted{ background:#F6EEDD; color:#8A6516; }
 .status-pill.verified{ background:var(--ok-bg); color:var(--ok-ink); }
 .status-pill.rejected{ background:var(--danger-bg); color:var(--danger-ink); }
+.status-pill.cancelled{ background:#EEECE6; color:var(--muted); }
+.btn.ghost.danger{ color:var(--danger-ink); }
+.btn.ghost.danger:hover:not(:disabled){ border-color:var(--danger-ink); color:var(--danger-ink); }
+.dossier .btn{ margin-top:14px; }
 
 .dossier, .task-card{ border:1px solid var(--line); border-radius:6px; padding:18px; margin-bottom:14px; background:var(--white); }
 .task-card.selectable{ cursor:pointer; transition: border-color .15s ease-out, box-shadow .15s ease-out; }

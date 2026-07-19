@@ -17,6 +17,8 @@ import {
   where,
   onSnapshot,
   addDoc,
+  updateDoc,
+  doc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
@@ -159,7 +161,7 @@ function renderCalendar() {
   });
 
   const takenDates = bookings
-    .filter(b => b.propertyId === selectedPropertyId && b.status !== 'rejected')
+    .filter(b => b.propertyId === selectedPropertyId && !['rejected', 'cancelled'].includes(b.status))
     .map(b => b.scheduledDate);
 
   // Semaine française : lundi en première colonne.
@@ -231,6 +233,25 @@ function renderBookings() {
       <div class="dossier-meta">${booking.price}€ · Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
     `;
     card.querySelector('.dossier-addr').textContent = address;
+    // Annulable uniquement tant qu'aucun prestataire n'a accepté la mission
+    // (même contrainte côté règles Firestore).
+    if (booking.status === 'pending') {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn ghost danger';
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = 'Annuler la réservation';
+      cancelBtn.onclick = async () => {
+        if (!window.confirm(`Annuler le ménage du ${formatShortDate(booking.scheduledDate)} ?`)) return;
+        try {
+          await withButtonLoading(cancelBtn, () =>
+            updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }));
+          setAppStatus('Réservation annulée. La date est de nouveau disponible.', 'success');
+        } catch (err) {
+          setAppStatus('Impossible d’annuler : la mission vient peut-être d’être acceptée par un prestataire. Contactez l’équipe Kleining.', 'error');
+        }
+      };
+      card.appendChild(cancelBtn);
+    }
     bookingsWrap.appendChild(card);
   });
 }

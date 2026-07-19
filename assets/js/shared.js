@@ -128,6 +128,7 @@ export function formatBookingStatus(status) {
     case 'submitted': return 'Photos soumises';
     case 'verified': return 'Confirmé';
     case 'rejected': return 'À corriger';
+    case 'cancelled': return 'Annulée';
     default: return status.charAt(0).toUpperCase() + status.slice(1);
   }
 }
