@@ -51,10 +51,7 @@ a{ color:var(--klein); }
 .loading-state{ display:flex; align-items:center; gap:12px; padding:26px; color:var(--muted); font-size:14px; }
 .spinner{ width:18px; height:18px; border:2px solid var(--line); border-top-color:var(--klein); border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
 
-.card{ background:var(--white); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--ink); padding:30px 28px; margin-bottom:36px; animation: card-in .45s ease-out backwards; }
-.card:nth-of-type(2){ animation-delay:.06s; }
-.card:nth-of-type(3){ animation-delay:.12s; }
-@keyframes card-in{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
+.card{ background:var(--white); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--ink); padding:30px 28px; margin-bottom:36px; }
 .grid2{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:0 40px; align-items:start; }
 @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
 
