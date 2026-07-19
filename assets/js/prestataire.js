@@ -47,6 +47,7 @@ const switchToSignIn = document.getElementById('switchToSignIn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
 const pendingList = document.getElementById('pendingList');
+const assignedList = document.getElementById('assignedList');
 const activeBookingContainer = document.getElementById('activeBooking');
 const incidentForm = document.getElementById('incidentForm');
 const incidentStatus = document.getElementById('incidentStatus');
@@ -67,6 +68,8 @@ const ACTIONABLE_STATUSES = ['accepted', 'submitted', 'rejected'];
 let currentUser = null;
 let authNotice = null;
 let pendingBookings = [];
+let assignedBookings = [];
+let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
 let pendingUnsub = null;
@@ -153,6 +156,33 @@ function renderPendingList() {
       }
     });
     pendingList.appendChild(card);
+  });
+}
+
+function renderAssignedList() {
+  assignedList.innerHTML = '';
+  if (assignedBookings.length === 0) return;
+  assignedBookings.forEach(booking => {
+    const item = document.createElement('div');
+    item.className = 'task-card selectable' + (booking.id === selectedMissionId ? ' active' : '');
+    item.innerHTML = `
+      <div class="task-top">
+        <div>
+          <div class="task-title"></div>
+          <div class="task-meta">${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}</div>
+        </div>
+        <div class="status-pill ${booking.status}">${formatBookingStatus(booking.status)}</div>
+      </div>
+    `;
+    item.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
+    item.onclick = async () => {
+      selectedMissionId = booking.id;
+      activeBooking = booking;
+      await loadPhotosForBooking(booking.id);
+      renderAssignedList();
+      renderActiveBooking();
+    };
+    assignedList.appendChild(item);
   });
 }
 
@@ -245,6 +275,30 @@ function renderActiveBooking() {
     }
   };
   activeBookingContainer.appendChild(button);
+
+  if (activeBooking.status === 'accepted') {
+    const releaseBtn = document.createElement('button');
+    releaseBtn.className = 'btn ghost danger';
+    releaseBtn.type = 'button';
+    releaseBtn.textContent = 'Se désister de cette mission';
+    releaseBtn.style.marginLeft = '12px';
+    releaseBtn.onclick = async () => {
+      if (!window.confirm('Vous désister ? La mission redeviendra disponible pour les autres prestataires.')) return;
+      try {
+        await withButtonLoading(releaseBtn, () =>
+          updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'pending', prestataireId: null }));
+        queueEmail({
+          to: TEAM_EMAIL,
+          subject: `Kleining — mission libérée · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+          text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · libérée par ${currentUser.name || currentUser.email}. La mission est de nouveau disponible.`,
+        });
+        setWorkStatus('Mission libérée. Elle est de nouveau disponible pour les autres prestataires.', 'success');
+      } catch (e) {
+        setWorkStatus(`Impossible de vous désister : ${storageErrorMessage(e)}`);
+      }
+    };
+    activeBookingContainer.appendChild(releaseBtn);
+  }
 }
 
 function loadAssignedBookings() {
@@ -252,16 +306,19 @@ function loadAssignedBookings() {
   // Filtre unique + tri côté client : aucun index composite à créer.
   const assignedQuery = query(collection(db, 'bookings'), where('prestataireId', '==', currentUser.uid));
   assignedUnsub = onSnapshot(assignedQuery, async snapshot => {
-    const actionable = snapshot.docs
+    assignedBookings = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .filter(booking => ACTIONABLE_STATUSES.includes(booking.status))
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
-    activeBooking = actionable[0] || null;
+    const stillThere = assignedBookings.find(b => b.id === selectedMissionId);
+    activeBooking = stillThere || assignedBookings[0] || null;
+    selectedMissionId = activeBooking ? activeBooking.id : null;
     if (activeBooking) {
       await loadPhotosForBooking(activeBooking.id);
     } else {
       activePhotoRecords = {};
     }
+    renderAssignedList();
     renderActiveBooking();
   }, error => setWorkStatus(`Impossible de charger vos missions : ${storageErrorMessage(error)}`));
 }

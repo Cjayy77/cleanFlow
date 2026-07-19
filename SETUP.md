@@ -134,8 +134,11 @@ personnalisez ce modèle dans Authentication → Templates.
 l'admin ; il corrige les photos et re-soumet.
 
 Le client peut annuler sa réservation (statut `cancelled`) uniquement tant
-qu'elle est `pending` — dès qu'un prestataire l'a acceptée, l'annulation
-passe par l'équipe. Cette contrainte est appliquée par les règles Firestore.
+qu'elle est `pending` ; ensuite l'annulation passe par l'équipe. Un
+prestataire peut se désister d'une mission `accepted` : elle redevient
+`pending` et l'équipe est notifiée. Le livreur coche ses tournées de linge
+(champ `linenDone`). Ces contraintes sont appliquées par les règles
+Firestore.
 
 > Note : le cahier des charges nommait ce statut `completed` ; le code
 > existant utilisait déjà `submitted`, convention conservée.

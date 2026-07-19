@@ -52,12 +52,89 @@ const rejectBtn = document.getElementById('rejectBtn');
 const rejectNote = document.getElementById('rejectNote');
 const incidentList = document.getElementById('incidentList');
 const adminStatus = document.getElementById('adminStatus');
+const statPending = document.getElementById('statPending');
+const statAccepted = document.getElementById('statAccepted');
+const statSubmitted = document.getElementById('statSubmitted');
+const statVerified = document.getElementById('statVerified');
+const openIncidents = document.getElementById('openIncidents');
 
 let currentUser = null;
 let authNotice = null;
 let selectedBooking = null;
 let bookingQueueData = [];
 let bookingQueueUnsub = null;
+let statsUnsub = null;
+let incidentsUnsub = null;
+
+function subscribeStats() {
+  if (statsUnsub) statsUnsub();
+  statsUnsub = onSnapshot(collection(db, 'bookings'), snapshot => {
+    const counts = { pending: 0, accepted: 0, submitted: 0, verified: 0 };
+    snapshot.docs.forEach(docSnap => {
+      const status = docSnap.data().status;
+      if (counts[status] !== undefined) counts[status] += 1;
+    });
+    statPending.textContent = counts.pending;
+    statAccepted.textContent = counts.accepted;
+    statSubmitted.textContent = counts.submitted;
+    statVerified.textContent = counts.verified;
+  }, error => setAdminStatus(`Impossible de charger la vue d’ensemble : ${authErrorMessage(error)}`, 'error'));
+}
+
+function subscribeOpenIncidents() {
+  if (incidentsUnsub) incidentsUnsub();
+  const openQuery = query(collection(db, 'incidents'), where('status', '==', 'open'));
+  incidentsUnsub = onSnapshot(openQuery, snapshot => {
+    const incidents = snapshot.docs
+      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+      .sort((a, b) => (b.reportedAt?.toMillis?.() || 0) - (a.reportedAt?.toMillis?.() || 0));
+    renderOpenIncidents(incidents);
+  }, error => setAdminStatus(`Impossible de charger les incidents : ${authErrorMessage(error)}`, 'error'));
+}
+
+function renderOpenIncidents(incidents) {
+  openIncidents.innerHTML = '';
+  if (incidents.length === 0) {
+    openIncidents.innerHTML = '<div class="empty-state">Aucun incident ouvert.</div>';
+    return;
+  }
+  incidents.forEach(incident => {
+    const item = document.createElement('div');
+    item.className = 'incident-item';
+    const typeLabel = incident.type === 'broken_object' ? 'Objet cassé' : incident.type === 'lost_object' ? 'Objet perdu' : 'Autre';
+    const title = document.createElement('strong');
+    title.textContent = `${typeLabel} · Réf ${(incident.bookingId || '').slice(0, 6).toUpperCase()}`;
+    const description = document.createElement('div');
+    description.className = 'task-meta';
+    description.textContent = incident.description;
+    item.appendChild(title);
+    item.appendChild(description);
+    (incident.photoRefs || []).forEach((url, index) => {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.className = 'task-meta';
+      link.textContent = `Photo jointe ${index + 1}`;
+      item.appendChild(link);
+    });
+    const resolveBtn = document.createElement('button');
+    resolveBtn.className = 'btn ghost';
+    resolveBtn.type = 'button';
+    resolveBtn.textContent = 'Marquer traité';
+    resolveBtn.style.marginTop = '12px';
+    resolveBtn.onclick = async () => {
+      try {
+        await withButtonLoading(resolveBtn, () =>
+          updateDoc(doc(db, 'incidents', incident.id), { status: 'resolved' }));
+      } catch (e) {
+        setAdminStatus(`Impossible de clore l’incident : ${authErrorMessage(e)}`, 'error');
+      }
+    };
+    item.appendChild(resolveBtn);
+    openIncidents.appendChild(item);
+  });
+}
 
 function setAuthMessage(message, type = '') {
   authError.textContent = message;
@@ -307,6 +384,8 @@ onAuthStateChanged(auth, async user => {
     currentUser = null;
     if (bookingQueueUnsub) bookingQueueUnsub();
     if (accessUnsub) accessUnsub();
+    if (statsUnsub) statsUnsub();
+    if (incidentsUnsub) incidentsUnsub();
     if (authNotice) {
       showAuth(authNotice.message, authNotice.type);
       authNotice = null;
@@ -337,6 +416,8 @@ onAuthStateChanged(auth, async user => {
     showApp();
     refreshQueue();
     subscribeAccessRequests();
+    subscribeStats();
+    subscribeOpenIncidents();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);

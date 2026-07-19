@@ -64,7 +64,7 @@
         </div>
         <div class="card">
           <div class="eyebrow">Nouveau bien</div>
-          <h2>Ajouter une propriété</h2>
+          <h2 id="propertyFormTitle">Ajouter une propriété</h2>
           <form id="propertyForm">
             <div class="form-row"><label for="propertyStreet">Rue et numéro</label><input id="propertyStreet" required></div>
             <div class="form-cols">
@@ -72,7 +72,8 @@
               <div class="form-row"><label for="propertyPostal">Code postal</label><input id="propertyPostal" required></div>
             </div>
             <div class="form-row"><label for="propertyNotes">Notes / consignes d’accès</label><textarea id="propertyNotes"></textarea></div>
-            <button class="btn primary" type="submit">Enregistrer le bien</button>
+            <button class="btn primary" type="submit" id="propertySubmitBtn">Enregistrer le bien</button>
+            <div class="note-box hidden" id="cancelEditWrap"><a href="#" id="cancelEditBtn">Annuler la modification</a></div>
           </form>
         </div>
       </div>

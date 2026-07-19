@@ -16,6 +16,8 @@ import {
   query,
   where,
   onSnapshot,
+  updateDoc,
+  doc,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
   onAuthStateChanged,
@@ -77,19 +79,31 @@ function renderTasks(bookings) {
   }
   bookings.forEach(booking => {
     const card = document.createElement('div');
-    card.className = 'task-card';
+    card.className = 'task-card' + (booking.linenDone ? ' done' : '');
     card.innerHTML = `
       <div class="task-top">
         <div>
           <div class="task-title"></div>
           <div class="task-meta">${formatShortDate(booking.scheduledDate)} · dépôt du linge propre + récupération du linge sale</div>
         </div>
-        <div class="status-pill ${booking.status}">${formatBookingStatus(booking.status)}</div>
+        <div class="status-pill ${booking.linenDone ? 'verified' : booking.status}">${booking.linenDone ? 'Linge géré' : formatBookingStatus(booking.status)}</div>
       </div>
       <div class="task-meta">Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
     `;
     card.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
-    // TODO: confirm with team — le livreur doit-il pouvoir marquer une tournée "faite" ?
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = booking.linenDone ? 'btn ghost' : 'btn primary';
+    toggleBtn.type = 'button';
+    toggleBtn.textContent = booking.linenDone ? 'Annuler (tournée non faite)' : 'Marquer la tournée faite';
+    toggleBtn.onclick = async () => {
+      try {
+        await withButtonLoading(toggleBtn, () =>
+          updateDoc(doc(db, 'bookings', booking.id), { linenDone: !booking.linenDone }));
+      } catch (e) {
+        setWorkStatus(`Impossible de mettre à jour la tournée : ${authErrorMessage(e)}`);
+      }
+    };
+    card.appendChild(toggleBtn);
     taskList.appendChild(card);
   });
 }
@@ -102,7 +116,7 @@ function loadLaundryTasks() {
     const bookings = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .filter(booking => ['pending', 'accepted', 'submitted', 'verified'].includes(booking.status))
-      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+      .sort((a, b) => (!!a.linenDone - !!b.linenDone) || a.scheduledDate.localeCompare(b.scheduledDate));
     renderTasks(bookings);
   }, error => setWorkStatus(`Impossible de charger les tournées de linge : ${authErrorMessage(error)}`));
 }
