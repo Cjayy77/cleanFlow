@@ -12,7 +12,7 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
-  createTeamAccount,
+  requestTeamAccess,
 } from './shared.js';
 import {
   collection,
@@ -36,6 +36,9 @@ const authScreen = document.getElementById('authScreen');
 const appScreen = document.getElementById('appScreen');
 const authError = document.getElementById('authError');
 const signInForm = document.getElementById('signInForm');
+const requestForm = document.getElementById('requestForm');
+const switchToRequest = document.getElementById('switchToRequest');
+const switchToSignIn = document.getElementById('switchToSignIn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
 const bookingQueue = document.getElementById('bookingQueue');
@@ -49,13 +52,14 @@ const incidentList = document.getElementById('incidentList');
 const adminStatus = document.getElementById('adminStatus');
 
 let currentUser = null;
+let authNotice = null;
 let selectedBooking = null;
 let bookingQueueData = [];
 let bookingQueueUnsub = null;
 
-function setAuthMessage(message) {
+function setAuthMessage(message, type = '') {
   authError.textContent = message;
-  authError.classList.toggle('hidden', !message);
+  authError.className = 'status-banner' + (type ? ` ${type}` : '') + (message ? '' : ' hidden');
 }
 
 function setAdminStatus(message = '') {
@@ -63,12 +67,14 @@ function setAdminStatus(message = '') {
   adminStatus.classList.toggle('hidden', !message);
 }
 
-function showAuth(message = '') {
+function showAuth(message = '', type = '') {
   loadingScreen.classList.add('hidden');
   signOutBtn.classList.add('hidden');
   authScreen.classList.remove('hidden');
   appScreen.classList.add('hidden');
-  setAuthMessage(message);
+  requestForm.classList.add('hidden');
+  signInForm.classList.remove('hidden');
+  setAuthMessage(message, type);
 }
 
 function showApp() {
@@ -275,22 +281,40 @@ onAuthStateChanged(auth, async user => {
   if (!user) {
     currentUser = null;
     if (bookingQueueUnsub) bookingQueueUnsub();
-    showAuth();
+    if (accessUnsub) accessUnsub();
+    if (authNotice) {
+      showAuth(authNotice.message, authNotice.type);
+      authNotice = null;
+    } else {
+      showAuth();
+    }
     return;
   }
   try {
     const docData = await loadUserDoc(user.uid);
     if (!docData || docData.role !== ROLE_ADMIN) {
+      authNotice = { message: 'Ce compte n’est pas autorisé sur l’interface admin.', type: '' };
       await signOut(auth);
-      showAuth('Ce compte n’est pas autorisé sur l’interface admin.');
+      return;
+    }
+    const accountStatus = docData.accountStatus ?? 'approved';
+    if (accountStatus === 'pending') {
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Kleining. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      await signOut(auth);
+      return;
+    }
+    if (accountStatus !== 'approved') {
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      await signOut(auth);
       return;
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
     refreshQueue();
+    subscribeAccessRequests();
   } catch (error) {
+    authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
-    showAuth(authErrorMessage(error));
   }
 });
 
@@ -316,28 +340,118 @@ signOutBtn.addEventListener('click', async () => {
 verifyBtn.addEventListener('click', () => resolveBooking('verified'));
 rejectBtn.addEventListener('click', () => resolveBooking('rejected'));
 
-const teamForm = document.getElementById('teamForm');
 const teamStatus = document.getElementById('teamStatus');
-const ROLE_URLS = { prestataire: '/prestataire/', livreur: '/livreur/', admin: '/admin/' };
+const accessRequests = document.getElementById('accessRequests');
+const ROLE_LABELS = { prestataire: 'Prestataire', livreur: 'Livreur', admin: 'Admin' };
+let accessUnsub = null;
 
 function setTeamStatus(message, type = 'info') {
   teamStatus.textContent = message;
   teamStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
 }
 
-teamForm.addEventListener('submit', async event => {
+function buildAccessRequestCard(req) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = `${ROLE_LABELS[req.role] || req.role} — ${req.name || '(sans nom)'}`;
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  meta.textContent = `${req.email || ''} · ${req.phone || ''}`;
+  const code = document.createElement('div');
+  code.className = 'task-meta';
+  code.textContent = req.inviteCode ? `Code d’invitation : ${req.inviteCode}` : 'Aucun code d’invitation fourni';
+  if (req.inviteCode) code.style.fontWeight = '700';
+  card.appendChild(title);
+  card.appendChild(meta);
+  card.appendChild(code);
+
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap;';
+  const approveBtn = document.createElement('button');
+  approveBtn.className = 'btn primary';
+  approveBtn.type = 'button';
+  approveBtn.textContent = 'Approuver';
+  approveBtn.onclick = async () => {
+    try {
+      await withButtonLoading(approveBtn, () =>
+        updateDoc(doc(db, 'users', req.id), { accountStatus: 'approved' }));
+      setTeamStatus(`Accès ${req.role} approuvé pour ${req.name}. La personne peut maintenant se connecter.`, 'success');
+    } catch (e) {
+      setTeamStatus('Impossible d’approuver cette demande.', 'error');
+    }
+  };
+  const refuseBtn = document.createElement('button');
+  refuseBtn.className = 'btn ghost danger';
+  refuseBtn.type = 'button';
+  refuseBtn.textContent = 'Refuser';
+  refuseBtn.onclick = async () => {
+    if (!window.confirm(`Refuser l’accès ${req.role} demandé par ${req.name} ?`)) return;
+    try {
+      await withButtonLoading(refuseBtn, () =>
+        updateDoc(doc(db, 'users', req.id), { accountStatus: 'rejected' }));
+      setTeamStatus(`Demande de ${req.name} refusée. Ce compte n’a accès à aucune interface.`, 'success');
+    } catch (e) {
+      setTeamStatus('Impossible de refuser cette demande.', 'error');
+    }
+  };
+  actions.appendChild(approveBtn);
+  actions.appendChild(refuseBtn);
+  card.appendChild(actions);
+  return card;
+}
+
+function renderAccessRequests(requests) {
+  accessRequests.innerHTML = '';
+  if (requests.length === 0) {
+    accessRequests.innerHTML = '<div class="empty-state">Aucune demande d’accès en attente.</div>';
+    return;
+  }
+  requests.forEach(req => accessRequests.appendChild(buildAccessRequestCard(req)));
+}
+
+function subscribeAccessRequests() {
+  if (accessUnsub) accessUnsub();
+  const pendingAccessQuery = query(collection(db, 'users'), where('accountStatus', '==', 'pending'));
+  accessUnsub = onSnapshot(pendingAccessQuery, snapshot => {
+    const requests = snapshot.docs
+      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+      .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+    renderAccessRequests(requests);
+  }, () => setTeamStatus('Impossible de charger les demandes d’accès.', 'error'));
+}
+
+switchToRequest.addEventListener('click', event => {
   event.preventDefault();
-  const role = document.getElementById('teamRole').value;
-  const name = document.getElementById('teamName').value.trim();
-  const phone = document.getElementById('teamPhone').value.trim();
-  const email = document.getElementById('teamEmail').value.trim();
-  const password = document.getElementById('teamPassword').value;
+  signInForm.classList.add('hidden');
+  requestForm.classList.remove('hidden');
+  setAuthMessage('');
+});
+
+switchToSignIn.addEventListener('click', event => {
+  event.preventDefault();
+  requestForm.classList.add('hidden');
+  signInForm.classList.remove('hidden');
+  setAuthMessage('');
+});
+
+requestForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  setAuthMessage('');
+  const name = document.getElementById('requestName').value.trim();
+  const phone = document.getElementById('requestPhone').value.trim();
+  const email = document.getElementById('requestEmail').value.trim();
+  const password = document.getElementById('requestPassword').value;
+  const inviteCode = document.getElementById('requestCode').value.trim();
   try {
-    await withButtonLoading(teamForm.querySelector('button[type="submit"]'), () =>
-      createTeamAccount({ role, name, email, password, phone }));
-    teamForm.reset();
-    setTeamStatus(`Compte ${role} créé pour ${name}. Transmettez à la personne l’adresse ${window.location.origin}${ROLE_URLS[role]} avec l’email ${email} et le mot de passe provisoire.`, 'success');
+    await withButtonLoading(requestForm.querySelector('button[type="submit"]'), () =>
+      requestTeamAccess({ role: ROLE_ADMIN, name, email, password, phone, inviteCode }));
+    requestForm.reset();
+    requestForm.classList.add('hidden');
+    signInForm.classList.remove('hidden');
+    setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
-    setTeamStatus(authErrorMessage(err), 'error');
+    setAuthMessage(authErrorMessage(err), 'error');
   }
 });

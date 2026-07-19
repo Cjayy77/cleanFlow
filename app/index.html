@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kleining — Espace client</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/ui.css">
@@ -50,7 +51,7 @@
     <div class="card">
       <div class="eyebrow">Bonjour</div>
       <h1 id="userNameLabel">Client</h1>
-      <p>Réservez un ménage, suivez sa vérification par l’équipe Kleining, et recevez la confirmation une fois le contrôle photo effectué.</p>
+      <p id="welcomeText">Réservez un ménage, suivez sa vérification par l’équipe Kleining, et recevez la confirmation une fois le contrôle photo effectué.</p>
     </div>
 
     <div class="grid2">
@@ -74,9 +75,10 @@
           </form>
         </div>
       </div>
-      <div class="card">
+      <div class="card" id="bookingCard">
         <div class="eyebrow">Réservation</div>
         <h2>Choisir une date</h2>
+        <p class="booking-for" id="bookingFor"></p>
         <div class="form-row">
           <label>Service</label>
           <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal — 47€</label>
@@ -103,8 +105,8 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="eyebrow">Historique</div>
+    <div class="card" id="historyCard">
+      <div class="eyebrow">Suivi</div>
       <h2>Vos réservations</h2>
       <div id="bookingsWrap"></div>
     </div>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>Kleining — Prestataire</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/ui.css">
@@ -26,12 +27,27 @@
   <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion prestataire</h1>
-    <p>Espace réservé aux entreprises de ménage partenaires. Votre compte est créé par l’équipe Kleining.</p>
+    <p>Espace réservé aux entreprises de ménage partenaires. L’accès se fait sur demande, vérifiée et approuvée par l’équipe Kleining.</p>
     <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
       <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
       <button class="btn primary" type="submit">Se connecter</button>
+      <div class="note-box"><a href="#" id="switchToRequest">Demander un accès prestataire</a></div>
+    </form>
+    <form id="requestForm" class="hidden">
+      <p>Votre demande sera vérifiée par l’équipe Kleining avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestName">Nom de l'entreprise</label><input id="requestName" type="text" required></div>
+        <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
+      </div>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
+        <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
+      </div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Kleining)</label><input id="requestCode" type="text"></div>
+      <button class="btn primary" type="submit">Envoyer la demande</button>
+      <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte — me connecter</a></div>
     </form>
   </div>
 

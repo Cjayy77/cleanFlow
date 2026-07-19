@@ -8,6 +8,7 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  requestTeamAccess,
 } from './shared.js';
 import {
   collection,
@@ -26,24 +27,30 @@ const authScreen = document.getElementById('authScreen');
 const appScreen = document.getElementById('appScreen');
 const authError = document.getElementById('authError');
 const signInForm = document.getElementById('signInForm');
+const requestForm = document.getElementById('requestForm');
+const switchToRequest = document.getElementById('switchToRequest');
+const switchToSignIn = document.getElementById('switchToSignIn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
 const taskList = document.getElementById('taskList');
 
 let currentUser = null;
+let authNotice = null;
 let taskUnsub = null;
 
-function setAuthMessage(message) {
+function setAuthMessage(message, type = '') {
   authError.textContent = message;
-  authError.classList.toggle('hidden', !message);
+  authError.className = 'status-banner' + (type ? ` ${type}` : '') + (message ? '' : ' hidden');
 }
 
-function showAuth(message = '') {
+function showAuth(message = '', type = '') {
   loadingScreen.classList.add('hidden');
   signOutBtn.classList.add('hidden');
   authScreen.classList.remove('hidden');
   appScreen.classList.add('hidden');
-  setAuthMessage(message);
+  requestForm.classList.add('hidden');
+  signInForm.classList.remove('hidden');
+  setAuthMessage(message, type);
 }
 
 function showApp() {
@@ -97,22 +104,38 @@ onAuthStateChanged(auth, async user => {
   if (!user) {
     currentUser = null;
     if (taskUnsub) taskUnsub();
-    showAuth();
+    if (authNotice) {
+      showAuth(authNotice.message, authNotice.type);
+      authNotice = null;
+    } else {
+      showAuth();
+    }
     return;
   }
   try {
     const docData = await loadUserDoc(user.uid);
     if (!docData || docData.role !== ROLE_LIVREUR) {
+      authNotice = { message: 'Ce compte n’est pas autorisé sur l’interface livreur.', type: '' };
       await signOut(auth);
-      showAuth('Ce compte n’est pas autorisé sur l’interface livreur.');
+      return;
+    }
+    const accountStatus = docData.accountStatus ?? 'approved';
+    if (accountStatus === 'pending') {
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Kleining. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      await signOut(auth);
+      return;
+    }
+    if (accountStatus !== 'approved') {
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      await signOut(auth);
       return;
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
     loadLaundryTasks();
   } catch (error) {
+    authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
-    showAuth(authErrorMessage(error));
   }
 });
 
@@ -131,4 +154,38 @@ signInForm.addEventListener('submit', async event => {
 
 signOutBtn.addEventListener('click', async () => {
   await signOut(auth);
+});
+
+switchToRequest.addEventListener('click', event => {
+  event.preventDefault();
+  signInForm.classList.add('hidden');
+  requestForm.classList.remove('hidden');
+  setAuthMessage('');
+});
+
+switchToSignIn.addEventListener('click', event => {
+  event.preventDefault();
+  requestForm.classList.add('hidden');
+  signInForm.classList.remove('hidden');
+  setAuthMessage('');
+});
+
+requestForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  setAuthMessage('');
+  const name = document.getElementById('requestName').value.trim();
+  const phone = document.getElementById('requestPhone').value.trim();
+  const email = document.getElementById('requestEmail').value.trim();
+  const password = document.getElementById('requestPassword').value;
+  const inviteCode = document.getElementById('requestCode').value.trim();
+  try {
+    await withButtonLoading(requestForm.querySelector('button[type="submit"]'), () =>
+      requestTeamAccess({ role: ROLE_LIVREUR, name, email, password, phone, inviteCode }));
+    requestForm.reset();
+    requestForm.classList.add('hidden');
+    signInForm.classList.remove('hidden');
+    setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+  } catch (err) {
+    setAuthMessage(authErrorMessage(err), 'error');
+  }
 });
