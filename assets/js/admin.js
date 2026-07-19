@@ -12,7 +12,9 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  resetPassword,
   requestTeamAccess,
+  queueEmail,
 } from './shared.js';
 import {
   collection,
@@ -266,10 +268,29 @@ async function resolveBooking(status) {
       });
       await batch.commit();
     }
+    if (status === 'verified' && selectedBooking.clientEmail) {
+      queueEmail({
+        to: selectedBooking.clientEmail,
+        subject: `Kleining — votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
+        text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe Kleining. Retrouvez le détail dans votre espace client.`,
+      });
+    }
+    if (status === 'rejected' && selectedBooking.prestataireId) {
+      try {
+        const prestataireSnap = await getDoc(doc(db, 'users', selectedBooking.prestataireId));
+        if (prestataireSnap.exists() && prestataireSnap.data().email) {
+          queueEmail({
+            to: prestataireSnap.data().email,
+            subject: `Kleining — dossier à corriger · Réf ${selectedBooking.id.slice(0, 6).toUpperCase()}`,
+            text: `Le dossier de ${selectedBooking.propertyAddress || 'la mission'} (${formatShortDate(selectedBooking.scheduledDate)}) a été renvoyé pour correction. Note de l’équipe : ${note}. Corrigez les photos puis re-soumettez depuis votre interface.`,
+          });
+        }
+      } catch (e) { /* la notification ne doit jamais bloquer le verdict */ }
+    }
     rejectNote.value = '';
     setAdminStatus(status === 'verified'
-      ? 'Dossier validé — le client voit maintenant sa réservation confirmée.'
-      : 'Dossier renvoyé au prestataire pour correction.');
+      ? 'Dossier validé — le client est notifié par email et voit sa réservation confirmée.'
+      : 'Dossier renvoyé au prestataire pour correction (notifié par email).');
   } catch (err) {
     setAdminStatus('Impossible de mettre à jour le dossier.');
   } finally {
@@ -451,6 +472,21 @@ requestForm.addEventListener('submit', async event => {
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
     setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+  } catch (err) {
+    setAuthMessage(authErrorMessage(err), 'error');
+  }
+});
+
+document.getElementById('forgotPassword').addEventListener('click', async event => {
+  event.preventDefault();
+  const email = document.getElementById('signInEmail').value.trim();
+  if (!email) {
+    setAuthMessage('Saisissez d’abord votre adresse email ci-dessus, puis cliquez à nouveau sur « Mot de passe oublié ? ».', 'info');
+    return;
+  }
+  try {
+    await resetPassword(email);
+    setAuthMessage(`Email de réinitialisation envoyé à ${email}. Vérifiez votre boîte de réception (et vos spams).`, 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }

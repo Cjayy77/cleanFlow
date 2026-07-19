@@ -12,7 +12,10 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  resetPassword,
   requestTeamAccess,
+  queueEmail,
+  TEAM_EMAIL,
 } from './shared.js';
 import {
   collection,
@@ -219,7 +222,13 @@ function renderActiveBooking() {
   button.disabled = !canUpload || count < PHOTO_SLOTS.length;
   button.onclick = async () => {
     try {
-      await updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' });
+      await withButtonLoading(button, () =>
+        updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' }));
+      queueEmail({
+        to: TEAM_EMAIL,
+        subject: `Kleining — dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+        text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · soumis par ${currentUser.name || currentUser.email}. À contrôler dans /admin/.`,
+      });
     } catch (e) {
       setAuthMessage('Impossible d’envoyer le dossier.');
     }
@@ -387,6 +396,21 @@ requestForm.addEventListener('submit', async event => {
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
     setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+  } catch (err) {
+    setAuthMessage(authErrorMessage(err), 'error');
+  }
+});
+
+document.getElementById('forgotPassword').addEventListener('click', async event => {
+  event.preventDefault();
+  const email = document.getElementById('signInEmail').value.trim();
+  if (!email) {
+    setAuthMessage('Saisissez d’abord votre adresse email ci-dessus, puis cliquez à nouveau sur « Mot de passe oublié ? ».', 'info');
+    return;
+  }
+  try {
+    await resetPassword(email);
+    setAuthMessage(`Email de réinitialisation envoyé à ${email}. Vérifiez votre boîte de réception (et vos spams).`, 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }

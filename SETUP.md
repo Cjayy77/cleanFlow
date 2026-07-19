@@ -88,16 +88,45 @@ console (il faut un admin pour approuver les autres) :
 4. Ouvrez `/admin/` sur votre site, connectez-vous : vous y êtes. Toutes les
    autres personnes passent par la demande d'accès.
 
-## 7. Les quatre interfaces
+## 7. Notifications e-mail (extension à installer, sans code)
+
+L'application dépose chaque notification dans une collection Firestore
+`mail`. Pour qu'elles partent réellement par e-mail, installez l'extension
+officielle **Trigger Email from Firestore** — entièrement depuis le
+navigateur :
+
+1. Console Firebase → **Extensions** → rechercher **« Trigger Email from
+   Firestore »** (éditeur : Firebase) → **Installer** (nécessite Blaze, déjà
+   requis pour Storage).
+2. Configuration demandée :
+   - *Email documents collection* : `mail`
+   - *SMTP connection URI* : les identifiants SMTP de votre fournisseur.
+     Le plus simple : un compte gratuit **Brevo** ou **SendGrid** (SMTP
+     fourni en 5 minutes), ou le SMTP Gmail avec un « mot de passe
+     d'application ».
+   - *Default FROM address* : ex. `Kleining <william@cleanflow-app.com>`.
+3. C'est tout. Sans l'extension, l'application fonctionne normalement — les
+   notifications s'accumulent simplement dans la collection `mail` sans
+   partir.
+
+Notifications envoyées : nouvelle réservation, annulation, dossier photos
+soumis et demande d'accès → **boîte de l'équipe** (`william@cleanflow-app.com`,
+adresse codée dans `assets/js/shared.js` **et** dans `firestore.rules`,
+modifier les deux ensemble) ; ménage confirmé → **client** ; dossier à
+corriger → **prestataire**. La réinitialisation de mot de passe (« Mot de
+passe oublié ? ») passe par Firebase Auth directement, sans l'extension —
+personnalisez ce modèle dans Authentication → Templates.
+
+## 8. Les quatre interfaces
 
 | Rôle | URL | Accès |
 |---|---|---|
 | Client | `/app/` | lien public, auto-inscription |
-| Prestataire | `/prestataire/` | lien direct à partager, compte créé à la main |
-| Livreur | `/livreur/` | lien direct à partager, compte créé à la main |
-| Admin (vérification) | `/admin/` | lien direct à partager, compte créé à la main |
+| Prestataire | `/prestataire/` | lien direct à partager, accès sur demande approuvée |
+| Livreur | `/livreur/` | lien direct à partager, accès sur demande approuvée |
+| Admin (vérification) | `/admin/` | lien direct à partager, accès sur demande approuvée |
 
-## 8. Parcours d'une réservation
+## 9. Parcours d'une réservation
 
 `pending` (réservé par le client) → `accepted` (prestataire) → `submitted`
 (photos envoyées) → `verified` **ou** `rejected` (décision humaine dans
@@ -111,7 +140,7 @@ passe par l'équipe. Cette contrainte est appliquée par les règles Firestore.
 > Note : le cahier des charges nommait ce statut `completed` ; le code
 > existant utilisait déjà `submitted`, convention conservée.
 
-## 9. Rétention des photos — 90 jours (processus manuel)
+## 10. Rétention des photos — 90 jours (processus manuel)
 
 Pas de Cloud Function pour la bêta (choix documenté) : une fois par mois,
 dans **Storage → `bookings/`**, supprimer les dossiers des réservations de
@@ -122,5 +151,3 @@ Firestore.
 
 - Paiements (gérés directement avec l'équipe), tracking GPS, vérification
   automatique/IA, import Airbnb, intégrations calendrier tierces.
-- Notification e-mail du client à la validation : à confirmer avec l'équipe
-  (pour l'instant le statut « Confirmé » apparaît dans l'espace client).
