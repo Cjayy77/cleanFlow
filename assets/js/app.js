@@ -55,6 +55,15 @@ const propertyPostal = document.getElementById('propertyPostal');
 const propertyNotes = document.getElementById('propertyNotes');
 const linenToggle = document.getElementById('linenToggle');
 const appStatus = document.getElementById('appStatus');
+const welcomeText = document.getElementById('welcomeText');
+const bookingCard = document.getElementById('bookingCard');
+const historyCard = document.getElementById('historyCard');
+const bookingFor = document.getElementById('bookingFor');
+
+// Étapes affichées au client — la transparence du process est la promesse
+// centrale de Kleining.
+const BOOKING_STEPS = ['Réservée', 'Prise en charge', 'Ménage + photos', 'Confirmée'];
+const STATUS_STEP = { pending: 0, accepted: 1, submitted: 2, rejected: 2, verified: 3 };
 
 let currentUser = null;
 let selectedPropertyId = null;
@@ -105,6 +114,24 @@ function updateBookingBar() {
   priceValue.textContent = `${price}€`;
   bookBtn.textContent = selectedDate ? `Réserver le ${formatShortDate(selectedDate)} — ${price}€` : 'Choisir une date pour réserver';
   bookBtn.disabled = !selectedPropertyId || !selectedDate;
+  const property = properties.find(p => p.id === selectedPropertyId);
+  bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
+}
+
+// Divulgation progressive : tant qu'aucun bien n'est enregistré, on ne montre
+// que l'étape utile (ajouter un bien) au lieu de tout l'écran d'un coup.
+function updateOnboardingState() {
+  const hasProperties = properties.length > 0;
+  const hasBookings = bookings.length > 0;
+  bookingCard.classList.toggle('hidden', !hasProperties);
+  historyCard.classList.toggle('hidden', !hasProperties && !hasBookings);
+  if (!hasProperties) {
+    welcomeText.textContent = 'Bienvenue ! Première étape : enregistrez votre bien ci-dessous. Vous pourrez ensuite réserver votre premier ménage sur son calendrier.';
+  } else if (!hasBookings) {
+    welcomeText.textContent = 'Votre bien est enregistré. Choisissez une date sur le calendrier pour réserver votre premier ménage — le prix est affiché avant confirmation.';
+  } else {
+    welcomeText.textContent = 'Réservez un ménage, suivez sa vérification par l’équipe Kleining, et recevez la confirmation une fois le contrôle photo effectué.';
+  }
 }
 
 function renderPropertyButtons() {
@@ -222,7 +249,7 @@ function renderBookings() {
     const property = properties.find(p => p.id === booking.propertyId);
     const address = property ? `${property.street}, ${property.city}` : (booking.propertyAddress || 'Bien supprimé');
     const card = document.createElement('div');
-    card.className = 'dossier';
+    card.className = 'dossier' + (booking.status === 'cancelled' ? ' cancelled' : '');
     card.innerHTML = `
       <div class="dossier-top">
         <div>
@@ -234,6 +261,28 @@ function renderBookings() {
       <div class="dossier-meta">${booking.price}€ · Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
     `;
     card.querySelector('.dossier-addr').textContent = address;
+    if (booking.status !== 'cancelled') {
+      const stage = STATUS_STEP[booking.status] ?? 0;
+      const steps = document.createElement('div');
+      steps.className = 'steps';
+      steps.setAttribute('role', 'img');
+      steps.setAttribute('aria-label', `Étape ${Math.min(stage + 1, BOOKING_STEPS.length)} sur ${BOOKING_STEPS.length} : ${BOOKING_STEPS[Math.min(stage, BOOKING_STEPS.length - 1)]}`);
+      BOOKING_STEPS.forEach((label, index) => {
+        const step = document.createElement('div');
+        const isDone = booking.status === 'verified' ? true : index < stage;
+        const isCurrent = booking.status !== 'verified' && index === stage;
+        step.className = 'step' + (isDone ? ' done' : '') + (isCurrent ? ' current' : '');
+        step.textContent = label;
+        steps.appendChild(step);
+      });
+      card.appendChild(steps);
+      if (booking.status === 'rejected') {
+        const note = document.createElement('div');
+        note.className = 'dossier-note';
+        note.textContent = 'Le contrôle qualité a demandé une correction au prestataire — votre ménage sera re-vérifié avant confirmation.';
+        card.appendChild(note);
+      }
+    }
     // Annulable uniquement tant qu'aucun prestataire n'a accepté la mission
     // (même contrainte côté règles Firestore).
     if (booking.status === 'pending') {
@@ -273,7 +322,9 @@ function subscribeData() {
     renderPropertyButtons();
     renderCalendar();
     updateBookingBar();
-  }, () => setAppStatus('Impossible de charger vos biens.'));
+    updateOnboardingState();
+    renderBookings();
+  }, () => setAppStatus('Impossible de charger vos biens.', 'error'));
 
   const bookingsQuery = query(collection(db, 'bookings'), where('clientId', '==', currentUser.uid));
   bookingsUnsub = onSnapshot(bookingsQuery, snapshot => {
@@ -282,7 +333,8 @@ function subscribeData() {
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
     renderBookings();
     renderCalendar();
-  }, () => setAppStatus('Impossible de charger vos réservations.'));
+    updateOnboardingState();
+  }, () => setAppStatus('Impossible de charger vos réservations.', 'error'));
 }
 
 onAuthStateChanged(auth, async user => {
