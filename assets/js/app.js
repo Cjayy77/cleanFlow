@@ -120,7 +120,7 @@ function updateBookingBar() {
   const price = formatPrice(selectedServiceType);
   // TODO: confirm with team — le linge est-il facturé en plus des deux forfaits ?
   priceValue.textContent = `${price}€`;
-  bookBtn.textContent = selectedDate ? `Réserver le ${formatShortDate(selectedDate)} — ${price}€` : 'Choisir une date pour réserver';
+  bookBtn.textContent = selectedDate ? `Réserver le ${formatShortDate(selectedDate)} · ${price}€` : 'Choisir une date pour réserver';
   bookBtn.disabled = !selectedPropertyId || !selectedDate;
   const property = properties.find(p => p.id === selectedPropertyId);
   bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
@@ -136,7 +136,7 @@ function updateOnboardingState() {
   if (!hasProperties) {
     welcomeText.textContent = 'Bienvenue ! Première étape : enregistrez votre bien ci-dessous. Vous pourrez ensuite réserver votre premier ménage sur son calendrier.';
   } else if (!hasBookings) {
-    welcomeText.textContent = 'Votre bien est enregistré. Choisissez une date sur le calendrier pour réserver votre premier ménage — le prix est affiché avant confirmation.';
+    welcomeText.textContent = 'Votre bien est enregistré. Choisissez une date sur le calendrier, le prix est affiché avant confirmation.';
   } else {
     welcomeText.textContent = 'Réservez un ménage, suivez sa vérification par l’équipe Kleining, et recevez la confirmation une fois le contrôle photo effectué.';
   }

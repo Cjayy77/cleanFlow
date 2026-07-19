@@ -7,7 +7,7 @@
 <title>Kleining — Le ménage vérifié pour vos locations saisonnières</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --klein: #002FA7;
@@ -23,9 +23,9 @@
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; }
-  body{ font-family:'Inter', sans-serif; color:var(--ink); background:var(--paper); font-size:16px; line-height:1.6; }
+  body{ font-family:'Plus Jakarta Sans', sans-serif; color:var(--ink); background:var(--paper); font-size:16px; line-height:1.6; }
   .wrap{ max-width: 1140px; margin:0 auto; padding: 0 32px; }
-  h1,h2,h3,h4{ font-family:'Space Grotesk', sans-serif; font-weight:700; letter-spacing:-0.02em; line-height:1.08; }
+  h1,h2,h3,h4{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; letter-spacing:-0.02em; line-height:1.08; }
   a{ color:inherit; }
   ::selection{ background:var(--klein); color:var(--white); }
 
@@ -35,7 +35,7 @@
   /* NAV */
   nav{ position:sticky; top:0; z-index:50; background: rgba(250,250,247,0.94); backdrop-filter: blur(10px); }
   .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:0 32px; max-width:1140px; margin:0 auto; height:76px; }
-  .brand{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:22px; letter-spacing:-0.02em; }
+  .brand{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:22px; letter-spacing:-0.02em; }
   .brand span{ color: var(--klein); }
   .nav-links{ display:flex; gap:28px; font-size:14px; font-weight:600; color: var(--muted); }
   .nav-links a{ text-decoration:none; padding:28px 0; display:inline-block; transition: color .15s ease-out; }
@@ -118,7 +118,7 @@
   /* 02 — PROCESS : chiffres, air, zéro boîte */
   .process-list{ max-width:760px; }
   .process-item{ display:grid; grid-template-columns: 96px 1fr; gap:34px; padding: 30px 0; align-items:start; }
-  .process-num{ font-family:'Space Grotesk', sans-serif; font-size:52px; font-weight:700; color:var(--klein); line-height:1; }
+  .process-num{ font-family:'Plus Jakarta Sans', sans-serif; font-size:52px; font-weight:700; color:var(--klein); line-height:1; }
   .process-item.verify .process-num{ color:var(--gold); }
   .process-text h4{ font-size:20px; margin-bottom:8px; }
   .process-item.verify .process-text h4::after{ content:'l’étape Kleining'; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--gold); margin-left:12px; letter-spacing:0.08em; text-transform:uppercase; }
@@ -149,8 +149,8 @@
   .price-col.deep:hover{ box-shadow: 11px 11px 0 var(--klein); }
   .price-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:16px; }
   .price-col h4{ font-size:21px; }
-  .price-amount{ font-family:'Space Grotesk', sans-serif; font-size: clamp(52px,6vw,72px); font-weight:700; color:var(--klein); line-height:1; margin:20px 0 4px; letter-spacing:-0.03em; }
-  .price-amount small{ font-family:'Inter', sans-serif; font-size:14px; color:var(--muted); font-weight:500; letter-spacing:0; }
+  .price-amount{ font-family:'Plus Jakarta Sans', sans-serif; font-size: clamp(52px,6vw,72px); font-weight:700; color:var(--klein); line-height:1; margin:20px 0 4px; letter-spacing:-0.03em; }
+  .price-amount small{ font-family:'Plus Jakarta Sans', sans-serif; font-size:14px; color:var(--muted); font-weight:500; letter-spacing:0; }
   .price-col ul{ list-style:none; margin-top:26px; }
   .price-col li{ font-size:14px; color:var(--muted); line-height:1.6; padding:10px 0 10px 26px; position:relative; }
   .price-col li::before{ content:''; position:absolute; left:0; top:16px; width:10px; height:10px; background:var(--gold); border:2px solid var(--ink); }
@@ -166,7 +166,7 @@
   /* 06 — FAQ */
   .faq-list{ max-width: 780px; }
   .faq-list details{ border-bottom:1px solid #ECEAE2; }
-  .faq-list summary{ cursor:pointer; padding:24px 0; font-family:'Space Grotesk', sans-serif; font-size:18px; font-weight:600; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; transition: color .15s ease-out; }
+  .faq-list summary{ cursor:pointer; padding:24px 0; font-family:'Plus Jakarta Sans', sans-serif; font-size:18px; font-weight:600; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; transition: color .15s ease-out; }
   .faq-list summary:hover{ color:var(--klein); }
   .faq-list summary::-webkit-details-marker{ display:none; }
   .faq-list summary::after{ content:'+'; font-family:'JetBrains Mono', monospace; color:var(--klein); font-size:22px; flex-shrink:0; transition: transform .2s ease-out; }
@@ -176,7 +176,7 @@
   /* BANDEAU OR */
   .goal-outer{ background: var(--gold); padding: 80px 0; border-top:2px solid var(--ink); border-bottom:2px solid var(--ink); }
   .goal-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:44px; }
-  .goal-item b{ display:block; font-family:'Space Grotesk', sans-serif; font-size: clamp(22px,2.6vw,30px); font-weight:700; margin-bottom:8px; color:var(--ink); }
+  .goal-item b{ display:block; font-family:'Plus Jakarta Sans', sans-serif; font-size: clamp(22px,2.6vw,30px); font-weight:700; margin-bottom:8px; color:var(--ink); }
   .goal-item span{ font-size:14px; color: rgba(16,16,16,0.72); line-height:1.55; display:block; max-width:260px; }
   @media (max-width:760px){ .goal-grid{ grid-template-columns:1fr; gap:34px; } }
 
@@ -219,7 +219,7 @@
   <div class="wrap hero-inner">
     <div class="hero-kicker">Paris · Locations saisonnières</div>
     <h1>Le ménage <em>vérifié</em>, avant chaque confirmation.</h1>
-    <p>Kleining connecte les propriétaires à des prestataires de ménage professionnels — chaque intervention est photographiée, contrôlée par notre équipe, puis confirmée. Pas de mauvaise surprise.</p>
+    <p>Des prestataires professionnels, un dossier photo pour chaque intervention, une vérification par notre équipe avant confirmation. Pas de mauvaise surprise.</p>
     <div class="btn-row">
       <a href="/app/" class="btn-a gold">Réserver un ménage</a>
       <a href="#roles" class="btn-outline">Voir comment ça marche</a>
@@ -237,7 +237,7 @@
       <text font-family="'JetBrains Mono', monospace" font-size="12.5" letter-spacing="3.5" fill="rgba(255,255,255,0.85)">
         <textPath href="#stamp-ring">MÉNAGE VÉRIFIÉ · KLEINING · PARIS · CONTRÔLE HUMAIN ·</textPath>
       </text>
-      <text x="100" y="116" text-anchor="middle" font-family="'Space Grotesk', sans-serif" font-size="46" fill="#E3A92F">✓</text>
+      <text x="100" y="116" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-size="46" fill="#E3A92F">✓</text>
     </svg>
   </div>
 </header>
@@ -248,28 +248,28 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <h2>Quatre rôles, un processus clair</h2>
-      <p>Contrairement à une simple mise en relation, chaque intervention passe par un contrôle avant d'être confirmée.</p>
+      <p>Chaque intervention passe par un contrôle avant d'être confirmée.</p>
     </div>
     <div class="roles-grid">
       <div class="role-card block reveal">
         <div class="role-num">Client</div>
         <h4>Le propriétaire</h4>
-        <p>Ajoute son bien, réserve un ménage via un calendrier, et reçoit la confirmation une fois le contrôle qualité effectué.</p>
+        <p>Ajoute son bien, réserve sur le calendrier et reçoit la confirmation après contrôle qualité.</p>
       </div>
       <div class="role-card block reveal">
         <div class="role-num">Prestataire</div>
         <h4>L'entreprise de ménage</h4>
-        <p>Prend en charge la mission, réalise le ménage, et soumet un ensemble de photos spécifique imposé par Kleining.</p>
+        <p>Accepte la mission, réalise le ménage et soumet le jeu de photos imposé par Kleining.</p>
       </div>
       <div class="role-card block reveal">
         <div class="role-num">Livreur</div>
         <h4>Le linge</h4>
-        <p>Livre le linge propre et récupère le linge sale directement dans l'appartement, selon le même calendrier.</p>
+        <p>Livre le linge propre et récupère le sale, directement dans l'appartement, au même calendrier.</p>
       </div>
       <div class="role-card block reveal">
         <div class="role-num">Kleining</div>
         <h4>Le contrôle</h4>
-        <p>Vérifie les photos soumises, confirme la mission au client, et reste le point de contact en cas de problème.</p>
+        <p>Vérifie les photos, confirme la mission au client et reste le point de contact en cas de problème.</p>
       </div>
     </div>
   </div>
@@ -285,35 +285,35 @@
         <div class="process-num">1</div>
         <div class="process-text">
           <h4>Réservation</h4>
-          <p>Le client choisit une date sur le calendrier de son bien et voit le prix avant de confirmer.</p>
+          <p>Le client choisit une date sur le calendrier de son bien. Le prix est affiché avant de confirmer.</p>
         </div>
       </div>
       <div class="process-item reveal">
         <div class="process-num">2</div>
         <div class="process-text">
           <h4>Prise en charge</h4>
-          <p>Un prestataire de ménage vérifié accepte la mission depuis son propre calendrier.</p>
+          <p>Un prestataire vérifié accepte la mission depuis son calendrier.</p>
         </div>
       </div>
       <div class="process-item reveal">
         <div class="process-num">3</div>
         <div class="process-text">
           <h4>Réalisation + photos</h4>
-          <p>Le prestataire effectue le ménage et soumet la liste de photos exigée par Kleining (pièce par pièce).</p>
+          <p>Le prestataire effectue le ménage et soumet les photos exigées, pièce par pièce.</p>
         </div>
       </div>
       <div class="process-item verify reveal">
         <div class="process-num">✓</div>
         <div class="process-text">
           <h4>Vérification</h4>
-          <p>L'équipe Kleining contrôle les photos avant toute confirmation — aucune mission n'est validée automatiquement.</p>
+          <p>L'équipe Kleining contrôle les photos avant toute confirmation. Rien n'est validé automatiquement.</p>
         </div>
       </div>
       <div class="process-item reveal">
         <div class="process-num">5</div>
         <div class="process-text">
           <h4>Confirmation client</h4>
-          <p>Le propriétaire est notifié que le ménage est terminé et validé.</p>
+          <p>Le propriétaire reçoit la confirmation : ménage terminé et validé.</p>
         </div>
       </div>
     </div>
@@ -327,7 +327,7 @@
     <div class="reveal">
       <div class="verify-kicker">Notre différence</div>
       <h3>Rien n'est confirmé <em>sans contrôle humain</em></h3>
-      <p>Chaque ménage doit être prouvé par un jeu de photos précis — pas de "c'est fait, fais-moi confiance". Notre équipe vérifie chaque dossier avant que le client ne soit notifié. C'est plus lent qu'une validation automatique, mais c'est la garantie que le propriétaire attend.</p>
+      <p>Chaque ménage est prouvé par un jeu de photos précis. Notre équipe vérifie le dossier avant de vous notifier. C'est la garantie que vous attendez.</p>
     </div>
     <div class="stamp-mock reveal">
       <div class="stamp-kicker">Dossier · Rue de la Pompe, 16e</div>
@@ -345,7 +345,7 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <h2>Deux formules, prix fixes</h2>
-      <p>Pas d'abonnement pendant la bêta : vous payez au ménage, et le prix est affiché avant chaque confirmation.</p>
+      <p>Pas d'abonnement. Vous payez au ménage, le prix est affiché avant confirmation.</p>
     </div>
     <div class="price-grid">
       <div class="price-col block reveal">
@@ -383,19 +383,19 @@
     <div class="feature-grid">
       <div class="feature-card reveal">
         <h4>Gestion du linge</h4>
-        <p>Un livreur dépose le linge propre et récupère le linge sale directement dans le bien, synchronisé avec le calendrier de ménage — le propriétaire n'a rien à coordonner lui-même.</p>
+        <p>Un livreur dépose le linge propre et récupère le sale, au rythme du calendrier de ménage. Vous n'avez rien à coordonner.</p>
       </div>
       <div class="feature-card reveal">
         <h4>Compte et suivi</h4>
-        <p>Chaque client dispose d'un compte sommaire : historique des interventions, statut de chaque réservation, et vue d'ensemble simple — sans complexité inutile pour la bêta.</p>
+        <p>Historique des interventions, statut de chaque réservation, vue d'ensemble simple.</p>
       </div>
       <div class="feature-card reveal">
         <h4>Le dossier photo exigé</h4>
-        <p>Chaque mission doit être prouvée par un jeu de photos imposé : cuisine avant/après, salle de bain, chambres, linge changé. Une photo manquante ou floue, et le dossier est renvoyé au prestataire.</p>
+        <p>Cuisine avant/après, salle de bain, chambres, linge changé. Une photo manquante ou floue et le dossier repart chez le prestataire.</p>
       </div>
       <div class="feature-card reveal">
         <h4>Incidents déclarés, pas cachés</h4>
-        <p>Objet cassé ou perdu pendant une intervention ? Le prestataire doit le déclarer immédiatement, avec photo. L'équipe Kleining vous contacte avec les détails — la transparence fait partie du service.</p>
+        <p>Objet cassé ou perdu ? Le prestataire le déclare immédiatement, photo à l'appui. Notre équipe vous contacte avec les détails.</p>
       </div>
     </div>
   </div>
@@ -409,31 +409,31 @@
     <div class="faq-list reveal">
       <details>
         <summary>Dans quelles villes intervenez-vous ?</summary>
-        <p>La bêta démarre à Paris. L'ouverture à d'autres villes se fera une fois le processus rodé avec les premiers propriétaires.</p>
+        <p>À Paris pour la bêta. D'autres villes suivront une fois le processus rodé.</p>
       </details>
       <details>
         <summary>Qui réalise le ménage ?</summary>
-        <p>Des entreprises de ménage professionnelles partenaires, sélectionnées par Kleining — pas une mise en relation anonyme avec des inconnus. Chaque prestataire travaille avec son propre calendrier de missions.</p>
+        <p>Des entreprises de ménage professionnelles, sélectionnées par Kleining. Pas de mise en relation anonyme.</p>
       </details>
       <details>
         <summary>Que se passe-t-il si le contrôle photo révèle un problème ?</summary>
-        <p>Le dossier est renvoyé au prestataire avec une note précise, il corrige, puis re-soumet ses photos. Vous n'êtes jamais notifié « ménage terminé » tant qu'un membre de l'équipe Kleining n'a pas validé le dossier — rien ne s'approuve automatiquement.</p>
+        <p>Le dossier repart chez le prestataire avec une note précise. Il corrige, puis re-soumet ses photos. Vous n'êtes notifié qu'après validation par notre équipe.</p>
       </details>
       <details>
         <summary>Pourquoi pas une conciergerie classique ?</summary>
-        <p>Les conciergeries traditionnelles prélèvent souvent une commission importante sur vos revenus locatifs et imposent des contrats rigides. Kleining fonctionne au ménage, à prix fixe, sans engagement et sans commission sur vos revenus : vous ne payez que ce que vous réservez.</p>
+        <p>Les conciergeries prélèvent une commission sur vos revenus et imposent des contrats rigides. Kleining fonctionne au ménage, à prix fixe, sans engagement. Vous ne payez que ce que vous réservez.</p>
       </details>
       <details>
         <summary>Comment fonctionne le paiement ?</summary>
-        <p>Pendant la bêta, le règlement est géré simplement et directement avec l'équipe Kleining, aux prix fixes affichés (47€ ou 60€). Le paiement en ligne arrivera après la bêta.</p>
+        <p>Pendant la bêta, le règlement se fait directement avec l'équipe, aux prix affichés. Le paiement en ligne arrivera ensuite.</p>
       </details>
       <details>
         <summary>Et si un objet est cassé ou perdu ?</summary>
-        <p>Le prestataire a l'obligation de le déclarer immédiatement via l'application, avec description et photo. L'équipe Kleining consulte chaque déclaration et vous recontacte avec les détails.</p>
+        <p>Le prestataire le déclare immédiatement dans l'application, avec description et photo. Notre équipe vous recontacte avec les détails.</p>
       </details>
       <details>
         <summary>Comment rejoindre la bêta ?</summary>
-        <p>Écrivez-nous — la bêta est limitée à un petit nombre de propriétaires parisiens pour garantir un processus fluide. Les premiers inscrits seront prioritaires.</p>
+        <p>Écrivez-nous. Les places sont limitées et les premiers inscrits sont prioritaires.</p>
       </details>
     </div>
   </div>
@@ -454,7 +454,7 @@
   <div class="wrap">
     <div class="cta-card block reveal">
       <h2>Envie de tester Kleining <em>sur votre bien ?</em></h2>
-      <p>La bêta démarre avec un petit nombre de propriétaires à Paris, pour s'assurer que le processus est fluide avant d'ouvrir plus largement.</p>
+      <p>La bêta est ouverte à un petit nombre de propriétaires parisiens. Réservez votre place.</p>
       <a href="mailto:william@cleanflow-app.com" class="btn-a klein">Rejoindre la bêta</a>
     </div>
   </div>
@@ -463,7 +463,7 @@
 
 <footer>
   <div class="wrap footer-grid">
-    <div><b style="font-family:'Space Grotesk', sans-serif; color:var(--white); font-size:17px;"><span style="color:var(--gold);">Klein</span>ing</b><br>Wanecque William, fondateur</div>
+    <div><b style="font-family:'Plus Jakarta Sans', sans-serif; color:var(--white); font-size:17px;"><span style="color:var(--gold);">Klein</span>ing</b><br>Wanecque William, fondateur</div>
     <div>0624207668</div>
     <div>Paris, France</div>
     <div><a href="/legal/cgu.html">CGU</a> · <a href="/legal/confidentialite.html">Confidentialité</a></div>

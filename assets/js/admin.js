@@ -289,7 +289,7 @@ async function resolveBooking(status) {
     }
     rejectNote.value = '';
     setAdminStatus(status === 'verified'
-      ? 'Dossier validé — le client est notifié par email et voit sa réservation confirmée.'
+      ? 'Dossier validé. Le client est notifié par email.'
       : 'Dossier renvoyé au prestataire pour correction (notifié par email).');
   } catch (err) {
     setAdminStatus('Impossible de mettre à jour le dossier.');

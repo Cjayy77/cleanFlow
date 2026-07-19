@@ -160,7 +160,7 @@ function renderActiveBooking() {
   const title = document.createElement('h2');
   title.textContent = activeBooking.propertyAddress || activeBooking.propertyId;
   const text = document.createElement('p');
-  text.textContent = `${formatShortDate(activeBooking.scheduledDate)} — ${activeBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${activeBooking.linenRequested ? ' · linge à changer' : ''}`;
+  text.textContent = `${formatShortDate(activeBooking.scheduledDate)} · ${activeBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${activeBooking.linenRequested ? ' · linge à changer' : ''}`;
   activeBookingContainer.appendChild(heading);
   activeBookingContainer.appendChild(title);
   activeBookingContainer.appendChild(text);
@@ -217,7 +217,7 @@ function renderActiveBooking() {
   button.className = 'btn gold';
   button.type = 'button';
   button.textContent = activeBooking.status === 'submitted'
-    ? 'Dossier envoyé — en attente de vérification Kleining'
+    ? 'Dossier envoyé, en attente de vérification Kleining'
     : `Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`;
   button.disabled = !canUpload || count < PHOTO_SLOTS.length;
   button.onclick = async () => {
