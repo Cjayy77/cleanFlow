@@ -10,6 +10,9 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  resetPassword,
+  queueEmail,
+  TEAM_EMAIL,
 } from './shared.js';
 import {
   collection,
@@ -101,6 +104,11 @@ function showApp() {
   authError.textContent = '';
   authError.classList.add('hidden');
   userNameLabel.textContent = currentUser.name || currentUser.email;
+}
+
+function setAuthMessage(message, type = '') {
+  authError.textContent = message;
+  authError.className = 'status-banner' + (type ? ` ${type}` : '') + (message ? '' : ' hidden');
 }
 
 function setAppStatus(text, type = 'info') {
@@ -295,6 +303,11 @@ function renderBookings() {
         try {
           await withButtonLoading(cancelBtn, () =>
             updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }));
+          queueEmail({
+            to: TEAM_EMAIL,
+            subject: `Kleining — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+            text: `${address} · ${formatShortDate(booking.scheduledDate)} · annulée par le client ${currentUser.email}.`,
+          });
           setAppStatus('Réservation annulée. La date est de nouveau disponible.', 'success');
         } catch (err) {
           setAppStatus('Impossible d’annuler : la mission vient peut-être d’être acceptée par un prestataire. Contactez l’équipe Kleining.', 'error');
@@ -368,6 +381,21 @@ onAuthStateChanged(auth, async user => {
   } catch (error) {
     authNotice = { mode: 'signin', message: authErrorMessage(error) };
     await signOut(auth);
+  }
+});
+
+document.getElementById('forgotPassword').addEventListener('click', async event => {
+  event.preventDefault();
+  const email = document.getElementById('signInEmail').value.trim();
+  if (!email) {
+    setAuthMessage('Saisissez d’abord votre adresse email ci-dessus, puis cliquez à nouveau sur « Mot de passe oublié ? ».', 'info');
+    return;
+  }
+  try {
+    await resetPassword(email);
+    setAuthMessage(`Email de réinitialisation envoyé à ${email}. Vérifiez votre boîte de réception (et vos spams).`, 'success');
+  } catch (err) {
+    setAuthMessage(authErrorMessage(err), 'error');
   }
 });
 
@@ -461,6 +489,7 @@ bookBtn.addEventListener('click', async () => {
   if (!currentUser || !selectedPropertyId || !selectedDate) return;
   const property = properties.find(p => p.id === selectedPropertyId);
   if (!property) return;
+  const bookedDate = selectedDate;
   try {
     await withButtonLoading(bookBtn, () =>
       addDoc(collection(db, 'bookings'), {
@@ -475,7 +504,12 @@ bookBtn.addEventListener('click', async () => {
         linenRequested,
         createdAt: serverTimestamp(),
       }));
-    setAppStatus('Réservation enregistrée. Vous serez notifié une fois le ménage vérifié par l’équipe Kleining.', 'success');
+    queueEmail({
+      to: TEAM_EMAIL,
+      subject: `Kleining — nouvelle réservation · ${property.street}, ${property.city}`,
+      text: `${formatShortDate(bookedDate)} · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur (60€)' : 'Nettoyage normal (47€)'}${linenRequested ? ' · option linge' : ''} · client : ${currentUser.email}`,
+    });
+    setAppStatus('Réservation enregistrée. Vous serez notifié par email une fois le ménage vérifié par l’équipe Kleining.', 'success');
     selectedDate = null;
     selectedDateLabel.value = 'Aucune date';
     renderCalendar();

@@ -8,6 +8,7 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  resetPassword,
   requestTeamAccess,
 } from './shared.js';
 import {
@@ -185,6 +186,21 @@ requestForm.addEventListener('submit', async event => {
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
     setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+  } catch (err) {
+    setAuthMessage(authErrorMessage(err), 'error');
+  }
+});
+
+document.getElementById('forgotPassword').addEventListener('click', async event => {
+  event.preventDefault();
+  const email = document.getElementById('signInEmail').value.trim();
+  if (!email) {
+    setAuthMessage('Saisissez d’abord votre adresse email ci-dessus, puis cliquez à nouveau sur « Mot de passe oublié ? ».', 'info');
+    return;
+  }
+  try {
+    await resetPassword(email);
+    setAuthMessage(`Email de réinitialisation envoyé à ${email}. Vérifiez votre boîte de réception (et vos spams).`, 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }

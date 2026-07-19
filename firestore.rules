@@ -138,6 +138,18 @@ service cloud.firestore {
         && request.resource.data.verifiedBy == request.auth.uid;
     }
 
+    // File d'envoi d'e-mails, consommée par l'extension « Trigger Email »
+    // (qui utilise le SDK Admin et ignore ces règles). Un utilisateur
+    // connecté ne peut écrire qu'à l'adresse de l'équipe ; seul un admin
+    // peut notifier une autre adresse (client, prestataire).
+    match /mail/{mailId} {
+      allow read, update, delete: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.message.subject is string
+        && request.resource.data.message.text is string
+        && (isAdmin() || request.resource.data.to == 'william@cleanflow-app.com');
+    }
+
     match /incidents/{incidentId} {
       allow read: if isSignedIn() && (
         isAdmin()

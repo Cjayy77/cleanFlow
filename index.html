@@ -7,162 +7,176 @@
 <title>Kleining — Le ménage vérifié pour vos locations saisonnières</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500;1,9..144,600&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --klein: #002FA7;
     --klein-deep: #001F73;
     --klein-tint: #EDF0FB;
     --gold: #D9A441;
-    --ink: #10131A;
-    --muted: #5A6472;
-    --paper: #F5F6FA;
-    --line: #DCE1EE;
+    --ink: #14130F;
+    --muted: #6B6659;
+    --paper: #FBFAF6;
+    --line: #E3E0D6;
+    --rule: #14130F;
     --white: #FFFFFF;
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; }
-  body{ font-family:'Instrument Sans', sans-serif; color:var(--ink); background:var(--paper); }
-  .wrap{ max-width: 1160px; margin:0 auto; padding: 0 28px; }
-  h1,h2,h3{ font-family:'Fraunces', serif; font-weight:600; }
+  body{ font-family:'Instrument Sans', sans-serif; color:var(--ink); background:var(--paper); font-size:16px; line-height:1.5; }
+  .wrap{ max-width: 1200px; margin:0 auto; padding: 0 32px; }
+  h1,h2,h3,h4{ font-family:'Fraunces', serif; font-weight:500; letter-spacing:-0.015em; }
   a{ color:inherit; }
-  .eyebrow{
-    font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase;
-    letter-spacing:0.1em; color: var(--klein); margin-bottom:10px; font-weight:600;
-  }
+  ::selection{ background:var(--klein); color:var(--white); }
 
-  /* NAV */
-  nav{ position:sticky; top:0; z-index:50; background: rgba(245,246,250,0.9); backdrop-filter: blur(8px); border-bottom:1px solid var(--line); }
-  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:16px 28px; max-width:1160px; margin:0 auto; }
-  .brand{ font-family:'Fraunces', serif; font-weight:700; font-size:21px; letter-spacing:-0.01em; }
-  .brand span{ color: var(--klein); }
-  .nav-links{ display:flex; gap:26px; font-size:14px; font-weight:600; color: var(--muted); }
-  .nav-links a{ text-decoration:none; }
-  .nav-links a:hover{ color: var(--ink); }
-  .nav-links a{ padding:12px 0; display:inline-block; }
+  /* NAV — flat, hairline, no pill buttons */
+  nav{ position:sticky; top:0; z-index:50; background: rgba(251,250,246,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:0 32px; max-width:1200px; margin:0 auto; height:68px; }
+  .brand{ font-family:'Fraunces', serif; font-weight:600; font-size:23px; letter-spacing:-0.01em; }
+  .brand span{ color: var(--klein); font-style:italic; }
+  .nav-links{ display:flex; gap:30px; font-size:13.5px; font-weight:600; color: var(--muted); }
+  .nav-links a{ text-decoration:none; padding:24px 0; display:inline-block; letter-spacing:0.01em; }
+  .nav-links a:hover{ color: var(--klein); }
   .nav-cta{
     background: var(--klein); color:var(--white); font-weight:700; font-size:13px;
-    padding: 12px 20px; border-radius: 6px; text-decoration:none; transition: background .18s ease-out, transform .18s ease-out;
+    padding: 13px 24px; text-decoration:none; transition: background .18s ease-out;
   }
-  .nav-cta:hover{ background: var(--klein-deep); transform:translateY(-1px); }
+  .nav-cta:hover{ background: var(--klein-deep); }
   @media (max-width:760px){
-    .nav-inner{ flex-wrap:wrap; row-gap:0; padding-bottom:8px; }
-    .nav-links{ order:3; width:100%; overflow-x:auto; white-space:nowrap; gap:20px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .nav-inner{ flex-wrap:wrap; height:auto; padding-top:14px; }
+    .nav-links{ order:3; width:100%; overflow-x:auto; white-space:nowrap; gap:22px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .nav-links a{ padding:12px 0 14px; }
     .nav-links::-webkit-scrollbar{ display:none; }
   }
 
-  /* Focus clavier + interactions */
-  :focus-visible{ outline:2px solid var(--klein); outline-offset:2px; border-radius:4px; }
-  .hero :focus-visible, .goal-strip :focus-visible{ outline-color: var(--gold); }
-  .btn-gold, .btn-outline{ transition: transform .18s ease-out, filter .18s ease-out, background .18s ease-out; }
-  .btn-gold:hover{ filter:brightness(0.95); transform:translateY(-1px); }
-  .btn-outline:hover{ background:rgba(255,255,255,0.1); transform:translateY(-1px); }
-  .btn-gold:active, .btn-outline:active, .nav-cta:active{ transform:translateY(0) scale(0.98); }
+  /* A11y + motion */
+  :focus-visible{ outline:2px solid var(--klein); outline-offset:3px; }
+  .hero :focus-visible, .verify-outer :focus-visible, .goal-outer :focus-visible{ outline-color: var(--gold); }
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
     html{ scroll-behavior:auto; }
   }
 
-  /* HERO — solid Klein block, referencing IKB monochrome panels */
-  .hero{ background: var(--klein); color: var(--white); padding: 110px 0 100px 0; position:relative; overflow:hidden; border-bottom:6px solid var(--gold); }
-  .hero-inner{ max-width: 720px; position:relative; z-index:2; }
-  .hero-stamp{ position:absolute; right:6%; top:50%; transform: translateY(-50%) rotate(-12deg); width:230px; height:230px; opacity:0.95; z-index:1; }
-  @media (max-width:1080px){ .hero-stamp{ display:none; } }
-  .hero-stamp svg{ width:100%; height:100%; animation: stamp-spin 40s linear infinite; }
+  /* HERO — one flat IKB plane, oversized editorial type */
+  .hero{ background: var(--klein); color: var(--white); padding: 130px 0 120px; position:relative; overflow:hidden; }
+  .hero-inner{ max-width: 860px; position:relative; z-index:2; }
+  .hero-kicker{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,255,255,0.65); margin-bottom:34px; display:flex; align-items:center; gap:14px; }
+  .hero-kicker::before{ content:''; width:44px; height:1px; background:var(--gold); }
+  .hero h1{ font-size: clamp(44px,7vw,86px); font-weight:500; line-height:1.02; margin-bottom:30px; }
+  .hero h1 em{ font-style:italic; color: var(--gold); font-weight:400; }
+  .hero p{ font-size:18px; line-height:1.65; color: rgba(255,255,255,0.85); max-width:540px; margin-bottom:42px; }
+  .btn-row{ display:flex; gap:2px; flex-wrap:wrap; }
+  .btn-gold{ background: var(--gold); color: var(--klein-deep); font-weight:700; padding:17px 32px; text-decoration:none; font-size:14px; display:inline-block; transition: background .18s ease-out; }
+  .btn-gold:hover{ background:#E3B25A; }
+  .btn-outline{ background:transparent; color:var(--white); font-weight:700; padding:17px 32px; text-decoration:none; font-size:14px; border:1px solid rgba(255,255,255,0.45); display:inline-block; transition: background .18s ease-out, border-color .18s ease-out; }
+  .btn-outline:hover{ background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.8); }
+  .hero-note{ margin-top:56px; font-family:'JetBrains Mono', monospace; font-size:12px; color: rgba(255,255,255,0.55); border-top:1px solid rgba(255,255,255,0.22); padding-top:22px; letter-spacing:0.04em; max-width:640px; }
+  .hero-stamp{ position:absolute; right:5%; top:50%; transform: translateY(-50%) rotate(-12deg); width:250px; height:250px; z-index:1; }
+  @media (max-width:1120px){ .hero-stamp{ display:none; } }
+  .hero-stamp svg{ width:100%; height:100%; animation: stamp-spin 45s linear infinite; }
   @keyframes stamp-spin{ from{ transform:rotate(0deg);} to{ transform:rotate(360deg);} }
-  .hero h1{ font-size: clamp(32px,5.2vw,54px); font-weight:700; line-height:1.08; letter-spacing:-0.01em; margin-bottom:22px; }
-  .hero h1 em{ font-style:italic; color: var(--gold); }
-  .hero p{ font-size:17px; line-height:1.6; color: rgba(255,255,255,0.82); max-width:520px; margin-bottom:32px; }
-  .btn-row{ display:flex; gap:14px; flex-wrap:wrap; }
-  .btn-gold{ background: var(--gold); color: var(--klein-deep); font-weight:700; padding:14px 26px; border-radius:6px; text-decoration:none; font-size:14px; display:inline-block; }
-  .btn-outline{ background:transparent; color:var(--white); font-weight:700; padding:14px 26px; border-radius:6px; text-decoration:none; font-size:14px; border:1.5px solid rgba(255,255,255,0.4); display:inline-block; }
-  .hero-note{ margin-top:40px; font-family:'JetBrains Mono'; font-size:12px; color: rgba(255,255,255,0.6); border-top:1px solid rgba(255,255,255,0.2); padding-top:20px; }
 
-  /* SECTION SHELL */
-  section{ padding: 84px 0; }
-  .section-head{ max-width: 580px; margin-bottom: 46px; }
-  .section-head h2{ font-size: clamp(26px,3.4vw,36px); font-weight:700; margin-bottom:12px; letter-spacing:-0.01em; }
-  .section-head h2::after{ content:''; display:block; width:64px; height:4px; background:var(--gold); margin-top:16px; }
-  .section-head p{ color: var(--muted); font-size:15px; line-height:1.6; }
+  /* SECTIONS — numbered catalog heads, hairline rules, no boxes */
+  section{ padding: 110px 0; }
+  .sec-head{ display:grid; grid-template-columns: 110px 1fr; gap:28px; border-top:2px solid var(--rule); padding-top:30px; margin-bottom:64px; }
+  .sec-index{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700; color:var(--klein); letter-spacing:0.12em; padding-top:14px; }
+  .sec-head h2{ font-size: clamp(32px,4.6vw,54px); line-height:1.04; }
+  .sec-head p{ margin-top:16px; color:var(--muted); max-width:560px; font-size:16px; line-height:1.65; }
+  @media (max-width:700px){ .sec-head{ grid-template-columns:1fr; gap:8px; } }
 
-  /* ROLES — the four actors, stated plainly */
-  .roles-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:18px; }
-  @media (max-width:900px){ .roles-grid{ grid-template-columns: repeat(2,1fr); } }
-  @media (max-width:520px){ .roles-grid{ grid-template-columns: 1fr; } }
-  .role-card{ background: var(--white); border:1px solid var(--line); border-top:3px solid var(--klein); border-radius:10px; padding:26px 22px; transition: transform .15s ease, box-shadow .15s ease; }
-  .role-card:hover{ transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,31,115,0.08); }
-  .role-num{ font-family:'JetBrains Mono'; font-size:12px; color: var(--gold); font-weight:700; margin-bottom:14px; }
-  .role-card h4{ font-family:'Fraunces', serif; font-size:16px; font-weight:600; margin-bottom:8px; }
-  .role-card p{ font-size:13px; color: var(--muted); line-height:1.55; }
-
-  /* PROCESS — verification stamp motif, not live-GPS */
-  .process-wrap{ background: var(--white); border:1px solid var(--line); border-radius: 16px; padding: 20px; }
-  .process-list{ display:flex; flex-direction:column; }
-  .process-item{ display:flex; gap:22px; align-items:flex-start; padding: 22px 14px; border-bottom:1px solid var(--line); }
-  .process-item:last-child{ border-bottom:none; }
-  .process-badge{
-    width:44px; height:44px; border-radius:4px; background: var(--klein);
-    color: var(--white); font-family:'JetBrains Mono'; font-weight:700; font-size:17px;
-    display:flex; align-items:center; justify-content:center; flex-shrink:0;
-    box-shadow: 4px 4px 0 var(--klein-tint);
+  /* 01 — ROLES : colonnes séparées par des filets */
+  .roles-grid{ display:grid; grid-template-columns: repeat(4,1fr); }
+  .role-card{ border-left:1px solid var(--line); padding: 6px 28px 44px; }
+  .role-card:first-child{ border-left:none; padding-left:0; }
+  .role-num{ font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--gold); font-weight:700; margin-bottom:18px; letter-spacing:0.08em; }
+  .role-card h4{ font-size:21px; margin-bottom:12px; }
+  .role-card p{ font-size:14.5px; color: var(--muted); line-height:1.6; }
+  @media (max-width:900px){
+    .roles-grid{ grid-template-columns: 1fr 1fr; row-gap:36px; }
+    .role-card:nth-child(3){ border-left:none; padding-left:0; }
   }
-  .process-item.verify .process-badge{ background: var(--gold); color: var(--klein-deep); box-shadow: 4px 4px 0 rgba(217,164,65,0.25); }
-  .process-text h4{ font-family:'Fraunces', serif; font-size:15px; font-weight:600; margin-bottom:4px; }
-  .process-text p{ font-size:13px; color: var(--muted); line-height:1.55; }
+  @media (max-width:540px){
+    .roles-grid{ grid-template-columns:1fr; }
+    .role-card{ border-left:none; padding:0 0 8px; border-top:1px solid var(--line); padding-top:24px; }
+    .role-card:first-child{ border-top:none; padding-top:6px; }
+  }
 
-  /* QUALITY / VERIFICATION highlight band — full Klein panel */
-  .verify-band{ background: var(--klein); border-radius:18px; padding: 54px 48px; display:grid; grid-template-columns: 1fr 1fr; gap:40px; align-items:center; }
-  @media (max-width:800px){ .verify-band{ grid-template-columns:1fr; padding:38px 28px; } }
-  .verify-band .eyebrow{ color: var(--gold); }
-  .verify-band h3{ font-size: clamp(22px,2.6vw,28px); font-weight:700; color: var(--white); margin-bottom:14px; }
-  .verify-band p{ font-size:14px; color: rgba(255,255,255,0.78); line-height:1.65; }
-  .stamp-mock{ background: var(--white); border-radius:12px; padding:26px; border:1px dashed var(--klein); position:relative; box-shadow: 10px 10px 0 rgba(0,0,0,0.15); }
-  .stamp-row{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); padding:9px 0; border-bottom:1px solid var(--line); }
+  /* 02 — PROCESS : numéraux serifs géants */
+  .process-list{ border-top:1px solid var(--line); }
+  .process-item{ display:grid; grid-template-columns: 130px 1fr; gap:34px; padding: 38px 0; border-bottom:1px solid var(--line); align-items:start; }
+  .process-num{ font-family:'Fraunces', serif; font-style:italic; font-size:60px; font-weight:500; color:var(--klein); line-height:0.9; }
+  .process-item.verify .process-num{ color:var(--gold); }
+  .process-text h4{ font-size:21px; margin-bottom:8px; }
+  .process-item.verify .process-text h4::after{ content:'— l’étape Kleining'; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--gold); margin-left:12px; letter-spacing:0.08em; text-transform:uppercase; }
+  .process-text p{ font-size:15px; color: var(--muted); line-height:1.65; max-width:600px; }
+  @media (max-width:700px){ .process-item{ grid-template-columns:64px 1fr; gap:20px; } .process-num{ font-size:38px; } }
+
+  /* 03 — VERIFICATION : pleine largeur IKB */
+  .verify-outer{ background: var(--klein); color:var(--white); padding: 120px 0; border-top:6px solid var(--gold); }
+  .verify-grid{ display:grid; grid-template-columns: 1.05fr 0.95fr; gap:70px; align-items:center; }
+  @media (max-width:860px){ .verify-grid{ grid-template-columns:1fr; gap:48px; } }
+  .verify-kicker{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); margin-bottom:26px; }
+  .verify-grid h3{ font-size: clamp(30px,4vw,48px); line-height:1.08; margin-bottom:24px; }
+  .verify-grid h3 em{ font-style:italic; color:var(--gold); font-weight:400; }
+  .verify-grid > div > p{ font-size:16px; color: rgba(255,255,255,0.82); line-height:1.7; max-width:520px; }
+  .stamp-mock{ background: var(--white); color:var(--ink); padding:34px; box-shadow: 16px 16px 0 rgba(0,0,0,0.22); }
+  .stamp-kicker{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--klein); margin-bottom:20px; }
+  .stamp-row{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--muted); padding:12px 0; border-bottom:1px solid var(--line); }
   .stamp-row b{ color: var(--ink); font-weight:600; }
-  .stamp-status{ display:inline-flex; align-items:center; gap:6px; background: var(--klein); color:var(--white); font-size:11px; font-weight:700; padding:5px 12px; border-radius:999px; margin-top:14px; }
+  .stamp-status{ display:inline-flex; align-items:center; gap:8px; background: var(--klein); color:var(--white); font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; letter-spacing:0.05em; padding:9px 14px; margin-top:20px; }
 
-  /* LINEN + ADMIN mini features */
-  .feature-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:24px; }
-  @media (max-width:800px){ .feature-grid{ grid-template-columns:1fr; } }
-  .feature-card{ background: var(--white); border:1px solid var(--line); border-radius:14px; padding:30px; }
-  .feature-card h4{ font-family:'Fraunces', serif; font-size:18px; font-weight:600; margin-bottom:10px; color: var(--klein-deep); }
-  .feature-card p{ font-size:14px; color:var(--muted); line-height:1.6; }
+  /* 04 — TARIFS : deux colonnes, filet vertical, chiffres géants */
+  .price-grid{ display:grid; grid-template-columns: 1fr 1fr; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .price-col{ padding: 52px 56px 52px 0; }
+  .price-col + .price-col{ border-left:1px solid var(--line); padding-left:56px; padding-right:0; }
+  .price-col h4{ font-size:22px; margin-bottom:6px; }
+  .price-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:18px; }
+  .price-amount{ font-family:'Fraunces', serif; font-size: clamp(58px,7vw,88px); font-weight:500; color:var(--klein); line-height:1; margin:18px 0 6px; }
+  .price-amount small{ font-family:'Instrument Sans', sans-serif; font-size:15px; color:var(--muted); font-weight:500; }
+  .price-col ul{ list-style:none; margin-top:28px; }
+  .price-col li{ font-size:14.5px; color:var(--muted); line-height:1.55; padding:12px 0; border-top:1px solid var(--line); }
+  .price-col li::before{ content:'—'; color:var(--gold); font-weight:700; margin-right:12px; }
+  .price-note{ margin-top:26px; font-size:14px; color:var(--muted); font-style:italic; font-family:'Fraunces', serif; }
+  @media (max-width:760px){
+    .price-grid{ grid-template-columns:1fr; }
+    .price-col{ padding:44px 0; }
+    .price-col + .price-col{ border-left:none; border-top:1px solid var(--line); padding-left:0; }
+  }
 
-  /* PRICING */
-  .price-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:24px; align-items:stretch; }
-  @media (max-width:800px){ .price-grid{ grid-template-columns:1fr; } }
-  .price-card{ background:var(--white); border:1px solid var(--line); border-radius:14px; padding:34px 30px; }
-  .price-card.highlight{ border-color:var(--klein); box-shadow: 0 0 0 1px var(--klein); }
-  .price-amount{ font-family:'Fraunces', serif; font-size:42px; font-weight:600; color:var(--klein); margin:8px 0 2px; }
-  .price-amount small{ font-size:14px; color:var(--muted); font-family:'Instrument Sans', sans-serif; font-weight:500; }
-  .price-card h4{ font-family:'Fraunces', serif; font-size:19px; font-weight:600; }
-  .price-card ul{ list-style:none; margin-top:18px; }
-  .price-card li{ font-size:14px; color:var(--muted); line-height:1.5; padding:9px 0 9px 26px; position:relative; border-bottom:1px solid var(--line); }
-  .price-card li:last-child{ border-bottom:none; }
-  .price-card li::before{ content:'✓'; position:absolute; left:0; color:var(--gold); font-weight:700; }
-  .price-note{ margin-top:18px; font-size:13px; color:var(--muted); text-align:center; }
+  /* 05 — SERVICES : grille éditoriale, filets seulement */
+  .feature-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 0 72px; }
+  .feature-card{ border-top:1px solid var(--rule); padding: 26px 0 48px; }
+  .feature-card h4{ font-size:22px; color: var(--klein-deep); margin-bottom:12px; }
+  .feature-card p{ font-size:15px; color:var(--muted); line-height:1.7; max-width:480px; }
+  @media (max-width:760px){ .feature-grid{ grid-template-columns:1fr; gap:0; } .feature-card{ padding-bottom:36px; } }
 
-  /* FAQ */
-  .faq-list{ max-width:760px; }
-  .faq-list details{ background:var(--white); border:1px solid var(--line); border-radius:10px; margin-bottom:12px; }
-  .faq-list summary{ cursor:pointer; padding:18px 22px; font-weight:600; font-size:15px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  /* 06 — FAQ : liste à filets, pas de boîtes */
+  .faq-list{ border-top:1px solid var(--rule); max-width: 820px; }
+  .faq-list details{ border-bottom:1px solid var(--line); }
+  .faq-list summary{ cursor:pointer; padding:24px 0; font-family:'Fraunces', serif; font-size:19px; font-weight:500; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+  .faq-list summary:hover{ color:var(--klein); }
   .faq-list summary::-webkit-details-marker{ display:none; }
-  .faq-list summary::after{ content:'+'; font-family:'JetBrains Mono', monospace; color:var(--klein); font-size:18px; flex-shrink:0; }
+  .faq-list summary::after{ content:'+'; font-family:'JetBrains Mono', monospace; color:var(--gold); font-size:22px; flex-shrink:0; font-weight:400; }
   .faq-list details[open] summary::after{ content:'−'; }
-  .faq-list details p{ padding:0 22px 18px 22px; font-size:14px; color:var(--muted); line-height:1.65; }
+  .faq-list details p{ padding:0 40px 26px 0; font-size:15px; color:var(--muted); line-height:1.7; max-width:680px; }
 
-  /* GOALS / BETA MILESTONE */
-  .goal-strip{ background: var(--klein); color:var(--white); border-radius:18px; padding: 40px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px; }
-  .goal-item b{ display:block; font-family:'Fraunces', serif; font-size:26px; font-weight:700; color: var(--gold); }
-  .goal-item span{ font-size:12px; color: rgba(255,255,255,0.7); }
+  /* BANDEAU — pleine largeur or */
+  .goal-outer{ background: var(--gold); color: var(--klein-deep); padding: 74px 0; }
+  .goal-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:40px; }
+  .goal-item b{ display:block; font-family:'Fraunces', serif; font-size: clamp(24px,2.8vw,34px); font-weight:600; margin-bottom:8px; }
+  .goal-item span{ font-size:13.5px; color: rgba(0,31,115,0.75); line-height:1.5; display:block; max-width:260px; }
+  @media (max-width:760px){ .goal-grid{ grid-template-columns:1fr; gap:30px; } }
 
   /* CTA */
-  .cta-band{ text-align:center; }
-  .cta-band h2{ font-size: clamp(26px,3.6vw,36px); margin-bottom:16px; }
-  .cta-band p{ color: var(--muted); max-width:480px; margin: 0 auto 28px auto; font-size:15px; }
+  .cta-band{ text-align:left; max-width:820px; }
+  .cta-band h2{ font-size: clamp(36px,5.4vw,64px); line-height:1.05; margin-bottom:24px; }
+  .cta-band h2 em{ font-style:italic; color:var(--klein); font-weight:400; }
+  .cta-band p{ color: var(--muted); max-width:520px; margin-bottom:36px; font-size:16px; line-height:1.65; }
+  .btn-klein{ background: var(--klein); color:var(--white); font-weight:700; padding:17px 32px; text-decoration:none; font-size:14px; display:inline-block; transition: background .18s ease-out; }
+  .btn-klein:hover{ background: var(--klein-deep); }
 
-  footer{ padding: 48px 0 34px 0; background: var(--klein-deep); font-size:13px; color: rgba(255,255,255,0.65); border-top:6px solid var(--gold); }
-  .footer-grid{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px; align-items:center; }
+  footer{ padding: 54px 0 40px; background: var(--klein-deep); font-size:13px; color: rgba(255,255,255,0.6); border-top:6px solid var(--gold); }
+  .footer-grid{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:18px; align-items:center; }
   footer a{ color: rgba(255,255,255,0.85); }
 </style>
 </head>
@@ -184,7 +198,7 @@
 
 <header class="hero">
   <div class="wrap hero-inner">
-    <div class="eyebrow" style="color:rgba(255,255,255,0.65);">// Paris · locations saisonnières</div>
+    <div class="hero-kicker">Paris · Locations saisonnières</div>
     <h1>Le ménage <em>vérifié</em>, avant chaque confirmation.</h1>
     <p>Kleining connecte les propriétaires à des prestataires de ménage professionnels — chaque intervention est photographiée, contrôlée par notre équipe, puis confirmée. Pas de mauvaise surprise.</p>
     <div class="btn-row">
@@ -213,10 +227,12 @@
 
 <section id="roles">
   <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Qui fait quoi</div>
-      <h2>Quatre rôles, un processus clair</h2>
-      <p>Contrairement à une simple mise en relation, chaque intervention passe par un contrôle avant d'être confirmée.</p>
+    <div class="sec-head">
+      <div class="sec-index">01 / Qui fait quoi</div>
+      <div>
+        <h2>Quatre rôles, un processus clair</h2>
+        <p>Contrairement à une simple mise en relation, chaque intervention passe par un contrôle avant d'être confirmée.</p>
+      </div>
     </div>
     <div class="roles-grid">
       <div class="role-card">
@@ -243,82 +259,87 @@
   </div>
 </section>
 
-<section id="process-section">
+<section id="process-section" style="padding-top:0;">
   <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Le parcours d'une réservation</div>
-      <h2>De la demande à la confirmation</h2>
+    <div class="sec-head">
+      <div class="sec-index">02 / Le parcours</div>
+      <div>
+        <h2>De la demande à la confirmation</h2>
+      </div>
     </div>
-    <div class="process-wrap">
-      <div class="process-list">
-        <div class="process-item">
-          <div class="process-badge">1</div>
-          <div class="process-text">
-            <h4>Réservation</h4>
-            <p>Le client choisit une date sur le calendrier de son bien et voit le prix avant de confirmer.</p>
-          </div>
+    <div class="process-list">
+      <div class="process-item">
+        <div class="process-num">1</div>
+        <div class="process-text">
+          <h4>Réservation</h4>
+          <p>Le client choisit une date sur le calendrier de son bien et voit le prix avant de confirmer.</p>
         </div>
-        <div class="process-item">
-          <div class="process-badge">2</div>
-          <div class="process-text">
-            <h4>Prise en charge</h4>
-            <p>Un prestataire de ménage vérifié accepte la mission depuis son propre calendrier.</p>
-          </div>
+      </div>
+      <div class="process-item">
+        <div class="process-num">2</div>
+        <div class="process-text">
+          <h4>Prise en charge</h4>
+          <p>Un prestataire de ménage vérifié accepte la mission depuis son propre calendrier.</p>
         </div>
-        <div class="process-item">
-          <div class="process-badge">3</div>
-          <div class="process-text">
-            <h4>Réalisation + photos</h4>
-            <p>Le prestataire effectue le ménage et soumet la liste de photos exigée par Kleining (pièce par pièce).</p>
-          </div>
+      </div>
+      <div class="process-item">
+        <div class="process-num">3</div>
+        <div class="process-text">
+          <h4>Réalisation + photos</h4>
+          <p>Le prestataire effectue le ménage et soumet la liste de photos exigée par Kleining (pièce par pièce).</p>
         </div>
-        <div class="process-item verify">
-          <div class="process-badge">✓</div>
-          <div class="process-text">
-            <h4>Vérification</h4>
-            <p>L'équipe Kleining contrôle les photos avant toute confirmation — aucune mission n'est validée automatiquement.</p>
-          </div>
+      </div>
+      <div class="process-item verify">
+        <div class="process-num">✓</div>
+        <div class="process-text">
+          <h4>Vérification</h4>
+          <p>L'équipe Kleining contrôle les photos avant toute confirmation — aucune mission n'est validée automatiquement.</p>
         </div>
-        <div class="process-item">
-          <div class="process-badge">5</div>
-          <div class="process-text">
-            <h4>Confirmation client</h4>
-            <p>Le propriétaire est notifié que le ménage est terminé et validé.</p>
-          </div>
+      </div>
+      <div class="process-item">
+        <div class="process-num">5</div>
+        <div class="process-text">
+          <h4>Confirmation client</h4>
+          <p>Le propriétaire est notifié que le ménage est terminé et validé.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section id="verification">
-  <div class="wrap">
-    <div class="verify-band">
-      <div>
-        <div class="eyebrow">Ce qui nous différencie</div>
-        <h3>Rien n'est confirmé sans contrôle humain</h3>
-        <p>Chaque ménage doit être prouvé par un jeu de photos précis — pas de "c'est fait, fais-moi confiance". Notre équipe vérifie chaque dossier avant que le client ne soit notifié. C'est plus lent qu'une validation automatique, mais c'est la garantie que le propriétaire attend.</p>
-      </div>
-      <div class="stamp-mock">
-        <div class="eyebrow" style="margin-bottom:16px;">Dossier · Rue de la Pompe, 16e</div>
-        <div class="stamp-row"><span>Photos soumises</span><b>6 / 6</b></div>
-        <div class="stamp-row"><span>Prestataire</span><b>Net&Pro Paris</b></div>
-        <div class="stamp-row"><span>Contrôlé par</span><b>Équipe Kleining</b></div>
-        <div class="stamp-status">✓ Vérifié — en attente de confirmation client</div>
-      </div>
+</main>
+
+<div class="verify-outer" id="verification">
+  <div class="wrap verify-grid">
+    <div>
+      <div class="verify-kicker">03 / Ce qui nous différencie</div>
+      <h3>Rien n'est confirmé <em>sans contrôle humain</em></h3>
+      <p>Chaque ménage doit être prouvé par un jeu de photos précis — pas de "c'est fait, fais-moi confiance". Notre équipe vérifie chaque dossier avant que le client ne soit notifié. C'est plus lent qu'une validation automatique, mais c'est la garantie que le propriétaire attend.</p>
+    </div>
+    <div class="stamp-mock">
+      <div class="stamp-kicker">Dossier · Rue de la Pompe, 16e</div>
+      <div class="stamp-row"><span>Photos soumises</span><b>6 / 6</b></div>
+      <div class="stamp-row"><span>Prestataire</span><b>Net&Pro Paris</b></div>
+      <div class="stamp-row"><span>Contrôlé par</span><b>Équipe Kleining</b></div>
+      <div class="stamp-status">✓ Vérifié — en attente de confirmation client</div>
     </div>
   </div>
-</section>
+</div>
+
+<main>
 
 <section id="tarifs">
   <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Tarifs de la bêta</div>
-      <h2>Deux formules, prix fixes</h2>
-      <p>Pas d'abonnement pendant la bêta : vous payez au ménage, et le prix est affiché avant chaque confirmation.</p>
+    <div class="sec-head">
+      <div class="sec-index">04 / Tarifs de la bêta</div>
+      <div>
+        <h2>Deux formules, prix fixes</h2>
+        <p>Pas d'abonnement pendant la bêta : vous payez au ménage, et le prix est affiché avant chaque confirmation.</p>
+      </div>
     </div>
     <div class="price-grid">
-      <div class="price-card">
+      <div class="price-col">
+        <div class="price-tag">Formule courante</div>
         <h4>Nettoyage normal</h4>
         <div class="price-amount">47€ <small>/ intervention</small></div>
         <ul>
@@ -328,7 +349,8 @@
           <li>Contrôle humain par l'équipe Kleining avant confirmation</li>
         </ul>
       </div>
-      <div class="price-card highlight">
+      <div class="price-col">
+        <div class="price-tag">Formule renforcée</div>
         <h4>Nettoyage en profondeur</h4>
         <div class="price-amount">60€ <small>/ intervention</small></div>
         <ul>
@@ -343,11 +365,13 @@
   </div>
 </section>
 
-<section id="linge">
+<section id="linge" style="padding-top:0;">
   <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Au-delà du ménage</div>
-      <h2>Ce que couvre aussi Kleining</h2>
+    <div class="sec-head">
+      <div class="sec-index">05 / Au-delà du ménage</div>
+      <div>
+        <h2>Ce que couvre aussi Kleining</h2>
+      </div>
     </div>
     <div class="feature-grid">
       <div class="feature-card">
@@ -370,11 +394,13 @@
   </div>
 </section>
 
-<section id="faq">
+<section id="faq" style="padding-top:0;">
   <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Questions fréquentes</div>
-      <h2>Ce que les propriétaires nous demandent</h2>
+    <div class="sec-head">
+      <div class="sec-index">06 / Questions fréquentes</div>
+      <div>
+        <h2>Ce que les propriétaires nous demandent</h2>
+      </div>
     </div>
     <div class="faq-list">
       <details>
@@ -409,31 +435,31 @@
   </div>
 </section>
 
-<section id="beta">
-  <div class="wrap">
-    <div class="goal-strip">
-      <div class="goal-item"><b>Places limitées</b><span>bêta parisienne en petit comité, qualité d'abord</span></div>
-      <div class="goal-item"><b>100% humain</b><span>chaque dossier photo vérifié par notre équipe</span></div>
-      <div class="goal-item"><b>0 engagement</b><span>paiement au ménage, prix fixes, sans abonnement</span></div>
-    </div>
-  </div>
-</section>
+</main>
 
+<div class="goal-outer" id="beta">
+  <div class="wrap goal-grid">
+    <div class="goal-item"><b>Places limitées</b><span>bêta parisienne en petit comité, qualité d'abord</span></div>
+    <div class="goal-item"><b>100% humain</b><span>chaque dossier photo vérifié par notre équipe</span></div>
+    <div class="goal-item"><b>0 engagement</b><span>paiement au ménage, prix fixes, sans abonnement</span></div>
+  </div>
+</div>
+
+<main>
 <section id="cta">
   <div class="wrap">
     <div class="cta-band">
-      <h2>Envie de tester Kleining sur votre bien ?</h2>
+      <h2>Envie de tester Kleining <em>sur votre bien ?</em></h2>
       <p>La bêta démarre avec un petit nombre de propriétaires à Paris, pour s'assurer que le processus est fluide avant d'ouvrir plus largement.</p>
-      <a href="mailto:william@cleanflow-app.com" class="btn-gold" style="background: var(--klein); color:var(--white);">Rejoindre la bêta</a>
+      <a href="mailto:william@cleanflow-app.com" class="btn-klein">Rejoindre la bêta</a>
     </div>
   </div>
 </section>
-
 </main>
 
 <footer>
   <div class="wrap footer-grid">
-    <div><b style="font-family:'Fraunces', serif; color:var(--white); font-size:17px;"><span style="color:var(--gold);">Klein</span>ing</b><br>Wanecque William, fondateur</div>
+    <div><b style="font-family:'Fraunces', serif; color:var(--white); font-size:17px;"><span style="color:var(--gold); font-style:italic;">Klein</span>ing</b><br>Wanecque William, fondateur</div>
     <div>0624207668</div>
     <div>Paris, France</div>
     <div><a href="/legal/cgu.html">CGU</a> · <a href="/legal/confidentialite.html">Confidentialité</a></div>

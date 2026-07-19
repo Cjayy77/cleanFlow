@@ -1,12 +1,13 @@
 // Kleining — couche de données Firebase partagée par les quatre interfaces.
 // Firestore = données, Firebase Auth = connexion, Firebase Storage = photos.
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   getFirestore,
   doc,
   getDoc,
   setDoc,
+  addDoc,
   collection,
   query,
   where,
@@ -22,6 +23,10 @@ export const ROLE_LIVREUR = 'livreur';
 export const ROLE_ADMIN = 'admin';
 
 export const PRICES = { normal: 47, deep: 60 };
+
+// Boîte de réception de l'équipe pour les notifications internes.
+// Doit rester identique à l'adresse autorisée dans firestore.rules (/mail).
+export const TEAM_EMAIL = 'william@cleanflow-app.com';
 
 // TODO: confirm with team — liste exacte des photos exigées par mission.
 export const PHOTO_SLOTS = [
@@ -158,11 +163,36 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
       accountStatus: 'pending',
       createdAt: serverTimestamp(),
     });
+    await addDoc(collection(secondaryDb, 'mail'), {
+      to: TEAM_EMAIL,
+      message: {
+        subject: `Kleining — nouvelle demande d’accès ${role}`,
+        text: `${name} (${email}, ${phone}) demande un accès ${role}.${inviteCode ? ` Code d’invitation saisi : ${inviteCode}.` : ' Aucun code d’invitation saisi.'} À traiter dans /admin/.`,
+      },
+      createdAt: serverTimestamp(),
+    }).catch(() => {});
     return credential.user.uid;
   } finally {
     await signOut(secondaryAuth).catch(() => {});
     await deleteApp(secondary).catch(() => {});
   }
+}
+
+// E-mail de réinitialisation du mot de passe (flux natif Firebase).
+export function resetPassword(email) {
+  return sendPasswordResetEmail(auth, email);
+}
+
+// File d'envoi d'e-mails : dépose un document dans la collection `mail`,
+// que l'extension Firebase « Trigger Email » transforme en vrai e-mail
+// (voir SETUP.md). Sans l'extension, les documents s'accumulent sans effet —
+// l'action métier n'échoue jamais à cause d'un e-mail.
+export function queueEmail({ to, subject, text }) {
+  return addDoc(collection(db, 'mail'), {
+    to,
+    message: { subject, text },
+    createdAt: serverTimestamp(),
+  }).catch(() => {});
 }
 
 // État visuel de chargement d'un bouton pendant une action asynchrone.
