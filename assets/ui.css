@@ -15,7 +15,7 @@
   --ok-ink: #22633A;
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
-body{ font-family:'Instrument Sans', sans-serif; color:var(--ink); background:var(--paper); min-height:100vh; }
+body{ font-family:'Instrument Sans', sans-serif; color:var(--ink); background:var(--paper); min-height:100vh; border-top:6px solid var(--gold); }
 .app-wrap{ max-width: 1140px; margin:0 auto; padding: 30px 20px 70px 20px; }
 h1,h2,h3{ font-family:'Fraunces', serif; font-weight:600; letter-spacing:-0.01em; margin:0 0 10px; }
 h1{ font-size:30px; }
@@ -23,10 +23,11 @@ h2{ font-size:21px; }
 p{ color:var(--muted); line-height:1.6; }
 a{ color:var(--klein); }
 
-.top-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:30px; padding-bottom:18px; border-bottom:1px solid var(--line); }
-.brand{ font-family:'Fraunces', serif; font-weight:600; font-size:26px; letter-spacing:-0.01em; }
-.brand .k{ color: var(--klein); }
-.role-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted); margin-top:4px; }
+.top-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:-30px -20px 30px -20px; padding:22px 28px; background:var(--klein); }
+.top-row .btn.ghost{ border-color:rgba(255,255,255,0.35); color:var(--white); }
+.brand{ font-family:'Fraunces', serif; font-weight:600; font-size:26px; letter-spacing:-0.01em; color:var(--white); }
+.brand .k{ color: var(--gold); }
+.role-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:rgba(255,255,255,0.65); margin-top:4px; }
 
 .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--klein); margin-bottom:10px; }
 
