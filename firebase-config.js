@@ -1,8 +1,10 @@
+// Config publique du projet Firebase "kleining" — la sécurité des données
+// repose sur les règles Firestore/Storage, pas sur le secret de ces valeurs.
 export const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
-  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID"
+  apiKey: "AIzaSyD_sfy0LLSG8-_3BNoXzjdx48bv7a6htmU",
+  authDomain: "kleining-ff455.firebaseapp.com",
+  projectId: "kleining-ff455",
+  storageBucket: "kleining-ff455.firebasestorage.app",
+  messagingSenderId: "853601540271",
+  appId: "1:853601540271:web:a60c249d8dce7396075c5a",
 };
