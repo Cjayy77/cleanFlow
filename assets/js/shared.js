@@ -26,7 +26,7 @@ export const PRICES = { normal: 47, deep: 60 };
 
 // Boîte de réception de l'équipe pour les notifications internes.
 // Doit rester identique à l'adresse autorisée dans firestore.rules (/mail).
-export const TEAM_EMAIL = 'william@cleanflow-app.com';
+export const TEAM_EMAIL = 'w.wanecque@gmail.com';
 
 // TODO: confirm with team — liste exacte des photos exigées par mission.
 export const PHOTO_SLOTS = [

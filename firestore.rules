@@ -165,7 +165,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.message.subject is string
         && request.resource.data.message.text is string
-        && (isAdmin() || request.resource.data.to == 'william@cleanflow-app.com');
+        && (isAdmin() || request.resource.data.to == 'w.wanecque@gmail.com');
     }
 
     // Messages client → équipe, rattachés à une réservation. Le client écrit,
