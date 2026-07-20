@@ -187,8 +187,16 @@
   .cta-card p{ color: var(--muted); max-width:480px; margin:0 auto 36px; font-size:16px; line-height:1.7; }
   @media (max-width:640px){ .cta-card{ padding:44px 26px; } }
 
-  footer{ padding: 56px 0 42px; background: var(--ink); font-size:13px; color: rgba(255,255,255,0.55); }
-  .footer-grid{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:18px; align-items:center; }
+  footer{ padding: 72px 0 34px; background: var(--ink); font-size:14px; color: rgba(255,255,255,0.55); }
+  .footer-top{ display:grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap:40px; padding-bottom:44px; border-bottom:1px solid rgba(255,255,255,0.14); }
+  @media (max-width:760px){ .footer-top{ grid-template-columns:1fr 1fr; gap:32px 24px; } }
+  .footer-brand b{ font-family:'Plus Jakarta Sans', sans-serif; color:var(--white); font-size:19px; }
+  .footer-brand span{ color:var(--gold); }
+  .footer-brand p{ color: rgba(255,255,255,0.5); margin-top:10px; font-size:13.5px; max-width:280px; line-height:1.6; }
+  .footer-col h5{ font-family:'JetBrains Mono', monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--gold); margin-bottom:16px; font-weight:700; }
+  .footer-col a, .footer-col span{ display:block; color: rgba(255,255,255,0.72); text-decoration:none; margin-bottom:10px; transition: color .15s ease-out; }
+  .footer-col a:hover{ color:var(--white); }
+  .footer-bottom{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; padding-top:26px; font-size:12.5px; color: rgba(255,255,255,0.45); }
   footer a{ color: rgba(255,255,255,0.85); }
 
   @media (prefers-reduced-motion: reduce){
@@ -462,12 +470,35 @@
 </main>
 
 <footer>
-  <div class="wrap footer-grid">
-    <div><b style="font-family:'Plus Jakarta Sans', sans-serif; color:var(--white); font-size:17px;"><span style="color:var(--gold);">Klein</span>ing</b><br>Wanecque William, fondateur</div>
-    <div>0624207668</div>
-    <div>Paris, France</div>
-    <div><a href="/legal/cgu.html">CGU</a> · <a href="/legal/confidentialite.html">Confidentialité</a></div>
-    <div>© 2026 Kleining</div>
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <b><span>Klein</span>ing</b>
+        <p>Le ménage vérifié pour vos locations saisonnières à Paris. Photos obligatoires, contrôle humain avant chaque confirmation.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Espaces</h5>
+        <a href="/app/">Espace client</a>
+        <a href="/prestataire/">Espace prestataire</a>
+        <a href="/livreur/">Espace livreur</a>
+      </div>
+      <div class="footer-col">
+        <h5>Kleining</h5>
+        <a href="#roles">Comment ça marche</a>
+        <a href="#tarifs">Tarifs</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <h5>Contact</h5>
+        <a href="mailto:william@cleanflow-app.com">william@cleanflow-app.com</a>
+        <a href="tel:+33624207668">06 24 20 76 68</a>
+        <span>Paris, France</span>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 Kleining · Wanecque William, fondateur</div>
+      <div><a href="/legal/cgu.html">CGU</a> · <a href="/legal/confidentialite.html">Confidentialité</a></div>
+    </div>
   </div>
 </footer>
 
