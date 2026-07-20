@@ -155,6 +155,14 @@
   .price-col li{ font-size:14px; color:var(--muted); line-height:1.6; padding:10px 0 10px 26px; position:relative; }
   .price-col li::before{ content:''; position:absolute; left:0; top:16px; width:10px; height:10px; background:var(--gold); border:2px solid var(--ink); }
   .price-note{ margin-top:34px; font-size:14px; color:var(--muted); }
+  .sub-band{ background:var(--klein); color:var(--white); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--gold); padding:26px 30px; margin-bottom:34px; display:flex; justify-content:space-between; align-items:center; gap:28px; flex-wrap:wrap; }
+  .sub-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:8px; font-weight:700; }
+  .sub-line{ font-size:17px; }
+  .sub-line b{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; font-size:24px; }
+  .sub-line s{ color:rgba(255,255,255,0.55); margin:0 6px 0 4px; font-size:16px; }
+  .sub-free{ display:inline-block; background:var(--gold); color:var(--klein-deep); font-weight:700; font-size:12px; padding:5px 12px; margin-left:6px; }
+  .sub-note{ font-size:13.5px; color:rgba(255,255,255,0.8); max-width:360px; line-height:1.6; }
+  @media (max-width:640px){ .sub-free{ margin-left:0; margin-top:10px; } }
 
   /* 05 — SERVICES : minimal, air seulement */
   .feature-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 60px 80px; }
@@ -355,7 +363,14 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <h2>Deux formules, prix fixes</h2>
-      <p>Pas d'abonnement. Vous payez au ménage, le prix est affiché avant confirmation.</p>
+      <p>Vous payez au ménage, le prix est affiché avant confirmation. L'accès à la plateforme est un abonnement mensuel, offert aux premiers clients de la bêta.</p>
+    </div>
+    <div class="sub-band reveal">
+      <div>
+        <div class="sub-tag">Accès à la plateforme</div>
+        <div class="sub-line"><b>10€ / mois</b> <s>20€</s> <span class="sub-free">Offert aux premiers clients de la bêta</span></div>
+      </div>
+      <div class="sub-note">Réservation, suivi vérifié, gestion du linge et de vos biens. Une valeur d'environ 20€/mois, gratuite pour vous pendant la bêta.</div>
     </div>
     <div class="price-grid">
       <div class="price-col block reveal">
