@@ -64,6 +64,7 @@ const adminCalendar = document.getElementById('adminCalendar');
 const adminCalMonth = document.getElementById('adminCalMonth');
 const adminCalPrev = document.getElementById('adminCalPrev');
 const adminCalNext = document.getElementById('adminCalNext');
+const roster = document.getElementById('roster');
 
 let currentUser = null;
 let authNotice = null;
@@ -177,6 +178,80 @@ function renderAssignments() {
   renderMissionsToAssign();
   renderKitsToAssign();
   renderAdminCalendar();
+  renderRoster();
+}
+
+function renderRoster() {
+  if (!roster) return;
+  roster.innerHTML = '';
+  roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire'));
+  roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur'));
+}
+
+function buildRosterGroup(title, members, role) {
+  const section = document.createElement('div');
+  section.className = 'roster-group';
+  const heading = document.createElement('div');
+  heading.className = 'eyebrow';
+  heading.textContent = `${title} · ${members.length}`;
+  section.appendChild(heading);
+  if (members.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = `Aucun ${role} approuvé pour le moment.`;
+    section.appendChild(empty);
+    return section;
+  }
+  members.forEach(member => section.appendChild(buildRosterCard(member, role)));
+  return section;
+}
+
+function buildRosterCard(member, role) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = member.name || member.email;
+  card.appendChild(title);
+
+  const contact = document.createElement('div');
+  contact.className = 'task-meta';
+  if (member.email) {
+    const mail = document.createElement('a');
+    mail.href = `mailto:${member.email}`;
+    mail.textContent = member.email;
+    contact.appendChild(mail);
+  }
+  if (member.phone) {
+    if (member.email) contact.appendChild(document.createTextNode(' · '));
+    const tel = document.createElement('a');
+    tel.href = `tel:${member.phone}`;
+    tel.textContent = member.phone;
+    contact.appendChild(tel);
+  }
+  card.appendChild(contact);
+
+  // Charge courante calculée à partir des réservations en direct.
+  let active = 0;
+  let done = 0;
+  latestBookings.forEach(booking => {
+    if (role === 'prestataire') {
+      if (booking.prestataireId !== member.id) return;
+      if (['accepted', 'submitted', 'rejected'].includes(booking.status)) active += 1;
+      else if (booking.status === 'verified') done += 1;
+    } else {
+      if (booking.livreurId !== member.id || booking.status === 'cancelled') return;
+      if (booking.linenDone) done += 1;
+      else active += 1;
+    }
+  });
+  const load = document.createElement('div');
+  load.className = 'task-meta roster-load';
+  load.textContent = role === 'prestataire'
+    ? `${active} mission(s) en cours · ${done} confirmée(s)`
+    : `${active} tournée(s) à faire · ${done} faite(s)`;
+  card.appendChild(load);
+  return card;
 }
 
 function renderAdminCalendar() {
