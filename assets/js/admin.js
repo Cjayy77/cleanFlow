@@ -126,7 +126,7 @@ function subscribeTeamMembers() {
   });
 }
 
-function buildMemberSelect(members, placeholder) {
+function buildMemberSelect(members, placeholder, annotate) {
   const select = document.createElement('select');
   const first = document.createElement('option');
   first.value = '';
@@ -135,13 +135,14 @@ function buildMemberSelect(members, placeholder) {
   members.forEach(member => {
     const option = document.createElement('option');
     option.value = member.id;
-    option.textContent = member.name || member.email;
+    const suffix = annotate ? annotate(member) : '';
+    option.textContent = suffix ? `${member.name || member.email} — ${suffix}` : (member.name || member.email);
     select.appendChild(option);
   });
   return select;
 }
 
-function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn) {
+function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn, annotate) {
   const card = document.createElement('div');
   card.className = 'task-card';
   const title = document.createElement('div');
@@ -162,7 +163,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
   }
   const row = document.createElement('div');
   row.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center;';
-  const select = buildMemberSelect(members, placeholder);
+  const select = buildMemberSelect(members, placeholder, annotate);
   const assignBtn = document.createElement('button');
   assignBtn.className = 'btn primary';
   assignBtn.type = 'button';
@@ -206,6 +207,35 @@ function buildRosterGroup(title, members, role) {
   return section;
 }
 
+// Charge + note d'un prestataire, calculées depuis les réservations en direct.
+function prestataireStats(memberId) {
+  let active = 0;
+  let done = 0;
+  let ratingSum = 0;
+  let ratingCount = 0;
+  latestBookings.forEach(booking => {
+    if (booking.prestataireId !== memberId) return;
+    if (['accepted', 'submitted', 'rejected'].includes(booking.status)) {
+      active += 1;
+    } else if (booking.status === 'verified') {
+      done += 1;
+      if (typeof booking.rating === 'number') { ratingSum += booking.rating; ratingCount += 1; }
+    }
+  });
+  return { active, done, ratingCount, average: ratingCount ? ratingSum / ratingCount : null };
+}
+
+function livreurStats(memberId) {
+  let active = 0;
+  let done = 0;
+  latestBookings.forEach(booking => {
+    if (booking.livreurId !== memberId || booking.status === 'cancelled') return;
+    if (booking.linenDone) done += 1;
+    else active += 1;
+  });
+  return { active, done };
+}
+
 function buildStaticStars(value) {
   const stars = document.createElement('div');
   stars.className = 'stars-static';
@@ -247,39 +277,24 @@ function buildRosterCard(member, role) {
   card.appendChild(contact);
 
   // Charge courante calculée à partir des réservations en direct.
-  let active = 0;
-  let done = 0;
-  latestBookings.forEach(booking => {
-    if (role === 'prestataire') {
-      if (booking.prestataireId !== member.id) return;
-      if (['accepted', 'submitted', 'rejected'].includes(booking.status)) active += 1;
-      else if (booking.status === 'verified') done += 1;
-    } else {
-      if (booking.livreurId !== member.id || booking.status === 'cancelled') return;
-      if (booking.linenDone) done += 1;
-      else active += 1;
-    }
-  });
+  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
   const load = document.createElement('div');
   load.className = 'task-meta roster-load';
   load.textContent = role === 'prestataire'
-    ? `${active} mission(s) en cours · ${done} confirmée(s)`
-    : `${active} tournée(s) à faire · ${done} faite(s)`;
+    ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
+    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
   card.appendChild(load);
 
   // Note moyenne des clients (prestataires uniquement).
   if (role === 'prestataire') {
-    const rated = latestBookings.filter(b =>
-      b.prestataireId === member.id && b.status === 'verified' && typeof b.rating === 'number');
     const ratingLine = document.createElement('div');
     ratingLine.className = 'task-meta roster-rating';
-    if (rated.length === 0) {
+    if (stats.ratingCount === 0) {
       ratingLine.textContent = 'Aucune évaluation pour le moment';
     } else {
-      const average = rated.reduce((sum, b) => sum + b.rating, 0) / rated.length;
-      ratingLine.appendChild(buildStaticStars(Math.round(average)));
+      ratingLine.appendChild(buildStaticStars(Math.round(stats.average)));
       const text = document.createElement('span');
-      text.textContent = `${average.toFixed(1)} / 5 · ${rated.length} avis`;
+      text.textContent = `${stats.average.toFixed(1)} / 5 · ${stats.ratingCount} avis`;
       ratingLine.appendChild(text);
     }
     card.appendChild(ratingLine);
@@ -379,9 +394,26 @@ function renderMissionsToAssign() {
     missionsToAssign.innerHTML = '<div class="empty-state">Aucune réservation en attente d’assignation.</div>';
     return;
   }
+  // Classement pour l'assignation : mieux notés d'abord, puis les moins
+  // chargés — pour répartir le travail sans sacrifier la qualité.
+  const rankedPrestataires = prestataires.slice().sort((a, b) => {
+    const sa = prestataireStats(a.id);
+    const sb = prestataireStats(b.id);
+    const ra = sa.average ?? -1;
+    const rb = sb.average ?? -1;
+    if (rb !== ra) return rb - ra;
+    if (sa.active !== sb.active) return sa.active - sb.active;
+    return (a.name || a.email).localeCompare(b.name || b.email);
+  });
+  const prestataireAnnotate = member => {
+    const s = prestataireStats(member.id);
+    const ratingPart = s.average != null ? `★${s.average.toFixed(1)} (${s.ratingCount})` : 'non noté';
+    return `${ratingPart} · ${s.active} en cours`;
+  };
+
   pending.forEach(booking => {
     const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.surface ? ` · ${booking.surface} m²` : ''}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
-    appendAssignCard(missionsToAssign, booking, prestataires, 'Choisir un prestataire…',
+    appendAssignCard(missionsToAssign, booking, rankedPrestataires, 'Choisir un prestataire…',
       'Aucun prestataire approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (prestataireId, assignBtn) => {
         if (!prestataireId) { setAdminStatus('Choisissez un prestataire avant d’assigner.', 'error'); return; }
@@ -400,7 +432,7 @@ function renderMissionsToAssign() {
         } catch (e) {
           setAdminStatus(`Impossible d’assigner la mission : ${authErrorMessage(e)}`, 'error');
         }
-      });
+      }, prestataireAnnotate);
   });
 }
 
@@ -414,9 +446,17 @@ function renderKitsToAssign() {
     kitsToAssign.innerHTML = '<div class="empty-state">Aucune livraison de kits en attente d’assignation.</div>';
     return;
   }
+  const rankedLivreurs = livreurs.slice().sort((a, b) => {
+    const sa = livreurStats(a.id);
+    const sb = livreurStats(b.id);
+    if (sa.active !== sb.active) return sa.active - sb.active;
+    return (a.name || a.email).localeCompare(b.name || b.email);
+  });
+  const livreurAnnotate = member => `${livreurStats(member.id).active} à faire`;
+
   needing.forEach(booking => {
     const metaText = `${formatShortDate(booking.scheduledDate)}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · dépôt kits / linge propre + récupération`;
-    appendAssignCard(kitsToAssign, booking, livreurs, 'Choisir un livreur…',
+    appendAssignCard(kitsToAssign, booking, rankedLivreurs, 'Choisir un livreur…',
       'Aucun livreur approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (livreurId, assignBtn) => {
         if (!livreurId) { setAdminStatus('Choisissez un livreur avant d’assigner.', 'error'); return; }
@@ -435,7 +475,7 @@ function renderKitsToAssign() {
         } catch (e) {
           setAdminStatus(`Impossible d’assigner la tournée : ${authErrorMessage(e)}`, 'error');
         }
-      });
+      }, livreurAnnotate);
   });
 }
 
