@@ -48,6 +48,8 @@ const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
 const assignedList = document.getElementById('assignedList');
 const activeBookingContainer = document.getElementById('activeBooking');
+const ratingSummary = document.getElementById('ratingSummary');
+const ratingList = document.getElementById('ratingList');
 const incidentForm = document.getElementById('incidentForm');
 const incidentStatus = document.getElementById('incidentStatus');
 const incidentType = document.getElementById('incidentType');
@@ -68,6 +70,7 @@ const ACTIONABLE_STATUSES = ['accepted', 'submitted', 'rejected'];
 let currentUser = null;
 let authNotice = null;
 let assignedBookings = [];
+let ratedBookings = [];
 let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
@@ -138,6 +141,63 @@ function renderAssignedList() {
       renderActiveBooking();
     };
     assignedList.appendChild(item);
+  });
+}
+
+function buildStaticStars(value) {
+  const stars = document.createElement('div');
+  stars.className = 'stars-static';
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', `${value} étoile${value > 1 ? 's' : ''} sur 5`);
+  for (let i = 1; i <= 5; i += 1) {
+    const star = document.createElement('span');
+    star.className = 'star-static' + (i <= value ? ' filled' : '');
+    star.textContent = '★';
+    star.setAttribute('aria-hidden', 'true');
+    stars.appendChild(star);
+  }
+  return stars;
+}
+
+function renderRatings() {
+  if (!ratingSummary) return;
+  ratingSummary.innerHTML = '';
+  ratingList.innerHTML = '';
+  if (ratedBookings.length === 0) {
+    ratingSummary.innerHTML = '<div class="empty-state">Aucune évaluation pour le moment. Les clients notent la prestation une fois vérifiée par l’équipe Kleining.</div>';
+    return;
+  }
+  const average = ratedBookings.reduce((sum, b) => sum + b.rating, 0) / ratedBookings.length;
+  const avgWrap = document.createElement('div');
+  avgWrap.className = 'rating-avg';
+  const num = document.createElement('span');
+  num.className = 'rating-avg-num';
+  num.textContent = average.toFixed(1);
+  const out = document.createElement('span');
+  out.className = 'rating-avg-out';
+  out.textContent = '/ 5';
+  avgWrap.appendChild(num);
+  avgWrap.appendChild(out);
+  avgWrap.appendChild(buildStaticStars(Math.round(average)));
+  const sub = document.createElement('div');
+  sub.className = 'task-meta';
+  sub.textContent = `Moyenne sur ${ratedBookings.length} évaluation${ratedBookings.length > 1 ? 's' : ''}`;
+  ratingSummary.appendChild(avgWrap);
+  ratingSummary.appendChild(sub);
+
+  ratedBookings.forEach(booking => {
+    const item = document.createElement('div');
+    item.className = 'task-card';
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = booking.propertyAddress || booking.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}`;
+    item.appendChild(title);
+    item.appendChild(meta);
+    item.appendChild(buildStaticStars(booking.rating));
+    ratingList.appendChild(item);
   });
 }
 
@@ -258,10 +318,13 @@ function loadAssignedBookings() {
   // Filtre unique + tri côté client : aucun index composite à créer.
   const assignedQuery = query(collection(db, 'bookings'), where('prestataireId', '==', currentUser.uid));
   assignedUnsub = onSnapshot(assignedQuery, async snapshot => {
-    assignedBookings = snapshot.docs
-      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    const mine = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+    assignedBookings = mine
       .filter(booking => ACTIONABLE_STATUSES.includes(booking.status))
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+    ratedBookings = mine
+      .filter(booking => booking.status === 'verified' && typeof booking.rating === 'number')
+      .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
     const stillThere = assignedBookings.find(b => b.id === selectedMissionId);
     activeBooking = stillThere || assignedBookings[0] || null;
     selectedMissionId = activeBooking ? activeBooking.id : null;
@@ -272,6 +335,7 @@ function loadAssignedBookings() {
     }
     renderAssignedList();
     renderActiveBooking();
+    renderRatings();
   }, error => setWorkStatus(`Impossible de charger vos missions : ${storageErrorMessage(error)}`));
 }
 

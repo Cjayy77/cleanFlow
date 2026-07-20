@@ -138,6 +138,13 @@ textarea{ min-height:110px; resize:vertical; }
 .star.filled{ color:var(--gold); }
 .star:hover:not(:disabled){ color:var(--gold); transform: scale(1.12); }
 .star:disabled{ cursor:default; }
+.stars-static{ display:inline-flex; gap:3px; margin-top:8px; }
+.star-static{ font-size:18px; line-height:1; color:var(--line); }
+.star-static.filled{ color:var(--gold); }
+.rating-avg{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.rating-avg-num{ font-family:'Plus Jakarta Sans', sans-serif; font-size:40px; font-weight:700; color:var(--klein); line-height:1; }
+.rating-avg-out{ font-size:15px; color:var(--muted); align-self:flex-end; }
+.rating-avg .stars-static{ margin-top:0; }
 
 /* Roster équipe (admin) */
 .roster-group{ margin-bottom:10px; }
