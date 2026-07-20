@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Kleining — le ménage vérifié pour vos locations saisonnières à Paris. Réservation par calendrier, photos obligatoires, contrôle humain avant chaque confirmation. Prix fixes, sans engagement.">
+<meta name="description" content="Kleining — le ménage vérifié pour vos locations saisonnières à Paris. Réservation par calendrier, photos obligatoires, contrôle humain avant chaque confirmation. Prix transparents selon la surface, sans engagement.">
 <title>Kleining — Le ménage vérifié pour vos locations saisonnières</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -148,21 +148,11 @@
   .price-col.deep{ box-shadow: 8px 8px 0 var(--klein); }
   .price-col.deep:hover{ box-shadow: 11px 11px 0 var(--klein); }
   .price-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:16px; }
-  .price-col h4{ font-size:21px; }
-  .price-amount{ font-family:'Plus Jakarta Sans', sans-serif; font-size: clamp(52px,6vw,72px); font-weight:700; color:var(--klein); line-height:1; margin:20px 0 4px; letter-spacing:-0.03em; }
-  .price-amount small{ font-family:'Plus Jakarta Sans', sans-serif; font-size:14px; color:var(--muted); font-weight:500; letter-spacing:0; }
+  .price-col h4{ font-size:21px; margin-bottom:4px; }
   .price-col ul{ list-style:none; margin-top:26px; }
   .price-col li{ font-size:14px; color:var(--muted); line-height:1.6; padding:10px 0 10px 26px; position:relative; }
   .price-col li::before{ content:''; position:absolute; left:0; top:16px; width:10px; height:10px; background:var(--gold); border:2px solid var(--ink); }
   .price-note{ margin-top:34px; font-size:14px; color:var(--muted); }
-  .sub-band{ background:var(--klein); color:var(--white); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--gold); padding:26px 30px; margin-bottom:34px; display:flex; justify-content:space-between; align-items:center; gap:28px; flex-wrap:wrap; }
-  .sub-tag{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); margin-bottom:8px; font-weight:700; }
-  .sub-line{ font-size:17px; }
-  .sub-line b{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:800; font-size:24px; }
-  .sub-line s{ color:rgba(255,255,255,0.55); margin:0 6px 0 4px; font-size:16px; }
-  .sub-free{ display:inline-block; background:var(--gold); color:var(--klein-deep); font-weight:700; font-size:12px; padding:5px 12px; margin-left:6px; }
-  .sub-note{ font-size:13.5px; color:rgba(255,255,255,0.8); max-width:360px; line-height:1.6; }
-  @media (max-width:640px){ .sub-free{ margin-left:0; margin-top:10px; } }
 
   /* 05 — SERVICES : minimal, air seulement */
   .feature-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 60px 80px; }
@@ -242,7 +232,7 @@
       <a href="/app/" class="btn-a gold">Réserver un ménage</a>
       <a href="#roles" class="btn-outline">Voir comment ça marche</a>
     </div>
-    <div class="hero-note">Prix fixes, sans engagement · Photos obligatoires · Vérification humaine avant confirmation client</div>
+    <div class="hero-note">Prix transparents, sans engagement · Photos obligatoires · Vérification humaine avant confirmation client</div>
   </div>
   <div class="hero-stamp" aria-hidden="true">
     <svg viewBox="0 0 200 200">
@@ -277,7 +267,7 @@
       <div class="role-card block reveal">
         <div class="role-num">Prestataire</div>
         <h4>L'entreprise de ménage</h4>
-        <p>Accepte la mission, réalise le ménage et soumet le jeu de photos imposé par Kleining.</p>
+        <p>Réalise la mission que Kleining lui confie et soumet le jeu de photos imposé, pièce par pièce.</p>
       </div>
       <div class="role-card block reveal">
         <div class="role-num">Livreur</div>
@@ -310,7 +300,7 @@
         <div class="process-num">2</div>
         <div class="process-text">
           <h4>Prise en charge</h4>
-          <p>Un prestataire vérifié accepte la mission depuis son calendrier.</p>
+          <p>L'équipe Kleining confie la mission à un prestataire vérifié.</p>
         </div>
       </div>
       <div class="process-item reveal">
@@ -362,24 +352,16 @@
 <section id="tarifs">
   <div class="wrap">
     <div class="sec-head reveal">
-      <h2>Deux formules, prix fixes</h2>
-      <p>Vous payez au ménage, le prix est affiché avant confirmation. L'accès à la plateforme est un abonnement mensuel, offert aux premiers clients de la bêta.</p>
-    </div>
-    <div class="sub-band reveal">
-      <div>
-        <div class="sub-tag">Accès à la plateforme</div>
-        <div class="sub-line"><b>20€ / mois</b> <span class="sub-free">Offert aux premiers clients de la bêta</span></div>
-      </div>
-      <div class="sub-note">Réservation, suivi vérifié, gestion du linge et de vos biens. Gratuit pour vous pendant toute la bêta.</div>
+      <h2>Un prix clair, selon votre logement</h2>
+      <p>Le tarif dépend de la surface de votre bien et du type de ménage. La grille complète s'affiche dès la création de votre compte, et le prix exact est calculé et affiché avant chaque réservation, sans engagement.</p>
     </div>
     <div class="price-grid">
       <div class="price-col block reveal">
         <div class="price-tag">Formule courante</div>
         <h4>Nettoyage normal</h4>
-        <div class="price-amount">47€ <small>/ intervention</small></div>
         <ul>
           <li>Ménage complet entre deux voyageurs : surfaces, sols, cuisine, salle de bain</li>
-          <li>Changement du linge de lit et de bain (option linge)</li>
+          <li>Kits en option (linge, consommables), ajoutés à l'unité lors de la réservation</li>
           <li>Dossier photo pièce par pièce soumis par le prestataire</li>
           <li>Contrôle humain par l'équipe Kleining avant confirmation</li>
         </ul>
@@ -387,7 +369,6 @@
       <div class="price-col block deep reveal">
         <div class="price-tag">Formule renforcée</div>
         <h4>Nettoyage en profondeur</h4>
-        <div class="price-amount">60€ <small>/ intervention</small></div>
         <ul>
           <li>Tout le nettoyage normal, en version renforcée</li>
           <li>Intérieurs d'électroménager, plinthes, zones difficiles d'accès</li>
@@ -396,7 +377,7 @@
         </ul>
       </div>
     </div>
-    <div class="price-note reveal">Option linge (livraison du propre, récupération du sale) réservable avec chaque ménage depuis le calendrier.</div>
+    <div class="price-note reveal">La grille tarifaire complète (selon la surface) est réservée aux membres. <a href="/app/" style="color:var(--klein);font-weight:700;text-decoration:none;">Créez votre compte</a> pour la découvrir avant toute réservation.</div>
   </div>
 </section>
 
@@ -438,7 +419,11 @@
       </details>
       <details>
         <summary>Qui réalise le ménage ?</summary>
-        <p>Des entreprises de ménage professionnelles, sélectionnées par Kleining. Pas de mise en relation anonyme.</p>
+        <p>Des entreprises de ménage professionnelles, sélectionnées par Kleining. C'est notre équipe qui confie chaque mission à un prestataire vérifié : pas de mise en relation anonyme.</p>
+      </details>
+      <details>
+        <summary>Combien coûte un ménage ?</summary>
+        <p>Le prix dépend de la surface de votre logement et du type de ménage (normal ou en profondeur). Les kits (linge, consommables) s'ajoutent à l'unité. La grille complète s'affiche dès la création de votre compte, et le prix exact est calculé et affiché avant chaque réservation.</p>
       </details>
       <details>
         <summary>Que se passe-t-il si le contrôle photo révèle un problème ?</summary>
@@ -446,7 +431,7 @@
       </details>
       <details>
         <summary>Pourquoi pas une conciergerie classique ?</summary>
-        <p>Les conciergeries prélèvent une commission sur vos revenus et imposent des contrats rigides. Kleining fonctionne au ménage, à prix fixe, sans engagement. Vous ne payez que ce que vous réservez.</p>
+        <p>Les conciergeries prélèvent une commission sur vos revenus et imposent des contrats rigides. Kleining fonctionne au ménage, sans commission, sans engagement. Vous ne payez que ce que vous réservez.</p>
       </details>
       <details>
         <summary>Comment fonctionne le paiement ?</summary>
@@ -470,7 +455,7 @@
   <div class="wrap goal-grid">
     <div class="goal-item reveal"><b>Places limitées</b><span>bêta parisienne en petit comité, qualité d'abord</span></div>
     <div class="goal-item reveal"><b>100% humain</b><span>chaque dossier photo vérifié par notre équipe</span></div>
-    <div class="goal-item reveal"><b>0 engagement</b><span>paiement au ménage, prix fixes, sans abonnement</span></div>
+    <div class="goal-item reveal"><b>0 engagement</b><span>paiement au ménage, prix transparents, sans commission</span></div>
   </div>
 </div>
 
