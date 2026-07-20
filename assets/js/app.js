@@ -61,6 +61,7 @@ const propertyFormTitle = document.getElementById('propertyFormTitle');
 const propertySubmitBtn = document.getElementById('propertySubmitBtn');
 const cancelEditWrap = document.getElementById('cancelEditWrap');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
+const propertyFormCard = document.getElementById('propertyFormCard');
 const linenToggle = document.getElementById('linenToggle');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
@@ -91,6 +92,7 @@ const ACTIVE_BOOKING_STATUSES = ['pending', 'accepted', 'submitted', 'rejected']
 
 function setPropertyFormMode(property = null) {
   editingPropertyId = property ? property.id : null;
+  propertyFormCard.open = !!property || properties.length === 0;
   propertyFormTitle.textContent = property ? 'Modifier la propriété' : 'Ajouter une propriété';
   propertySubmitBtn.textContent = property ? 'Enregistrer les modifications' : 'Enregistrer le bien';
   cancelEditWrap.classList.toggle('hidden', !property);
@@ -157,6 +159,7 @@ function updateOnboardingState() {
   const hasBookings = bookings.length > 0;
   bookingCard.classList.toggle('hidden', !hasProperties);
   historyCard.classList.toggle('hidden', !hasProperties && !hasBookings);
+  if (!hasProperties) propertyFormCard.open = true;
   if (!hasProperties) {
     welcomeText.textContent = 'Bienvenue ! Première étape : enregistrez votre bien ci-dessous. Vous pourrez ensuite réserver votre premier ménage sur son calendrier.';
   } else if (!hasBookings) {
@@ -556,6 +559,7 @@ propertyForm.addEventListener('submit', async event => {
           createdAt: serverTimestamp(),
         }));
       propertyForm.reset();
+      propertyFormCard.open = false;
       setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.', 'success');
     }
   } catch (err) {

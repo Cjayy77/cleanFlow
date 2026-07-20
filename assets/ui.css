@@ -52,6 +52,13 @@ a{ color:var(--klein); }
 .spinner{ width:18px; height:18px; border:2px solid var(--line); border-top-color:var(--klein); border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
 
 .card{ background:var(--white); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--ink); padding:30px 28px; margin-bottom:36px; }
+details.card > summary{ cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:14px; }
+details.card > summary::-webkit-details-marker{ display:none; }
+details.card > summary::after{ content:'+'; font-family:'JetBrains Mono', monospace; font-size:24px; color:var(--klein); flex-shrink:0; transition: transform .2s ease-out; }
+details.card[open] > summary::after{ transform: rotate(45deg); }
+details.card > summary h2{ margin:0; }
+details.card > summary .eyebrow{ margin-bottom:6px; }
+details.card .collapse-body{ margin-top:22px; }
 .grid2{ display:grid; grid-template-columns: 1.1fr 0.9fr; gap:0 40px; align-items:start; }
 @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
 
