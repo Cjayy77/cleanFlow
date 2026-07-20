@@ -74,7 +74,7 @@ function showApp() {
 function renderTasks(bookings) {
   taskList.innerHTML = '';
   if (bookings.length === 0) {
-    taskList.innerHTML = '<div class="empty-state">Aucune tournée de linge pour le moment.</div>';
+    taskList.innerHTML = '<div class="empty-state">Aucune tournée ne vous est assignée pour le moment. L’équipe Kleining vous attribue vos tournées.</div>';
     return;
   }
   bookings.forEach(booking => {
@@ -110,15 +110,16 @@ function renderTasks(bookings) {
 
 function loadLaundryTasks() {
   if (taskUnsub) taskUnsub();
+  // Le livreur ne voit que les tournées que l'équipe Kleining lui a assignées.
   // Filtre unique + tri côté client : aucun index composite à créer.
-  const taskQuery = query(collection(db, 'bookings'), where('linenRequested', '==', true));
+  const taskQuery = query(collection(db, 'bookings'), where('livreurId', '==', currentUser.uid));
   taskUnsub = onSnapshot(taskQuery, snapshot => {
     const bookings = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .filter(booking => ['pending', 'accepted', 'submitted', 'verified'].includes(booking.status))
       .sort((a, b) => (!!a.linenDone - !!b.linenDone) || a.scheduledDate.localeCompare(b.scheduledDate));
     renderTasks(bookings);
-  }, error => setWorkStatus(`Impossible de charger les tournées de linge : ${authErrorMessage(error)}`));
+  }, error => setWorkStatus(`Impossible de charger vos tournées de linge : ${authErrorMessage(error)}`));
 }
 
 onAuthStateChanged(auth, async user => {

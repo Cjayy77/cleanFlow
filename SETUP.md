@@ -128,17 +128,21 @@ personnalisez ce modèle dans Authentication → Templates.
 
 ## 9. Parcours d'une réservation
 
-`pending` (réservé par le client) → `accepted` (prestataire) → `submitted`
+`pending` (réservé par le client, en attente d'assignation) → l'équipe
+**assigne** un prestataire dans `/admin/` → `accepted` → `submitted`
 (photos envoyées) → `verified` **ou** `rejected` (décision humaine dans
 `/admin/`). Un dossier rejeté revient chez le prestataire avec la note de
 l'admin ; il corrige les photos et re-soumet.
 
+Le prestataire ne choisit plus ses missions : il ne voit que celles que
+l'équipe lui a attribuées. Il peut décliner une mission `accepted` : elle
+redevient `pending` (sans prestataire) et l'équipe la réattribue. De même,
+l'équipe assigne chaque tournée de kits/linge à un livreur (champ
+`livreurId`) ; le livreur ne voit que ses tournées et coche `linenDone`.
+
 Le client peut annuler sa réservation (statut `cancelled`) uniquement tant
-qu'elle est `pending` ; ensuite l'annulation passe par l'équipe. Un
-prestataire peut se désister d'une mission `accepted` : elle redevient
-`pending` et l'équipe est notifiée. Le livreur coche ses tournées de linge
-(champ `linenDone`). Ces contraintes sont appliquées par les règles
-Firestore.
+qu'elle est `pending` ; ensuite l'annulation passe par l'équipe. Ces
+contraintes sont appliquées par les règles Firestore.
 
 > Note : le cahier des charges nommait ce statut `completed` ; le code
 > existant utilisait déjà `submitted`, convention conservée.

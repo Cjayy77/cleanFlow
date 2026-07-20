@@ -58,6 +58,8 @@ const statSubmitted = document.getElementById('statSubmitted');
 const statVerified = document.getElementById('statVerified');
 const openIncidents = document.getElementById('openIncidents');
 const clientMessages = document.getElementById('clientMessages');
+const missionsToAssign = document.getElementById('missionsToAssign');
+const kitsToAssign = document.getElementById('kitsToAssign');
 
 let currentUser = null;
 let authNotice = null;
@@ -67,20 +69,166 @@ let bookingQueueUnsub = null;
 let statsUnsub = null;
 let incidentsUnsub = null;
 let messagesUnsub = null;
+let latestBookings = [];
+let prestataires = [];
+let livreurs = [];
+let membersUnsubs = [];
 
 function subscribeStats() {
   if (statsUnsub) statsUnsub();
   statsUnsub = onSnapshot(collection(db, 'bookings'), snapshot => {
+    latestBookings = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
     const counts = { pending: 0, accepted: 0, submitted: 0, verified: 0 };
-    snapshot.docs.forEach(docSnap => {
-      const status = docSnap.data().status;
-      if (counts[status] !== undefined) counts[status] += 1;
+    latestBookings.forEach(booking => {
+      if (counts[booking.status] !== undefined) counts[booking.status] += 1;
     });
     statPending.textContent = counts.pending;
     statAccepted.textContent = counts.accepted;
     statSubmitted.textContent = counts.submitted;
     statVerified.textContent = counts.verified;
+    renderAssignments();
   }, error => setAdminStatus(`Impossible de charger la vue d’ensemble : ${authErrorMessage(error)}`, 'error'));
+}
+
+// Prestataires et livreurs approuvés, pour les listes déroulantes d'assignation.
+function subscribeTeamMembers() {
+  membersUnsubs.forEach(unsub => unsub());
+  membersUnsubs = [];
+  const assign = { prestataire: list => { prestataires = list; }, livreur: list => { livreurs = list; } };
+  ['prestataire', 'livreur'].forEach(role => {
+    const unsub = onSnapshot(query(collection(db, 'users'), where('role', '==', role)), snapshot => {
+      const list = snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter(member => (member.accountStatus ?? 'approved') === 'approved')
+        .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+      assign[role](list);
+      renderAssignments();
+    }, error => setAdminStatus(`Impossible de charger l’équipe : ${authErrorMessage(error)}`, 'error'));
+    membersUnsubs.push(unsub);
+  });
+}
+
+function buildMemberSelect(members, placeholder) {
+  const select = document.createElement('select');
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = placeholder;
+  select.appendChild(first);
+  members.forEach(member => {
+    const option = document.createElement('option');
+    option.value = member.id;
+    option.textContent = member.name || member.email;
+    select.appendChild(option);
+  });
+  return select;
+}
+
+function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = booking.propertyAddress || booking.propertyId;
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  meta.textContent = metaText;
+  card.appendChild(title);
+  card.appendChild(meta);
+  if (members.length === 0) {
+    const note = document.createElement('div');
+    note.className = 'task-meta';
+    note.textContent = noMembersNote;
+    card.appendChild(note);
+    container.appendChild(card);
+    return;
+  }
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center;';
+  const select = buildMemberSelect(members, placeholder);
+  const assignBtn = document.createElement('button');
+  assignBtn.className = 'btn primary';
+  assignBtn.type = 'button';
+  assignBtn.textContent = 'Assigner';
+  assignBtn.onclick = () => assignFn(select.value, assignBtn);
+  row.appendChild(select);
+  row.appendChild(assignBtn);
+  card.appendChild(row);
+  container.appendChild(card);
+}
+
+function renderAssignments() {
+  renderMissionsToAssign();
+  renderKitsToAssign();
+}
+
+function renderMissionsToAssign() {
+  if (!missionsToAssign) return;
+  missionsToAssign.innerHTML = '';
+  const pending = latestBookings
+    .filter(booking => booking.status === 'pending')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  if (pending.length === 0) {
+    missionsToAssign.innerHTML = '<div class="empty-state">Aucune réservation en attente d’assignation.</div>';
+    return;
+  }
+  pending.forEach(booking => {
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.linenRequested ? ' · + kits' : ''} · ${booking.price}€`;
+    appendAssignCard(missionsToAssign, booking, prestataires, 'Choisir un prestataire…',
+      'Aucun prestataire approuvé. Approuvez d’abord une demande d’accès.', metaText,
+      async (prestataireId, assignBtn) => {
+        if (!prestataireId) { setAdminStatus('Choisissez un prestataire avant d’assigner.', 'error'); return; }
+        const member = prestataires.find(p => p.id === prestataireId);
+        try {
+          await withButtonLoading(assignBtn, () =>
+            updateDoc(doc(db, 'bookings', booking.id), { prestataireId, status: 'accepted' }));
+          if (member?.email) {
+            queueEmail({
+              to: member.email,
+              subject: `Kleining — nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              text: `${booking.propertyAddress || 'Mission'} · ${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}. Retrouvez-la dans votre interface prestataire.`,
+            });
+          }
+          setAdminStatus(`Mission assignée à ${member?.name || member?.email || 'ce prestataire'}.`, 'success');
+        } catch (e) {
+          setAdminStatus(`Impossible d’assigner la mission : ${authErrorMessage(e)}`, 'error');
+        }
+      });
+  });
+}
+
+function renderKitsToAssign() {
+  if (!kitsToAssign) return;
+  kitsToAssign.innerHTML = '';
+  const needing = latestBookings
+    .filter(booking => booking.linenRequested === true && !booking.livreurId && booking.status !== 'cancelled')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  if (needing.length === 0) {
+    kitsToAssign.innerHTML = '<div class="empty-state">Aucune livraison de kits en attente d’assignation.</div>';
+    return;
+  }
+  needing.forEach(booking => {
+    const metaText = `${formatShortDate(booking.scheduledDate)} · dépôt kits / linge propre + récupération`;
+    appendAssignCard(kitsToAssign, booking, livreurs, 'Choisir un livreur…',
+      'Aucun livreur approuvé. Approuvez d’abord une demande d’accès.', metaText,
+      async (livreurId, assignBtn) => {
+        if (!livreurId) { setAdminStatus('Choisissez un livreur avant d’assigner.', 'error'); return; }
+        const member = livreurs.find(l => l.id === livreurId);
+        try {
+          await withButtonLoading(assignBtn, () =>
+            updateDoc(doc(db, 'bookings', booking.id), { livreurId }));
+          if (member?.email) {
+            queueEmail({
+              to: member.email,
+              subject: `Kleining — nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              text: `${booking.propertyAddress || 'Tournée'} · ${formatShortDate(booking.scheduledDate)} · dépôt des kits / linge propre et récupération. Retrouvez-la dans votre interface livreur.`,
+            });
+          }
+          setAdminStatus(`Tournée assignée à ${member?.name || member?.email || 'ce livreur'}.`, 'success');
+        } catch (e) {
+          setAdminStatus(`Impossible d’assigner la tournée : ${authErrorMessage(e)}`, 'error');
+        }
+      });
+  });
 }
 
 function subscribeOpenIncidents() {
@@ -440,6 +588,8 @@ onAuthStateChanged(auth, async user => {
     if (statsUnsub) statsUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();
+    membersUnsubs.forEach(unsub => unsub());
+    membersUnsubs = [];
     if (authNotice) {
       showAuth(authNotice.message, authNotice.type);
       authNotice = null;
@@ -471,6 +621,7 @@ onAuthStateChanged(auth, async user => {
     refreshQueue();
     subscribeAccessRequests();
     subscribeStats();
+    subscribeTeamMembers();
     subscribeOpenIncidents();
     subscribeClientMessages();
   } catch (error) {

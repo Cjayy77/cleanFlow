@@ -654,6 +654,7 @@ bookBtn.addEventListener('click', async () => {
         propertyId: selectedPropertyId,
         propertyAddress: `${property.street}, ${property.city}`,
         prestataireId: null,
+        livreurId: null,
         serviceType: selectedServiceType,
         price: formatPrice(selectedServiceType),
         scheduledDate: selectedDate,
