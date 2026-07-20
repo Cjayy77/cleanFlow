@@ -179,3 +179,9 @@ textarea{ min-height:110px; resize:vertical; }
 @media (prefers-reduced-motion: reduce){
   *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
 }
+
+/* Client → équipe : contacter à propos d'une réservation */
+.contact-team{ margin-top:14px; }
+.contact-team .mini-btn{ padding-left:0; }
+.contact-form{ margin-top:10px; }
+.contact-form textarea{ min-height:70px; margin-bottom:10px; }

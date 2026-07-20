@@ -385,8 +385,72 @@ function renderBookings() {
       };
       card.appendChild(cancelBtn);
     }
+    // Contacter l'équipe à propos de cette réservation (question, incident,
+    // problème constaté après le ménage). Reste dispo même mission terminée.
+    if (booking.status !== 'cancelled') {
+      card.appendChild(buildContactTeam(booking, address));
+    }
     bookingsWrap.appendChild(card);
   });
+}
+
+function buildContactTeam(booking, address) {
+  const wrap = document.createElement('div');
+  wrap.className = 'contact-team';
+  const toggle = document.createElement('button');
+  toggle.className = 'mini-btn';
+  toggle.type = 'button';
+  toggle.textContent = 'Contacter l’équipe à propos de ce ménage';
+  const form = document.createElement('div');
+  form.className = 'contact-form hidden';
+  const textarea = document.createElement('textarea');
+  textarea.placeholder = 'Votre message à l’équipe Kleining (question, problème constaté, suite d’un incident…).';
+  textarea.rows = 3;
+  const send = document.createElement('button');
+  send.className = 'btn primary';
+  send.type = 'button';
+  send.textContent = 'Envoyer à l’équipe';
+  const note = document.createElement('div');
+  note.className = 'note-box';
+  toggle.onclick = () => {
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) textarea.focus();
+  };
+  send.onclick = async () => {
+    const text = textarea.value.trim();
+    if (!text) { note.textContent = 'Écrivez un message avant d’envoyer.'; return; }
+    note.textContent = '';
+    try {
+      await withButtonLoading(send, async () => {
+        await addDoc(collection(db, 'messages'), {
+          bookingId: booking.id,
+          clientId: currentUser.uid,
+          clientEmail: currentUser.email,
+          clientName: currentUser.name || '',
+          propertyAddress: address,
+          text,
+          status: 'open',
+          createdAt: serverTimestamp(),
+        });
+      });
+      queueEmail({
+        to: TEAM_EMAIL,
+        subject: `Kleining — message client · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+        text: `${currentUser.name || currentUser.email} (${currentUser.email}) à propos de ${address} (${formatShortDate(booking.scheduledDate)}) :\n\n${text}`,
+      });
+      textarea.value = '';
+      form.classList.add('hidden');
+      setAppStatus('Message envoyé à l’équipe Kleining. Vous serez recontacté par email ou téléphone.', 'success');
+    } catch (err) {
+      note.textContent = `Impossible d’envoyer le message : ${authErrorMessage(err)}`;
+    }
+  };
+  form.appendChild(textarea);
+  form.appendChild(send);
+  form.appendChild(note);
+  wrap.appendChild(toggle);
+  wrap.appendChild(form);
+  return wrap;
 }
 
 function subscribeData() {

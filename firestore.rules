@@ -168,6 +168,22 @@ service cloud.firestore {
         && (isAdmin() || request.resource.data.to == 'william@cleanflow-app.com');
     }
 
+    // Messages client → équipe, rattachés à une réservation. Le client écrit,
+    // l'admin lit et clôt. Pas de réponse in-app : l'équipe recontacte par
+    // email/téléphone (le message notifie aussi la boîte de l'équipe via /mail).
+    match /messages/{messageId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || (isClient() && resource.data.clientId == request.auth.uid)
+      );
+      allow create: if isClient()
+        && request.resource.data.clientId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.status == 'open';
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['open', 'resolved'];
+    }
+
     match /incidents/{incidentId} {
       allow read: if isSignedIn() && (
         isAdmin()

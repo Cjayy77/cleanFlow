@@ -57,6 +57,7 @@ const statAccepted = document.getElementById('statAccepted');
 const statSubmitted = document.getElementById('statSubmitted');
 const statVerified = document.getElementById('statVerified');
 const openIncidents = document.getElementById('openIncidents');
+const clientMessages = document.getElementById('clientMessages');
 
 let currentUser = null;
 let authNotice = null;
@@ -65,6 +66,7 @@ let bookingQueueData = [];
 let bookingQueueUnsub = null;
 let statsUnsub = null;
 let incidentsUnsub = null;
+let messagesUnsub = null;
 
 function subscribeStats() {
   if (statsUnsub) statsUnsub();
@@ -90,6 +92,57 @@ function subscribeOpenIncidents() {
       .sort((a, b) => (b.reportedAt?.toMillis?.() || 0) - (a.reportedAt?.toMillis?.() || 0));
     renderOpenIncidents(incidents);
   }, error => setAdminStatus(`Impossible de charger les incidents : ${authErrorMessage(error)}`, 'error'));
+}
+
+function subscribeClientMessages() {
+  if (messagesUnsub) messagesUnsub();
+  const openMsgQuery = query(collection(db, 'messages'), where('status', '==', 'open'));
+  messagesUnsub = onSnapshot(openMsgQuery, snapshot => {
+    const messages = snapshot.docs
+      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+      .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    renderClientMessages(messages);
+  }, error => setAdminStatus(`Impossible de charger les messages clients : ${authErrorMessage(error)}`, 'error'));
+}
+
+function renderClientMessages(messages) {
+  clientMessages.innerHTML = '';
+  if (messages.length === 0) {
+    clientMessages.innerHTML = '<div class="empty-state">Aucun message client en attente.</div>';
+    return;
+  }
+  messages.forEach(message => {
+    const item = document.createElement('div');
+    item.className = 'incident-item';
+    const title = document.createElement('strong');
+    title.textContent = `${message.clientName || message.clientEmail || 'Client'} · Réf ${(message.bookingId || '').slice(0, 6).toUpperCase()}`;
+    const contact = document.createElement('div');
+    contact.className = 'task-meta';
+    contact.textContent = `${message.clientEmail || ''} · ${message.propertyAddress || ''}`;
+    const body = document.createElement('div');
+    body.className = 'task-meta';
+    body.style.color = 'var(--ink)';
+    body.style.marginTop = '8px';
+    body.textContent = message.text;
+    item.appendChild(title);
+    item.appendChild(contact);
+    item.appendChild(body);
+    const resolveBtn = document.createElement('button');
+    resolveBtn.className = 'btn ghost';
+    resolveBtn.type = 'button';
+    resolveBtn.textContent = 'Marquer traité';
+    resolveBtn.style.marginTop = '12px';
+    resolveBtn.onclick = async () => {
+      try {
+        await withButtonLoading(resolveBtn, () =>
+          updateDoc(doc(db, 'messages', message.id), { status: 'resolved' }));
+      } catch (e) {
+        setAdminStatus(`Impossible de clore le message : ${authErrorMessage(e)}`, 'error');
+      }
+    };
+    item.appendChild(resolveBtn);
+    clientMessages.appendChild(item);
+  });
 }
 
 function renderOpenIncidents(incidents) {
@@ -386,6 +439,7 @@ onAuthStateChanged(auth, async user => {
     if (accessUnsub) accessUnsub();
     if (statsUnsub) statsUnsub();
     if (incidentsUnsub) incidentsUnsub();
+    if (messagesUnsub) messagesUnsub();
     if (authNotice) {
       showAuth(authNotice.message, authNotice.type);
       authNotice = null;
@@ -418,6 +472,7 @@ onAuthStateChanged(auth, async user => {
     subscribeAccessRequests();
     subscribeStats();
     subscribeOpenIncidents();
+    subscribeClientMessages();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
