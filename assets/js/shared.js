@@ -60,6 +60,10 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+// Sans ces limites, le SDK réessaie ~2 min avant d'abandonner (ex. bucket
+// Storage non activé) : l'échec est ramené à ~12 s avec un vrai code d'erreur.
+storage.maxUploadRetryTime = 12000;
+storage.maxOperationRetryTime = 12000;
 
 export async function loadUserDoc(uid) {
   const snap = await getDoc(doc(db, 'users', uid));

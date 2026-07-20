@@ -541,12 +541,18 @@ propertyForm.addEventListener('submit', async event => {
   try {
     if (editingPropertyId) {
       const propertyId = editingPropertyId;
-      await withButtonLoading(propertySubmitBtn, () =>
-        updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, notes }));
-      const hasActiveBooking = bookings.some(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
+      const newAddress = `${street}, ${city}`;
+      // Recopie la nouvelle adresse sur les réservations en cours de ce bien
+      // pour que prestataire et livreur ne voient jamais l'ancienne.
+      const affected = bookings.filter(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
+      await withButtonLoading(propertySubmitBtn, async () => {
+        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, notes });
+        await Promise.all(affected.map(b =>
+          updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress })));
+      });
       setPropertyFormMode(null);
-      setAppStatus(hasActiveBooking
-        ? 'Bien modifié. Une réservation est en cours sur ce bien : si l’adresse a réellement changé, prévenez l’équipe Kleining.'
+      setAppStatus(affected.length
+        ? 'Bien modifié. Les réservations en cours ont été mises à jour.'
         : 'Bien modifié.', 'success');
     } else {
       await withButtonLoading(propertySubmitBtn, () =>
