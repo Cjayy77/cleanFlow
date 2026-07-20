@@ -74,9 +74,14 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="eyebrow">Incident</div>
-      <h2>Signaler un incident</h2>
+    <details class="card" id="incidentCard">
+      <summary>
+        <div>
+          <div class="eyebrow">Incident</div>
+          <h2>Signaler un incident</h2>
+        </div>
+      </summary>
+      <div class="collapse-body">
       <p>Objet cassé, objet perdu ou autre problème pendant la mission en cours.</p>
       <div id="incidentStatus" class="status-banner info hidden" role="status"></div>
       <form id="incidentForm">
@@ -92,7 +97,8 @@
         <div class="form-row"><label for="incidentPhoto">Photo (optionnelle)</label><input id="incidentPhoto" type="file" accept="image/*"></div>
         <button class="btn primary" type="submit">Envoyer le signalement</button>
       </form>
-    </div>
+      </div>
+    </details>
   </div>
 </div>
 <script type="module" src="../assets/js/prestataire.js"></script>

@@ -62,9 +62,14 @@
           <h2>Biens enregistrés</h2>
           <div id="propertyList"></div>
         </div>
-        <div class="card">
-          <div class="eyebrow">Nouveau bien</div>
-          <h2 id="propertyFormTitle">Ajouter une propriété</h2>
+        <details class="card" id="propertyFormCard">
+          <summary>
+            <div>
+              <div class="eyebrow">Nouveau bien</div>
+              <h2 id="propertyFormTitle">Ajouter une propriété</h2>
+            </div>
+          </summary>
+          <div class="collapse-body">
           <form id="propertyForm">
             <div class="form-row"><label for="propertyStreet">Rue et numéro</label><input id="propertyStreet" required></div>
             <div class="form-cols">
@@ -75,7 +80,8 @@
             <button class="btn primary" type="submit" id="propertySubmitBtn">Enregistrer le bien</button>
             <div class="note-box hidden" id="cancelEditWrap"><a href="#" id="cancelEditBtn">Annuler la modification</a></div>
           </form>
-        </div>
+          </div>
+        </details>
       </div>
       <div class="card" id="bookingCard">
         <div class="eyebrow">Réservation</div>
