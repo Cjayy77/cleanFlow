@@ -153,6 +153,9 @@ textarea{ min-height:110px; resize:vertical; }
 .roster a{ color:var(--klein); font-weight:600; text-decoration:none; }
 .roster a:hover{ text-decoration:underline; }
 .roster-load{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--klein-deep); margin-top:8px; }
+.roster-rating{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+.roster-rating .stars-static{ margin-top:0; }
+.roster-rating .star-static{ font-size:15px; }
 
 /* Calendrier ops admin */
 .acal-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:14px; }

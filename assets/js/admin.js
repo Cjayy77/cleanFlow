@@ -206,6 +206,21 @@ function buildRosterGroup(title, members, role) {
   return section;
 }
 
+function buildStaticStars(value) {
+  const stars = document.createElement('div');
+  stars.className = 'stars-static';
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', `${value} étoile${value > 1 ? 's' : ''} sur 5`);
+  for (let i = 1; i <= 5; i += 1) {
+    const star = document.createElement('span');
+    star.className = 'star-static' + (i <= value ? ' filled' : '');
+    star.textContent = '★';
+    star.setAttribute('aria-hidden', 'true');
+    stars.appendChild(star);
+  }
+  return stars;
+}
+
 function buildRosterCard(member, role) {
   const card = document.createElement('div');
   card.className = 'task-card';
@@ -251,6 +266,24 @@ function buildRosterCard(member, role) {
     ? `${active} mission(s) en cours · ${done} confirmée(s)`
     : `${active} tournée(s) à faire · ${done} faite(s)`;
   card.appendChild(load);
+
+  // Note moyenne des clients (prestataires uniquement).
+  if (role === 'prestataire') {
+    const rated = latestBookings.filter(b =>
+      b.prestataireId === member.id && b.status === 'verified' && typeof b.rating === 'number');
+    const ratingLine = document.createElement('div');
+    ratingLine.className = 'task-meta roster-rating';
+    if (rated.length === 0) {
+      ratingLine.textContent = 'Aucune évaluation pour le moment';
+    } else {
+      const average = rated.reduce((sum, b) => sum + b.rating, 0) / rated.length;
+      ratingLine.appendChild(buildStaticStars(Math.round(average)));
+      const text = document.createElement('span');
+      text.textContent = `${average.toFixed(1)} / 5 · ${rated.length} avis`;
+      ratingLine.appendChild(text);
+    }
+    card.appendChild(ratingLine);
+  }
   return card;
 }
 
