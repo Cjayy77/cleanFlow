@@ -172,7 +172,7 @@ function renderMissionsToAssign() {
     return;
   }
   pending.forEach(booking => {
-    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.linenRequested ? ' · + kits' : ''} · ${booking.price}€`;
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.surface ? ` · ${booking.surface} m²` : ''}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
     appendAssignCard(missionsToAssign, booking, prestataires, 'Choisir un prestataire…',
       'Aucun prestataire approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (prestataireId, assignBtn) => {
@@ -207,7 +207,7 @@ function renderKitsToAssign() {
     return;
   }
   needing.forEach(booking => {
-    const metaText = `${formatShortDate(booking.scheduledDate)} · dépôt kits / linge propre + récupération`;
+    const metaText = `${formatShortDate(booking.scheduledDate)}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · dépôt kits / linge propre + récupération`;
     appendAssignCard(kitsToAssign, booking, livreurs, 'Choisir un livreur…',
       'Aucun livreur approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (livreurId, assignBtn) => {
@@ -414,7 +414,7 @@ function renderBookingDetail() {
   }
 
   bookingTitle.textContent = selectedBooking.propertyAddress || selectedBooking.propertyId;
-  bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.linenRequested ? ' · + linge' : ''}`;
+  bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.surface ? ` · ${selectedBooking.surface} m²` : ''}${selectedBooking.kitCount ? ` · ${selectedBooking.kitCount} kit(s)` : ''} · ${selectedBooking.price}€`;
   photoGrid.innerHTML = '';
 
   PHOTO_SLOTS.forEach(slot => {

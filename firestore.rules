@@ -86,13 +86,20 @@ service cloud.firestore {
         || (isLivreur() && resource.data.get('livreurId', '') == request.auth.uid)
       );
 
+      // Le prix (prestation selon la surface + kits + frais) est calculé côté
+      // client à partir de la grille de shared.js. Les paiements étant hors
+      // périmètre bêta, la règle valide la structure — service, prix numérique
+      // positif, nombre de kits — plutôt que de dupliquer toute la grille ici.
       allow create: if isClient()
         && request.resource.data.clientId == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.prestataireId == null
         && request.resource.data.livreurId == null
-        && ((request.resource.data.serviceType == 'normal' && request.resource.data.price == 47)
-            || (request.resource.data.serviceType == 'deep' && request.resource.data.price == 60))
+        && request.resource.data.serviceType in ['normal', 'deep']
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.kitCount is int
+        && request.resource.data.kitCount >= 0
         && request.resource.data.scheduledDate is string
         && request.resource.data.linenRequested is bool
         && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;

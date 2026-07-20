@@ -53,7 +53,7 @@
       <div class="eyebrow">Bonjour</div>
       <h1 id="userNameLabel">Client</h1>
       <p id="welcomeText">Réservez un ménage, suivez sa vérification par l’équipe Kleining, et recevez la confirmation une fois le contrôle photo effectué.</p>
-      <div class="beta-note">Accès à la plateforme : 20&nbsp;€/mois — <b>offert pendant la bêta</b>. Les ménages restent facturés à l’intervention (47&nbsp;€ / 60&nbsp;€).</div>
+      <div class="beta-note">Le prix est calculé selon la surface de votre bien et affiché avant chaque réservation. Pendant la bêta, le règlement se fait directement avec l’équipe Kleining — aucun paiement en ligne.</div>
     </div>
 
     <div class="grid2">
@@ -77,6 +77,10 @@
               <div class="form-row"><label for="propertyCity">Ville</label><input id="propertyCity" required></div>
               <div class="form-row"><label for="propertyPostal">Code postal</label><input id="propertyPostal" required></div>
             </div>
+            <div class="form-cols">
+              <div class="form-row"><label for="propertySurface">Surface (m²)</label><input id="propertySurface" type="number" min="1" step="1" inputmode="numeric" required></div>
+              <div class="form-row"><label for="propertyZone">Zone</label><select id="propertyZone" required></select></div>
+            </div>
             <div class="form-row"><label for="propertyNotes">Notes / consignes d’accès</label><textarea id="propertyNotes"></textarea></div>
             <button class="btn primary" type="submit" id="propertySubmitBtn">Enregistrer le bien</button>
             <div class="note-box hidden" id="cancelEditWrap"><a href="#" id="cancelEditBtn">Annuler la modification</a></div>
@@ -90,12 +94,12 @@
         <p class="booking-for" id="bookingFor"></p>
         <div class="form-row">
           <label>Service</label>
-          <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal — 47€</label>
-          <label class="service-option"><input type="radio" name="serviceType" value="deep"> Nettoyage en profondeur — 60€</label>
+          <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal</label>
+          <label class="service-option"><input type="radio" name="serviceType" value="deep"> Nettoyage en profondeur</label>
         </div>
         <div class="form-row">
-          <label>Linge</label>
-          <label class="service-option"><input id="linenToggle" type="checkbox"> Livraison / récupération du linge</label>
+          <label for="kitCount">Kits — linge, consommables (20&nbsp;€ / unité)</label>
+          <input id="kitCount" type="number" min="0" step="1" value="0" inputmode="numeric">
         </div>
         <div class="form-row"><label>Date sélectionnée</label><input id="selectedDateLabel" type="text" readonly value="Aucune date"></div>
         <div class="cal-header">
@@ -104,10 +108,11 @@
           <button class="btn ghost cal-nav" id="calNext" type="button" aria-label="Mois suivant">›</button>
         </div>
         <div class="cal-grid" id="calendarGrid"></div>
+        <div id="priceBreakdown" class="price-breakdown hidden"></div>
         <div class="form-footer">
           <div>
-            <div class="price-label">Prix affiché avant confirmation</div>
-            <div class="price-value" id="priceValue">47€</div>
+            <div class="price-label">Total estimé avant confirmation</div>
+            <div class="price-value" id="priceValue">—</div>
           </div>
           <button class="btn gold" id="bookBtn" type="button" disabled>Choisir une date pour réserver</button>
         </div>
