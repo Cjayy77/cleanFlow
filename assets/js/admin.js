@@ -60,6 +60,10 @@ const openIncidents = document.getElementById('openIncidents');
 const clientMessages = document.getElementById('clientMessages');
 const missionsToAssign = document.getElementById('missionsToAssign');
 const kitsToAssign = document.getElementById('kitsToAssign');
+const adminCalendar = document.getElementById('adminCalendar');
+const adminCalMonth = document.getElementById('adminCalMonth');
+const adminCalPrev = document.getElementById('adminCalPrev');
+const adminCalNext = document.getElementById('adminCalNext');
 
 let currentUser = null;
 let authNotice = null;
@@ -73,6 +77,19 @@ let latestBookings = [];
 let prestataires = [];
 let livreurs = [];
 let membersUnsubs = [];
+let adminCalMonthDate = startOfMonth(new Date());
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+// Ordre d'affichage dans une journée : ce qui demande une action d'abord.
+const CAL_STATUS_ORDER = { pending: 0, submitted: 1, rejected: 2, accepted: 3, verified: 4 };
+
+function prestataireName(id) {
+  const member = prestataires.find(p => p.id === id);
+  return member ? (member.name || member.email) : 'prestataire';
+}
 
 function subscribeStats() {
   if (statsUnsub) statsUnsub();
@@ -159,6 +176,89 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
 function renderAssignments() {
   renderMissionsToAssign();
   renderKitsToAssign();
+  renderAdminCalendar();
+}
+
+function renderAdminCalendar() {
+  if (!adminCalendar) return;
+  adminCalendar.innerHTML = '';
+  const monthLabel = adminCalMonthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  adminCalMonth.textContent = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+
+  ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(label => {
+    const dow = document.createElement('div');
+    dow.className = 'acal-dow';
+    dow.textContent = label;
+    adminCalendar.appendChild(dow);
+  });
+
+  const year = adminCalMonthDate.getFullYear();
+  const month = adminCalMonthDate.getMonth();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Réservations du mois (hors annulées), groupées par date.
+  const byDate = {};
+  latestBookings.forEach(booking => {
+    if (!booking.scheduledDate || booking.status === 'cancelled') return;
+    (byDate[booking.scheduledDate] = byDate[booking.scheduledDate] || []).push(booking);
+  });
+
+  const mondayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  for (let i = 0; i < mondayOffset; i += 1) {
+    const filler = document.createElement('div');
+    filler.className = 'acal-cell empty';
+    adminCalendar.appendChild(filler);
+  }
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum += 1) {
+    const day = new Date(year, month, dayNum);
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'acal-cell'
+      + (day.getTime() === today.getTime() ? ' today' : '')
+      + (day < today ? ' past' : '');
+    const num = document.createElement('div');
+    num.className = 'acal-num';
+    num.textContent = dayNum;
+    cell.appendChild(num);
+
+    const events = (byDate[iso] || [])
+      .slice()
+      .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
+    events.forEach(booking => {
+      const ev = document.createElement('button');
+      ev.type = 'button';
+      ev.className = `acal-event ${booking.status}`;
+      ev.textContent = booking.propertyAddress || 'Réservation';
+      const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
+      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
+      ev.onclick = () => focusCalendarBooking(booking);
+      cell.appendChild(ev);
+    });
+    adminCalendar.appendChild(cell);
+  }
+}
+
+// Depuis le calendrier, amener l'admin à l'action pertinente pour la réservation.
+async function focusCalendarBooking(booking) {
+  if (booking.status === 'submitted') {
+    const queued = bookingQueueData.find(b => b.id === booking.id);
+    if (queued) {
+      selectedBooking = queued;
+      try { await refreshBookingDetail(); } catch (e) { /* le détail se rechargera au prochain snapshot */ }
+      renderBookingQueue();
+      renderBookingDetail();
+      bookingTitle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+  }
+  if (booking.status === 'pending' && missionsToAssign) {
+    missionsToAssign.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  adminCalendar.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function renderMissionsToAssign() {
@@ -651,6 +751,15 @@ signOutBtn.addEventListener('click', async () => {
 
 verifyBtn.addEventListener('click', () => resolveBooking('verified'));
 rejectBtn.addEventListener('click', () => resolveBooking('rejected'));
+
+adminCalPrev.addEventListener('click', () => {
+  adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() - 1, 1);
+  renderAdminCalendar();
+});
+adminCalNext.addEventListener('click', () => {
+  adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() + 1, 1);
+  renderAdminCalendar();
+});
 
 const teamStatus = document.getElementById('teamStatus');
 const accessRequests = document.getElementById('accessRequests');

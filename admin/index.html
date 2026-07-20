@@ -85,6 +85,27 @@
       <div id="kitsToAssign"></div>
     </div>
 
+    <div class="card">
+      <div class="eyebrow">Calendrier</div>
+      <h2>Planning des réservations</h2>
+      <p>Toutes les réservations par date. Cliquez une réservation à assigner ou à vérifier pour aller à l’action correspondante.</p>
+      <div class="cal-header">
+        <button class="btn ghost cal-nav" id="adminCalPrev" type="button" aria-label="Mois précédent">‹</button>
+        <div class="cal-month" id="adminCalMonth" aria-live="polite"></div>
+        <button class="btn ghost cal-nav" id="adminCalNext" type="button" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="acal-scroll">
+        <div class="acal" id="adminCalendar"></div>
+      </div>
+      <div class="acal-legend">
+        <span class="acal-key"><i class="pending"></i>À assigner</span>
+        <span class="acal-key"><i class="accepted"></i>Assignée</span>
+        <span class="acal-key"><i class="submitted"></i>À vérifier</span>
+        <span class="acal-key"><i class="verified"></i>Confirmée</span>
+        <span class="acal-key"><i class="rejected"></i>À corriger</span>
+      </div>
+    </div>
+
     <div class="grid2">
       <div class="card">
         <div class="eyebrow">File d’attente</div>
