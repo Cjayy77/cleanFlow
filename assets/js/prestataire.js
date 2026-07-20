@@ -59,6 +59,7 @@ const workStatus = document.getElementById('workStatus');
 function setWorkStatus(message, type = 'error') {
   workStatus.textContent = message;
   workStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
+  if (message) workStatus.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // Statuts sur lesquels le prestataire peut encore agir ('rejected' = dossier
