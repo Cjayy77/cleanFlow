@@ -449,6 +449,10 @@ function renderBookings() {
       };
       card.appendChild(cancelBtn);
     }
+    // Note du client (1-5 étoiles) une fois la prestation vérifiée.
+    if (booking.status === 'verified') {
+      card.appendChild(buildRating(booking));
+    }
     // Contacter l'équipe à propos de cette réservation (question, incident,
     // problème constaté après le ménage). Reste dispo même mission terminée.
     if (booking.status !== 'cancelled') {
@@ -456,6 +460,40 @@ function renderBookings() {
     }
     bookingsWrap.appendChild(card);
   });
+}
+
+function buildRating(booking) {
+  const wrap = document.createElement('div');
+  wrap.className = 'rating';
+  const label = document.createElement('div');
+  label.className = 'rating-label';
+  label.textContent = booking.rating ? 'Votre note' : 'Notez cette prestation';
+  const stars = document.createElement('div');
+  stars.className = 'stars';
+  stars.setAttribute('role', 'radiogroup');
+  stars.setAttribute('aria-label', 'Note de 1 à 5 étoiles');
+  for (let value = 1; value <= 5; value += 1) {
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'star' + (booking.rating >= value ? ' filled' : '');
+    star.textContent = '★';
+    star.setAttribute('aria-label', `${value} étoile${value > 1 ? 's' : ''}`);
+    star.onclick = async () => {
+      if (star.disabled) return;
+      stars.querySelectorAll('.star').forEach(s => { s.disabled = true; });
+      try {
+        await updateDoc(doc(db, 'bookings', booking.id), { rating: value, ratedAt: serverTimestamp() });
+        setAppStatus('Merci ! Votre note a bien été enregistrée.', 'success');
+      } catch (err) {
+        stars.querySelectorAll('.star').forEach(s => { s.disabled = false; });
+        setAppStatus(`Impossible d’enregistrer la note : ${authErrorMessage(err)}`, 'error');
+      }
+    };
+    stars.appendChild(star);
+  }
+  wrap.appendChild(label);
+  wrap.appendChild(stars);
+  return wrap;
 }
 
 function buildContactTeam(booking, address) {

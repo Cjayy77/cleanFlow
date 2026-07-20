@@ -131,6 +131,14 @@ textarea{ min-height:110px; resize:vertical; }
 .service-option{ display:flex; align-items:center; gap:10px; margin-bottom:10px; font-weight:500; font-size:14px; }
 .service-option input{ width:16px; height:16px; }
 
+.rating{ margin-top:16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.rating-label{ font-size:13px; color:var(--muted); }
+.stars{ display:inline-flex; gap:4px; }
+.star{ background:none; border:none; padding:0; cursor:pointer; font-size:24px; line-height:1; color:var(--line); transition: color .12s ease-out, transform .12s ease-out; }
+.star.filled{ color:var(--gold); }
+.star:hover:not(:disabled){ color:var(--gold); transform: scale(1.12); }
+.star:disabled{ cursor:default; }
+
 .price-breakdown{ margin-top:18px; padding:14px 16px; background:var(--klein-tint); border:1px solid var(--line); }
 .price-breakdown.hidden{ display:none; }
 .pb-line{ display:flex; justify-content:space-between; align-items:baseline; gap:14px; font-size:13.5px; color:var(--muted); padding:5px 0; }

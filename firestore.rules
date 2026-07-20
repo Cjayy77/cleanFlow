@@ -117,6 +117,15 @@ service cloud.firestore {
           && resource.data.clientId == request.auth.uid
           && request.resource.data.propertyAddress is string
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['propertyAddress']))
+        // Client : noter (1 à 5 étoiles) sa prestation une fois vérifiée.
+        || (isClient()
+          && resource.data.clientId == request.auth.uid
+          && resource.data.status == 'verified'
+          && request.resource.data.status == 'verified'
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'ratedAt']))
         // Prestataire : soumettre / re-soumettre le dossier de SA mission assignée.
         || (isPrestataire()
           && resource.data.prestataireId == request.auth.uid
