@@ -104,13 +104,13 @@ navigateur :
      Le plus simple : un compte gratuit **Brevo** ou **SendGrid** (SMTP
      fourni en 5 minutes), ou le SMTP Gmail avec un « mot de passe
      d'application ».
-   - *Default FROM address* : ex. `Kleining <william@cleanflow-app.com>`.
+   - *Default FROM address* : ex. `Kleining <w.wanecque@gmail.com>`.
 3. C'est tout. Sans l'extension, l'application fonctionne normalement — les
    notifications s'accumulent simplement dans la collection `mail` sans
    partir.
 
 Notifications envoyées : nouvelle réservation, annulation, dossier photos
-soumis et demande d'accès → **boîte de l'équipe** (`william@cleanflow-app.com`,
+soumis et demande d'accès → **boîte de l'équipe** (`w.wanecque@gmail.com`,
 adresse codée dans `assets/js/shared.js` **et** dans `firestore.rules`,
 modifier les deux ensemble) ; ménage confirmé → **client** ; dossier à
 corriger → **prestataire**. La réinitialisation de mot de passe (« Mot de
