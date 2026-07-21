@@ -146,6 +146,17 @@ textarea{ min-height:110px; resize:vertical; }
 .rating-avg-out{ font-size:15px; color:var(--muted); align-self:flex-end; }
 .rating-avg .stars-static{ margin-top:0; }
 
+/* Onglets console admin — une section à la fois, moins de scroll sur mobile */
+.tabbar{ position:sticky; top:0; z-index:20; display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; background:var(--paper); padding:12px 0; margin-bottom:24px; border-bottom:2px solid var(--ink); }
+.tabbar::-webkit-scrollbar{ display:none; }
+.tab{ flex:0 0 auto; display:inline-flex; align-items:center; gap:8px; background:var(--white); color:var(--ink); border:2px solid var(--ink); box-shadow:3px 3px 0 var(--ink); font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:13px; padding:10px 15px; cursor:pointer; white-space:nowrap; transition: transform .12s ease-out, box-shadow .12s ease-out; }
+.tab:hover:not(.active){ transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--ink); }
+.tab.active{ background:var(--klein); color:var(--white); box-shadow:3px 3px 0 var(--klein-deep); }
+.tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--gold); color:var(--ink); font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; }
+.tab-badge.hidden{ display:none; }
+.tab.active .tab-badge{ background:var(--white); color:var(--klein); }
+.admin-section.hidden{ display:none; }
+
 /* Roster équipe (admin) */
 .roster-group{ margin-bottom:10px; }
 .roster-group + .roster-group{ margin-top:22px; }

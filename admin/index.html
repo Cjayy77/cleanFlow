@@ -59,105 +59,119 @@
       <p>Aucun dossier ne se valide automatiquement : chaque jeu de photos est contrôlé ici avant que le client ne soit notifié.</p>
     </div>
 
+    <div class="tabbar" id="adminTabs" role="tablist">
+      <button type="button" class="tab active" data-tab="assign">À assigner<span class="tab-badge hidden" id="badgeAssign"></span></button>
+      <button type="button" class="tab" data-tab="cal">Calendrier</button>
+      <button type="button" class="tab" data-tab="verify">Vérification<span class="tab-badge hidden" id="badgeVerify"></span></button>
+      <button type="button" class="tab" data-tab="inbox">Messages<span class="tab-badge hidden" id="badgeInbox"></span></button>
+      <button type="button" class="tab" data-tab="team">Équipe<span class="tab-badge hidden" id="badgeTeam"></span></button>
+    </div>
+
     <div id="adminStatus" class="status-banner info hidden" role="status"></div>
 
-    <div class="card">
-      <div class="eyebrow">Vue d’ensemble</div>
-      <div class="stat-grid">
-        <div class="stat"><b id="statPending">–</b><span>En attente de prestataire</span></div>
-        <div class="stat"><b id="statAccepted">–</b><span>Ménages en cours</span></div>
-        <div class="stat"><b id="statSubmitted">–</b><span>Dossiers à vérifier</span></div>
-        <div class="stat"><b id="statVerified">–</b><span>Confirmés</span></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="eyebrow">Dispatch</div>
-      <h2>Missions à assigner</h2>
-      <p>Réservations en attente d’un prestataire. Choisissez qui s’en occupe : le prestataire ne voit que les missions que vous lui attribuez.</p>
-      <div id="missionsToAssign"></div>
-    </div>
-
-    <div class="card">
-      <div class="eyebrow">Kits &amp; linge</div>
-      <h2>Livraisons à assigner</h2>
-      <p>Réservations avec option kits/linge sans livreur attribué. Choisissez le livreur en charge de la tournée.</p>
-      <div id="kitsToAssign"></div>
-    </div>
-
-    <div class="card">
-      <div class="eyebrow">Calendrier</div>
-      <h2>Planning des réservations</h2>
-      <p>Toutes les réservations par date. Cliquez une réservation à assigner ou à vérifier pour aller à l’action correspondante.</p>
-      <div class="cal-header">
-        <button class="btn ghost cal-nav" id="adminCalPrev" type="button" aria-label="Mois précédent">‹</button>
-        <div class="cal-month" id="adminCalMonth" aria-live="polite"></div>
-        <button class="btn ghost cal-nav" id="adminCalNext" type="button" aria-label="Mois suivant">›</button>
-      </div>
-      <div class="acal-scroll">
-        <div class="acal" id="adminCalendar"></div>
-      </div>
-      <div class="acal-legend">
-        <span class="acal-key"><i class="pending"></i>À assigner</span>
-        <span class="acal-key"><i class="accepted"></i>Assignée</span>
-        <span class="acal-key"><i class="submitted"></i>À vérifier</span>
-        <span class="acal-key"><i class="verified"></i>Confirmée</span>
-        <span class="acal-key"><i class="rejected"></i>À corriger</span>
-      </div>
-    </div>
-
-    <div class="grid2">
+    <section class="admin-section" data-tab="assign">
       <div class="card">
-        <div class="eyebrow">File d’attente</div>
-        <h2>Dossiers soumis</h2>
-        <div id="bookingQueue"></div>
+        <div class="eyebrow">Dispatch</div>
+        <h2>Missions à assigner</h2>
+        <p>Réservations en attente d’un prestataire. Choisissez qui s’en occupe : le prestataire ne voit que les missions que vous lui attribuez.</p>
+        <div id="missionsToAssign"></div>
       </div>
       <div class="card">
-        <div class="eyebrow">Dossier sélectionné</div>
-        <h2 id="bookingTitle">Aucun dossier sélectionné</h2>
-        <p id="bookingMeta">Sélectionnez un dossier dans la file pour contrôler les photos.</p>
-        <div class="photo-grid" id="photoGrid"></div>
-        <div class="form-row">
-          <label for="rejectNote">Note (obligatoire en cas de rejet, visible par le prestataire)</label>
-          <textarea id="rejectNote" placeholder="Ex. : photo de la salle de bain floue, à reprendre."></textarea>
-        </div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap;">
-          <button class="btn primary" id="verifyBtn" type="button" disabled>Valider le dossier</button>
-          <button class="btn ghost" id="rejectBtn" type="button" disabled>Renvoyer au prestataire</button>
-        </div>
-        <div class="eyebrow" style="margin-top:26px;">Incidents signalés</div>
-        <div id="incidentList"></div>
+        <div class="eyebrow">Kits &amp; linge</div>
+        <h2>Livraisons à assigner</h2>
+        <p>Réservations avec option kits/linge sans livreur attribué. Choisissez le livreur en charge de la tournée.</p>
+        <div id="kitsToAssign"></div>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <div class="eyebrow">Messages</div>
-      <h2>Messages des clients</h2>
-      <p>Questions ou problèmes signalés par les clients à propos de leurs réservations. Recontactez la personne par email ou téléphone, puis marquez le message traité.</p>
-      <div id="clientMessages"></div>
-    </div>
+    <section class="admin-section hidden" data-tab="cal">
+      <div class="card">
+        <div class="eyebrow">Vue d’ensemble</div>
+        <div class="stat-grid">
+          <div class="stat"><b id="statPending">–</b><span>En attente de prestataire</span></div>
+          <div class="stat"><b id="statAccepted">–</b><span>Ménages en cours</span></div>
+          <div class="stat"><b id="statSubmitted">–</b><span>Dossiers à vérifier</span></div>
+          <div class="stat"><b id="statVerified">–</b><span>Confirmés</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Calendrier</div>
+        <h2>Planning des réservations</h2>
+        <p>Toutes les réservations par date. Cliquez une réservation à assigner ou à vérifier pour aller à l’action correspondante.</p>
+        <div class="cal-header">
+          <button class="btn ghost cal-nav" id="adminCalPrev" type="button" aria-label="Mois précédent">‹</button>
+          <div class="cal-month" id="adminCalMonth" aria-live="polite"></div>
+          <button class="btn ghost cal-nav" id="adminCalNext" type="button" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="acal-scroll">
+          <div class="acal" id="adminCalendar"></div>
+        </div>
+        <div class="acal-legend">
+          <span class="acal-key"><i class="pending"></i>À assigner</span>
+          <span class="acal-key"><i class="accepted"></i>Assignée</span>
+          <span class="acal-key"><i class="submitted"></i>À vérifier</span>
+          <span class="acal-key"><i class="verified"></i>Confirmée</span>
+          <span class="acal-key"><i class="rejected"></i>À corriger</span>
+        </div>
+      </div>
+    </section>
 
-    <div class="card">
-      <div class="eyebrow">Incidents</div>
-      <h2>Incidents ouverts</h2>
-      <p>Signalés par les prestataires, toutes missions confondues. Contactez le client concerné puis marquez l’incident traité.</p>
-      <div id="openIncidents"></div>
-    </div>
+    <section class="admin-section hidden" data-tab="verify">
+      <div class="grid2">
+        <div class="card">
+          <div class="eyebrow">File d’attente</div>
+          <h2>Dossiers soumis</h2>
+          <div id="bookingQueue"></div>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Dossier sélectionné</div>
+          <h2 id="bookingTitle">Aucun dossier sélectionné</h2>
+          <p id="bookingMeta">Sélectionnez un dossier dans la file pour contrôler les photos.</p>
+          <div class="photo-grid" id="photoGrid"></div>
+          <div class="form-row">
+            <label for="rejectNote">Note (obligatoire en cas de rejet, visible par le prestataire)</label>
+            <textarea id="rejectNote" placeholder="Ex. : photo de la salle de bain floue, à reprendre."></textarea>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="btn primary" id="verifyBtn" type="button" disabled>Valider le dossier</button>
+            <button class="btn ghost" id="rejectBtn" type="button" disabled>Renvoyer au prestataire</button>
+          </div>
+          <div class="eyebrow" style="margin-top:26px;">Incidents signalés</div>
+          <div id="incidentList"></div>
+        </div>
+      </div>
+    </section>
 
-    <div class="card">
-      <div class="eyebrow">Équipe</div>
-      <h2>Prestataires &amp; livreurs</h2>
-      <p>Vos intervenants approuvés et leur charge actuelle, pour répartir les missions équitablement.</p>
-      <div id="roster"></div>
-    </div>
+    <section class="admin-section hidden" data-tab="inbox">
+      <div class="card">
+        <div class="eyebrow">Messages</div>
+        <h2>Messages des clients</h2>
+        <p>Questions ou problèmes signalés par les clients à propos de leurs réservations. Recontactez la personne par email ou téléphone, puis marquez le message traité.</p>
+        <div id="clientMessages"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Incidents</div>
+        <h2>Incidents ouverts</h2>
+        <p>Signalés par les prestataires, toutes missions confondues. Contactez le client concerné puis marquez l’incident traité.</p>
+        <div id="openIncidents"></div>
+      </div>
+    </section>
 
-    <div class="card">
-      <div class="eyebrow">Accès</div>
-      <h2>Demandes d’accès</h2>
-      <p>Chaque demande prestataire, livreur ou admin doit être vérifiée avant approbation : contrôlez le code d’invitation que vous avez transmis à la personne, ou contactez-la directement. Un compte refusé n’a accès à rien.</p>
-      <div id="teamStatus" class="status-banner info hidden" role="status"></div>
-      <div id="accessRequests"></div>
-    </div>
+    <section class="admin-section hidden" data-tab="team">
+      <div class="card">
+        <div class="eyebrow">Équipe</div>
+        <h2>Prestataires &amp; livreurs</h2>
+        <p>Vos intervenants approuvés et leur charge actuelle, pour répartir les missions équitablement.</p>
+        <div id="roster"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Accès</div>
+        <h2>Demandes d’accès</h2>
+        <p>Chaque demande prestataire, livreur ou admin doit être vérifiée avant approbation : contrôlez le code d’invitation que vous avez transmis à la personne, ou contactez-la directement. Un compte refusé n’a accès à rien.</p>
+        <div id="teamStatus" class="status-banner info hidden" role="status"></div>
+        <div id="accessRequests"></div>
+      </div>
+    </section>
   </div>
 </div>
 <script type="module" src="../assets/js/admin.js"></script>

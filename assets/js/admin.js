@@ -65,6 +65,11 @@ const adminCalMonth = document.getElementById('adminCalMonth');
 const adminCalPrev = document.getElementById('adminCalPrev');
 const adminCalNext = document.getElementById('adminCalNext');
 const roster = document.getElementById('roster');
+const adminTabs = document.getElementById('adminTabs');
+const badgeAssign = document.getElementById('badgeAssign');
+const badgeVerify = document.getElementById('badgeVerify');
+const badgeInbox = document.getElementById('badgeInbox');
+const badgeTeam = document.getElementById('badgeTeam');
 
 let currentUser = null;
 let authNotice = null;
@@ -78,6 +83,32 @@ let latestBookings = [];
 let prestataires = [];
 let livreurs = [];
 let membersUnsubs = [];
+let openMessagesCount = 0;
+let openIncidentsCount = 0;
+let accessRequestCount = 0;
+
+function activateTab(name) {
+  if (!adminTabs) return;
+  adminTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.toggle('hidden', s.dataset.tab !== name));
+}
+
+function setBadge(el, count) {
+  if (!el) return;
+  el.textContent = count;
+  el.classList.toggle('hidden', !count);
+}
+
+// Compteurs « ce qui demande une action » affichés sur les onglets.
+function renderTabBadges() {
+  const toAssign = latestBookings.filter(b => b.status === 'pending').length
+    + latestBookings.filter(b => b.linenRequested === true && !b.livreurId && b.status !== 'cancelled').length;
+  const toVerify = latestBookings.filter(b => b.status === 'submitted').length;
+  setBadge(badgeAssign, toAssign);
+  setBadge(badgeVerify, toVerify);
+  setBadge(badgeInbox, openMessagesCount + openIncidentsCount);
+  setBadge(badgeTeam, accessRequestCount);
+}
 let adminCalMonthDate = startOfMonth(new Date());
 
 function startOfMonth(date) {
@@ -180,6 +211,7 @@ function renderAssignments() {
   renderKitsToAssign();
   renderAdminCalendar();
   renderRoster();
+  renderTabBadges();
 }
 
 function renderRoster() {
@@ -369,6 +401,7 @@ async function focusCalendarBooking(booking) {
   if (booking.status === 'submitted') {
     const queued = bookingQueueData.find(b => b.id === booking.id);
     if (queued) {
+      activateTab('verify');
       selectedBooking = queued;
       try { await refreshBookingDetail(); } catch (e) { /* le détail se rechargera au prochain snapshot */ }
       renderBookingQueue();
@@ -378,10 +411,9 @@ async function focusCalendarBooking(booking) {
     }
   }
   if (booking.status === 'pending' && missionsToAssign) {
+    activateTab('assign');
     missionsToAssign.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
   }
-  adminCalendar.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function renderMissionsToAssign() {
@@ -486,7 +518,9 @@ function subscribeOpenIncidents() {
     const incidents = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .sort((a, b) => (b.reportedAt?.toMillis?.() || 0) - (a.reportedAt?.toMillis?.() || 0));
+    openIncidentsCount = incidents.length;
     renderOpenIncidents(incidents);
+    renderTabBadges();
   }, error => setAdminStatus(`Impossible de charger les incidents : ${authErrorMessage(error)}`, 'error'));
 }
 
@@ -497,7 +531,9 @@ function subscribeClientMessages() {
     const messages = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    openMessagesCount = messages.length;
     renderClientMessages(messages);
+    renderTabBadges();
   }, error => setAdminStatus(`Impossible de charger les messages clients : ${authErrorMessage(error)}`, 'error'));
 }
 
@@ -900,6 +936,15 @@ signOutBtn.addEventListener('click', async () => {
 verifyBtn.addEventListener('click', () => resolveBooking('verified'));
 rejectBtn.addEventListener('click', () => resolveBooking('rejected'));
 
+if (adminTabs) {
+  adminTabs.addEventListener('click', event => {
+    const btn = event.target.closest('.tab');
+    if (!btn) return;
+    activateTab(btn.dataset.tab);
+    adminTabs.scrollIntoView({ block: 'start' });
+  });
+}
+
 adminCalPrev.addEventListener('click', () => {
   adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() - 1, 1);
   renderAdminCalendar();
@@ -987,7 +1032,9 @@ function subscribeAccessRequests() {
     const requests = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+    accessRequestCount = requests.length;
     renderAccessRequests(requests);
+    renderTabBadges();
   }, error => setTeamStatus(`Impossible de charger les demandes d’accès : ${authErrorMessage(error)}`, 'error'));
 }
 

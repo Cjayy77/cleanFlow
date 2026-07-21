@@ -68,12 +68,18 @@
       <div id="activeBooking"></div>
     </div>
 
-    <div class="card">
-      <div class="eyebrow">Évaluations</div>
-      <h2>Mes évaluations</h2>
-      <div id="ratingSummary"></div>
-      <div id="ratingList"></div>
-    </div>
+    <details class="card" id="ratingsCard">
+      <summary>
+        <div>
+          <div class="eyebrow">Évaluations</div>
+          <h2>Mes évaluations</h2>
+        </div>
+      </summary>
+      <div class="collapse-body">
+        <div id="ratingSummary"></div>
+        <div id="ratingList"></div>
+      </div>
+    </details>
 
     <details class="card" id="incidentCard">
       <summary>
