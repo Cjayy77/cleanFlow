@@ -240,6 +240,7 @@ function renderAssignments() {
   renderKitsToAssign();
   renderAdminCalendar();
   renderRoster();
+  renderCompta();
   renderTabBadges();
 }
 
@@ -652,6 +653,14 @@ function renderDayPanel() {
       cancelBtn.style.marginLeft = (booking.status === 'pending' || booking.status === 'submitted') ? '10px' : '0';
       armInlineConfirm(cancelBtn, 'Confirmer l’annulation', () => cancelBooking(booking, cancelBtn));
       row.appendChild(cancelBtn);
+
+      const reBtn = document.createElement('button');
+      reBtn.className = 'btn ghost';
+      reBtn.type = 'button';
+      reBtn.textContent = 'Reprogrammer';
+      reBtn.style.cssText = 'margin-top:12px; margin-left:10px;';
+      reBtn.onclick = () => openReschedule(booking, row, reBtn);
+      row.appendChild(reBtn);
     }
     panel.appendChild(row);
   });
@@ -676,6 +685,170 @@ async function cancelBooking(booking, button) {
   } catch (e) {
     setAdminStatus(`Impossible d’annuler la mission : ${authErrorMessage(e)}`, 'error');
   }
+}
+
+// Admin : reprogrammer une mission (changer sa date). Notifie le client au mieux.
+function openReschedule(booking, row, triggerBtn) {
+  if (row.querySelector('.reschedule-box')) { row.querySelector('.reschedule-box').remove(); return; }
+  const box = document.createElement('div');
+  box.className = 'reschedule-box';
+  box.style.cssText = 'margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;';
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.value = booking.scheduledDate || '';
+  input.min = new Date().toISOString().slice(0, 10);
+  input.style.maxWidth = '190px';
+  const save = document.createElement('button');
+  save.className = 'btn primary';
+  save.type = 'button';
+  save.textContent = 'Enregistrer la date';
+  save.onclick = async () => {
+    const newDate = input.value;
+    if (!newDate) { setAdminStatus('Choisissez une date.', 'error'); return; }
+    if (newDate === booking.scheduledDate) { box.remove(); return; }
+    try {
+      await withButtonLoading(save, () =>
+        withTimeout(updateDoc(doc(db, 'bookings', booking.id), { scheduledDate: newDate }), 15000));
+      try {
+        const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
+        if (clientSnap.exists() && clientSnap.data().email) {
+          queueEmail({
+            to: clientSnap.data().email,
+            subject: `Kleining — ménage reprogrammé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+            text: `Votre ménage (${booking.propertyAddress || 'votre bien'}) a été reprogrammé au ${formatShortDate(newDate)} par l'équipe Kleining.`,
+          });
+        }
+      } catch (e) { /* la notification ne doit pas bloquer la reprogrammation */ }
+      setAdminStatus(`Mission reprogrammée au ${formatShortDate(newDate)}. Le client est notifié.`, 'success');
+    } catch (e) {
+      setAdminStatus(`Impossible de reprogrammer : ${authErrorMessage(e)}`, 'error');
+    }
+  };
+  box.appendChild(input);
+  box.appendChild(save);
+  row.appendChild(box);
+  input.focus();
+}
+
+// Comptabilité : montant de chaque mission + ajustements bonus/malus discrétionnaires.
+function renderCompta() {
+  const totals = document.getElementById('comptaTotals');
+  const list = document.getElementById('comptaList');
+  if (!totals || !list) return;
+  const rows = latestBookings
+    .filter(b => b.status !== 'cancelled')
+    .sort((a, b) => (b.scheduledDate || '').localeCompare(a.scheduledDate || ''));
+  const gross = rows.reduce((s, b) => s + (Number(b.price) || 0), 0);
+  const adjSum = rows.reduce((s, b) => s + (Number(b.adjustment) || 0), 0);
+  const net = gross + adjSum;
+
+  const stat = (value, label) => {
+    const d = document.createElement('div');
+    d.className = 'stat';
+    const b = document.createElement('b');
+    b.textContent = value;
+    const s = document.createElement('span');
+    s.textContent = label;
+    d.appendChild(b);
+    d.appendChild(s);
+    return d;
+  };
+  totals.innerHTML = '';
+  totals.appendChild(stat(`${rows.length}`, 'Missions'));
+  totals.appendChild(stat(`${gross}€`, 'Montant brut'));
+  totals.appendChild(stat(`${adjSum >= 0 ? '+' : '−'}${Math.abs(adjSum)}€`, 'Bonus / malus'));
+  totals.appendChild(stat(`${net}€`, 'Net'));
+
+  list.innerHTML = '';
+  if (rows.length === 0) {
+    list.innerHTML = '<div class="empty-state">Aucune mission à comptabiliser.</div>';
+    return;
+  }
+  rows.forEach(booking => list.appendChild(buildComptaRow(booking)));
+}
+
+function buildComptaRow(booking) {
+  const row = document.createElement('div');
+  row.className = 'task-card';
+  const top = document.createElement('div');
+  top.className = 'task-top';
+  const left = document.createElement('div');
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = booking.propertyAddress || booking.propertyId;
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
+  meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${who} · ${formatBookingStatus(booking.status)}`;
+  left.appendChild(title);
+  left.appendChild(meta);
+
+  const adj = Number(booking.adjustment) || 0;
+  const amount = document.createElement('div');
+  amount.className = 'compta-amount';
+  const priceSpan = document.createElement('span');
+  priceSpan.textContent = `${Number(booking.price) || 0}€`;
+  amount.appendChild(priceSpan);
+  if (adj) {
+    const a = document.createElement('span');
+    a.className = adj > 0 ? 'adj-bonus' : 'adj-malus';
+    a.textContent = ` ${adj > 0 ? '+' : '−'}${Math.abs(adj)}€`;
+    amount.appendChild(a);
+  }
+  top.appendChild(left);
+  top.appendChild(amount);
+  row.appendChild(top);
+  if (booking.adjustmentNote) {
+    const note = document.createElement('div');
+    note.className = 'task-meta';
+    note.textContent = `Motif : ${booking.adjustmentNote}`;
+    row.appendChild(note);
+  }
+
+  const adjBtn = document.createElement('button');
+  adjBtn.className = 'mini-btn';
+  adjBtn.type = 'button';
+  adjBtn.style.marginTop = '10px';
+  adjBtn.textContent = adj ? 'Modifier le bonus / malus' : 'Ajouter un bonus / malus';
+  adjBtn.onclick = () => {
+    const existing = row.querySelector('.adj-box');
+    if (existing) { existing.remove(); return; }
+    const box = document.createElement('div');
+    box.className = 'adj-box';
+    box.style.cssText = 'margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;';
+    const num = document.createElement('input');
+    num.type = 'number';
+    num.step = '1';
+    num.placeholder = '+ bonus / − malus (€)';
+    num.value = adj || '';
+    num.style.maxWidth = '170px';
+    const noteInput = document.createElement('input');
+    noteInput.type = 'text';
+    noteInput.placeholder = 'Motif (optionnel)';
+    noteInput.value = booking.adjustmentNote || '';
+    noteInput.style.maxWidth = '210px';
+    const save = document.createElement('button');
+    save.className = 'btn primary';
+    save.type = 'button';
+    save.textContent = 'Enregistrer';
+    save.onclick = async () => {
+      const value = Math.round(Number(num.value) || 0);
+      try {
+        await withButtonLoading(save, () =>
+          withTimeout(updateDoc(doc(db, 'bookings', booking.id), { adjustment: value, adjustmentNote: noteInput.value.trim() }), 15000));
+        setAdminStatus('Ajustement enregistré.', 'success');
+      } catch (e) {
+        setAdminStatus(`Impossible d’enregistrer l’ajustement : ${authErrorMessage(e)}`, 'error');
+      }
+    };
+    box.appendChild(num);
+    box.appendChild(noteInput);
+    box.appendChild(save);
+    row.appendChild(box);
+    num.focus();
+  };
+  row.appendChild(adjBtn);
+  return row;
 }
 
 // Depuis le calendrier, amener l'admin à l'action pertinente pour la réservation.

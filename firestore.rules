@@ -164,6 +164,13 @@ service cloud.firestore {
         || (isAdmin()
           && request.resource.data.status == 'cancelled'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'adminNote']))
+        // Admin : reprogrammer (changer la date) d'une mission.
+        || (isAdmin()
+          && request.resource.data.scheduledDate is string
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scheduledDate']))
+        // Admin : ajustement compta discrétionnaire (bonus/malus) sur une mission.
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adjustment', 'adjustmentNote']))
       );
     }
 
