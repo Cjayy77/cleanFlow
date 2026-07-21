@@ -155,6 +155,8 @@ textarea{ min-height:110px; resize:vertical; }
 .tab-badge{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--gold); color:var(--ink); font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; }
 .tab-badge.hidden{ display:none; }
 .tab.active .tab-badge{ background:var(--white); color:var(--klein); }
+.tab-badge.urgent{ background:var(--danger-ink); color:var(--white); }
+.tab.active .tab-badge.urgent{ background:var(--white); color:var(--danger-ink); }
 .admin-section.hidden{ display:none; }
 
 /* Roster équipe (admin) */
@@ -164,6 +166,23 @@ textarea{ min-height:110px; resize:vertical; }
 .roster a{ color:var(--klein); font-weight:600; text-decoration:none; }
 .roster a:hover{ text-decoration:underline; }
 .roster-load{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--klein-deep); margin-top:8px; }
+.roster-subhead{ font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-top:18px; }
+.roster-name{ background:none; border:none; padding:0; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:15px; color:var(--klein); text-align:left; }
+.roster-name:hover{ text-decoration:underline; }
+.roster-suspended{ opacity:0.6; }
+.roster-suspended .roster-name{ color:var(--muted); }
+
+/* Fiche membre (modale) */
+.modal-overlay{ position:fixed; inset:0; z-index:100; background:rgba(16,16,16,0.5); display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto; }
+.modal{ position:relative; background:var(--white); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--ink); padding:28px 26px; max-width:440px; width:100%; margin:auto; }
+.modal-close{ position:absolute; top:10px; right:14px; background:none; border:none; font-size:26px; line-height:1; cursor:pointer; color:var(--muted); }
+.modal-close:hover{ color:var(--ink); }
+.modal-contact{ display:flex; flex-direction:column; gap:4px; margin:12px 0; }
+.modal-contact a{ color:var(--klein); font-weight:600; text-decoration:none; font-size:14px; }
+.modal-contact a:hover{ text-decoration:underline; }
+.modal-summary{ font-size:13.5px; color:var(--muted); margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.modal-summary .stars-static{ margin-top:0; }
+.modal-actions{ margin-top:24px; padding-top:18px; border-top:1px solid var(--line); display:flex; gap:12px; flex-wrap:wrap; }
 .roster-rating{ display:flex; align-items:center; gap:8px; margin-top:6px; }
 .roster-rating .stars-static{ margin-top:0; }
 .roster-rating .star-static{ font-size:15px; }
@@ -176,15 +195,22 @@ textarea{ min-height:110px; resize:vertical; }
 .acal-cell.empty{ background:transparent; border-color:transparent; }
 .acal-cell.past{ background:var(--paper); }
 .acal-cell.today{ border-color:var(--gold); box-shadow:inset 0 0 0 1px var(--gold); }
+.acal-cell.has-events{ cursor:pointer; }
+.acal-cell.has-events:hover{ background:var(--klein-tint); }
+.acal-cell.sel{ border-color:var(--klein); box-shadow:inset 0 0 0 2px var(--klein); }
 .acal-num{ font-size:11px; font-weight:700; color:var(--muted); }
 .acal-cell.today .acal-num{ color:var(--klein); }
-.acal-event{ display:block; width:100%; text-align:left; border:none; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; font-size:11px; font-weight:600; line-height:1.25; padding:4px 6px; color:var(--ink); background:var(--klein-tint); border-left:3px solid var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition: transform .1s ease-out; }
-.acal-event:hover{ transform:translateX(1px); }
+.acal-event{ display:block; width:100%; text-align:left; font-family:'Plus Jakarta Sans', sans-serif; font-size:11px; font-weight:600; line-height:1.25; padding:4px 6px; color:var(--ink); background:var(--klein-tint); border-left:3px solid var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cal-day-panel{ margin-top:20px; }
+.cal-day-panel .task-card:first-of-type{ border-top:none; }
 .acal-event.pending{ background:#FBF3DF; border-left-color:var(--gold); }
 .acal-event.accepted{ background:var(--klein-tint); border-left-color:var(--klein); }
 .acal-event.submitted{ background:#F6EEDD; border-left-color:#8A6516; color:#8A6516; }
 .acal-event.verified{ background:var(--ok-bg); border-left-color:var(--ok-ink); color:var(--ok-ink); }
 .acal-event.rejected{ background:var(--danger-bg); border-left-color:var(--danger-ink); color:var(--danger-ink); }
+.acal-event.urgent{ background:var(--danger-bg); border-left-color:var(--danger-ink); color:var(--danger-ink); font-weight:700; }
+.acal-cell.has-urgent .acal-num::after{ content:'●'; color:var(--danger-ink); font-size:9px; margin-left:5px; vertical-align:middle; }
+.cal-urgent-note{ color:var(--danger-ink); font-weight:600; }
 .acal-legend{ display:flex; flex-wrap:wrap; gap:14px; margin-top:16px; font-size:12px; color:var(--muted); }
 .acal-key{ display:inline-flex; align-items:center; gap:6px; }
 .acal-key i{ width:11px; height:11px; border-left:3px solid var(--muted); display:inline-block; }
@@ -193,6 +219,7 @@ textarea{ min-height:110px; resize:vertical; }
 .acal-key i.submitted{ border-left-color:#8A6516; }
 .acal-key i.verified{ border-left-color:var(--ok-ink); }
 .acal-key i.rejected{ border-left-color:var(--danger-ink); }
+.acal-key i.urgent{ border-left-color:var(--danger-ink); background:var(--danger-bg); }
 
 .price-breakdown{ margin-top:18px; padding:14px 16px; background:var(--klein-tint); border:1px solid var(--line); }
 .price-breakdown.hidden{ display:none; }

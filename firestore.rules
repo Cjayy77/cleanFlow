@@ -56,10 +56,12 @@ service cloud.firestore {
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.role == resource.data.role
           && request.resource.data.get('accountStatus', 'approved') == resource.data.get('accountStatus', 'approved'))
-        // Admin : décision d'accès uniquement (approuver ou refuser).
+        // Admin : décision d'accès et gestion d'équipe. 'suspended' retire un
+        // membre approuvé de l'activité (plus de connexion, plus de missions) ;
+        // 'approved' le réactive.
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accountStatus'])
-          && request.resource.data.accountStatus in ['approved', 'rejected'])
+          && request.resource.data.accountStatus in ['approved', 'rejected', 'suspended'])
       );
     }
 

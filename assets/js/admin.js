@@ -82,6 +82,7 @@ let messagesUnsub = null;
 let latestBookings = [];
 let prestataires = [];
 let livreurs = [];
+let suspended = { prestataire: [], livreur: [] };
 let membersUnsubs = [];
 let openMessagesCount = 0;
 let openIncidentsCount = 0;
@@ -104,12 +105,15 @@ function renderTabBadges() {
   const toAssign = latestBookings.filter(b => b.status === 'pending').length
     + latestBookings.filter(b => b.linenRequested === true && !b.livreurId && b.status !== 'cancelled').length;
   const toVerify = latestBookings.filter(b => b.status === 'submitted').length;
+  const urgentCount = latestBookings.filter(bookingIsUrgent).length;
   setBadge(badgeAssign, toAssign);
+  if (badgeAssign) badgeAssign.classList.toggle('urgent', urgentCount > 0);
   setBadge(badgeVerify, toVerify);
   setBadge(badgeInbox, openMessagesCount + openIncidentsCount);
   setBadge(badgeTeam, accessRequestCount);
 }
 let adminCalMonthDate = startOfMonth(new Date());
+let selectedCalDay = null;
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -117,6 +121,26 @@ function startOfMonth(date) {
 
 // Ordre d'affichage dans une journée : ce qui demande une action d'abord.
 const CAL_STATUS_ORDER = { pending: 0, submitted: 1, rejected: 2, accepted: 3, verified: 4 };
+
+// Fenêtre d'alerte : une réservation non assignée dont la date arrive dans les
+// 3 jours (ou déjà passée) doit sauter aux yeux.
+const URGENT_DAYS = 3;
+
+function isoInDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Non assignée (prestataire manquant, ou livreur manquant pour les kits) et
+// dont l'échéance est proche ou dépassée.
+function bookingIsUrgent(booking) {
+  if (!booking.scheduledDate || booking.status === 'cancelled') return false;
+  if (booking.scheduledDate > isoInDays(URGENT_DAYS)) return false;
+  const needsPrestataire = booking.status === 'pending';
+  const needsLivreur = booking.linenRequested === true && !booking.livreurId && booking.status !== 'verified';
+  return needsPrestataire || needsLivreur;
+}
 
 function prestataireName(id) {
   const member = prestataires.find(p => p.id === id);
@@ -143,14 +167,17 @@ function subscribeStats() {
 function subscribeTeamMembers() {
   membersUnsubs.forEach(unsub => unsub());
   membersUnsubs = [];
-  const assign = { prestataire: list => { prestataires = list; }, livreur: list => { livreurs = list; } };
   ['prestataire', 'livreur'].forEach(role => {
     const unsub = onSnapshot(query(collection(db, 'users'), where('role', '==', role)), snapshot => {
-      const list = snapshot.docs
+      const all = snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
-        .filter(member => (member.accountStatus ?? 'approved') === 'approved')
         .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
-      assign[role](list);
+      // Approuvés : dropdowns d'assignation + roster. Suspendus : roster
+      // uniquement (pour réactivation), jamais proposés à l'assignation.
+      const approved = all.filter(m => (m.accountStatus ?? 'approved') === 'approved');
+      const suspendedList = all.filter(m => m.accountStatus === 'suspended');
+      if (role === 'prestataire') { prestataires = approved; suspended.prestataire = suspendedList; }
+      else { livreurs = approved; suspended.livreur = suspendedList; }
       renderAssignments();
     }, error => setAdminStatus(`Impossible de charger l’équipe : ${authErrorMessage(error)}`, 'error'));
     membersUnsubs.push(unsub);
@@ -218,10 +245,10 @@ function renderRoster() {
   if (!roster) return;
   roster.innerHTML = '';
   roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire'));
-  roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur'));
+  roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur', suspended.livreur));
 }
 
-function buildRosterGroup(title, members, role) {
+function buildRosterGroup(title, members, role, suspendedMembers = []) {
   const section = document.createElement('div');
   section.className = 'roster-group';
   const heading = document.createElement('div');
@@ -233,9 +260,16 @@ function buildRosterGroup(title, members, role) {
     empty.className = 'empty-state';
     empty.textContent = `Aucun ${role} approuvé pour le moment.`;
     section.appendChild(empty);
-    return section;
+  } else {
+    members.forEach(member => section.appendChild(buildRosterCard(member, role, false)));
   }
-  members.forEach(member => section.appendChild(buildRosterCard(member, role)));
+  if (suspendedMembers.length) {
+    const subhead = document.createElement('div');
+    subhead.className = 'roster-subhead';
+    subhead.textContent = `Suspendus · ${suspendedMembers.length}`;
+    section.appendChild(subhead);
+    suspendedMembers.forEach(member => section.appendChild(buildRosterCard(member, role, true)));
+  }
   return section;
 }
 
@@ -283,32 +317,18 @@ function buildStaticStars(value) {
   return stars;
 }
 
-function buildRosterCard(member, role) {
+function buildRosterCard(member, role, isSuspended) {
   const card = document.createElement('div');
-  card.className = 'task-card';
-  const title = document.createElement('div');
-  title.className = 'task-title';
-  title.textContent = member.name || member.email;
-  card.appendChild(title);
+  card.className = 'task-card' + (isSuspended ? ' roster-suspended' : '');
 
-  const contact = document.createElement('div');
-  contact.className = 'task-meta';
-  if (member.email) {
-    const mail = document.createElement('a');
-    mail.href = `mailto:${member.email}`;
-    mail.textContent = member.email;
-    contact.appendChild(mail);
-  }
-  if (member.phone) {
-    if (member.email) contact.appendChild(document.createTextNode(' · '));
-    const tel = document.createElement('a');
-    tel.href = `tel:${member.phone}`;
-    tel.textContent = member.phone;
-    contact.appendChild(tel);
-  }
-  card.appendChild(contact);
+  // Le nom ouvre la fiche détaillée du membre (contact, missions, actions).
+  const name = document.createElement('button');
+  name.type = 'button';
+  name.className = 'task-title roster-name';
+  name.textContent = (member.name || member.email) + (isSuspended ? ' · suspendu' : '');
+  name.onclick = () => openMemberModal(member, role);
+  card.appendChild(name);
 
-  // Charge courante calculée à partir des réservations en direct.
   const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
   const load = document.createElement('div');
   load.className = 'task-meta roster-load';
@@ -317,7 +337,6 @@ function buildRosterCard(member, role) {
     : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
   card.appendChild(load);
 
-  // Note moyenne des clients (prestataires uniquement).
   if (role === 'prestataire') {
     const ratingLine = document.createElement('div');
     ratingLine.className = 'task-meta roster-rating';
@@ -332,6 +351,160 @@ function buildRosterCard(member, role) {
     card.appendChild(ratingLine);
   }
   return card;
+}
+
+// Liste des missions/tournées actives d'un membre (pour la fiche).
+function memberActiveJobs(member, role) {
+  if (role === 'prestataire') {
+    return latestBookings
+      .filter(b => b.prestataireId === member.id && ['accepted', 'submitted', 'rejected'].includes(b.status))
+      .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  }
+  return latestBookings
+    .filter(b => b.livreurId === member.id && !b.linenDone && b.status !== 'cancelled' && b.status !== 'verified')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+}
+
+function escCloseModal(event) {
+  if (event.key === 'Escape') closeMemberModal();
+}
+
+function closeMemberModal() {
+  const existing = document.getElementById('memberModal');
+  if (existing) existing.remove();
+  document.removeEventListener('keydown', escCloseModal);
+}
+
+function openMemberModal(member, role) {
+  closeMemberModal();
+  const isSuspended = member.accountStatus === 'suspended';
+  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
+  const jobs = memberActiveJobs(member, role);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'memberModal';
+  overlay.onclick = event => { if (event.target === overlay) closeMemberModal(); };
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'modal-close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Fermer');
+  closeBtn.textContent = '×';
+  closeBtn.onclick = closeMemberModal;
+  modal.appendChild(closeBtn);
+
+  const eyebrow = document.createElement('div');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = (role === 'prestataire' ? 'Prestataire' : 'Livreur') + (isSuspended ? ' · suspendu' : '');
+  modal.appendChild(eyebrow);
+  const h = document.createElement('h2');
+  h.textContent = member.name || member.email;
+  modal.appendChild(h);
+
+  // Contact
+  const contact = document.createElement('div');
+  contact.className = 'modal-contact';
+  if (member.email) {
+    const mail = document.createElement('a');
+    mail.href = `mailto:${member.email}`;
+    mail.textContent = member.email;
+    contact.appendChild(mail);
+  }
+  if (member.phone) {
+    const tel = document.createElement('a');
+    tel.href = `tel:${member.phone}`;
+    tel.textContent = member.phone;
+    contact.appendChild(tel);
+  }
+  modal.appendChild(contact);
+
+  // Charge + note
+  const summary = document.createElement('div');
+  summary.className = 'modal-summary';
+  summary.textContent = role === 'prestataire'
+    ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
+    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
+  modal.appendChild(summary);
+  if (role === 'prestataire') {
+    const ratingLine = document.createElement('div');
+    ratingLine.className = 'modal-summary roster-rating';
+    if (stats.ratingCount === 0) {
+      ratingLine.textContent = 'Aucune évaluation pour le moment';
+    } else {
+      ratingLine.appendChild(buildStaticStars(Math.round(stats.average)));
+      const text = document.createElement('span');
+      text.textContent = `${stats.average.toFixed(1)} / 5 · ${stats.ratingCount} avis`;
+      ratingLine.appendChild(text);
+    }
+    modal.appendChild(ratingLine);
+  }
+
+  // Missions/tournées en cours
+  const jobsHead = document.createElement('div');
+  jobsHead.className = 'eyebrow';
+  jobsHead.style.marginTop = '20px';
+  jobsHead.textContent = role === 'prestataire' ? 'Missions en cours' : 'Tournées en cours';
+  modal.appendChild(jobsHead);
+  if (jobs.length === 0) {
+    const none = document.createElement('div');
+    none.className = 'empty-state';
+    none.textContent = 'Aucune en cours.';
+    modal.appendChild(none);
+  } else {
+    jobs.forEach(job => {
+      const row = document.createElement('div');
+      row.className = 'task-meta';
+      row.textContent = `${formatShortDate(job.scheduledDate)} · ${job.propertyAddress || job.propertyId} · ${formatBookingStatus(job.status)}`;
+      modal.appendChild(row);
+    });
+  }
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  if (isSuspended) {
+    const reactivate = document.createElement('button');
+    reactivate.className = 'btn primary';
+    reactivate.type = 'button';
+    reactivate.textContent = 'Réactiver ce membre';
+    reactivate.onclick = () => setMemberStatus(member, 'approved', `${member.name || member.email} a été réactivé(e).`);
+    actions.appendChild(reactivate);
+  } else {
+    const remove = document.createElement('button');
+    remove.className = 'btn ghost danger';
+    remove.type = 'button';
+    remove.textContent = 'Retirer de l’équipe';
+    remove.onclick = () => {
+      const warn = jobs.length
+        ? `\n\n${jobs.length} intervention(s) en cours lui reste(nt) attribuée(s) : pensez à les réattribuer.`
+        : '';
+      if (!window.confirm(`Retirer ${member.name || member.email} de l’équipe ? Cette personne ne pourra plus se connecter ni recevoir de missions.${warn}`)) return;
+      setMemberStatus(member, 'suspended', `${member.name || member.email} a été retiré(e) de l’équipe.`);
+    };
+    actions.appendChild(remove);
+  }
+  modal.appendChild(actions);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', escCloseModal);
+  closeBtn.focus();
+}
+
+async function setMemberStatus(member, status, successMessage) {
+  try {
+    await updateDoc(doc(db, 'users', member.id), { accountStatus: status });
+    setAdminStatus(successMessage, 'success');
+    closeMemberModal();
+  } catch (e) {
+    setAdminStatus(`Impossible de mettre à jour ce membre : ${authErrorMessage(e)}`, 'error');
+  }
 }
 
 function renderAdminCalendar() {
@@ -382,18 +555,92 @@ function renderAdminCalendar() {
     const events = (byDate[iso] || [])
       .slice()
       .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
+    const dayHasUrgent = events.some(bookingIsUrgent);
+    if (events.length) {
+      cell.classList.add('has-events');
+      if (dayHasUrgent) cell.classList.add('has-urgent');
+      if (iso === selectedCalDay) cell.classList.add('sel');
+      cell.setAttribute('role', 'button');
+      cell.tabIndex = 0;
+      cell.setAttribute('aria-label', `${dayNum} — ${events.length} réservation(s)${dayHasUrgent ? ', dont une non assignée à traiter' : ''}`);
+      const open = () => { selectedCalDay = iso; renderAdminCalendar(); };
+      cell.onclick = open;
+      cell.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
+    }
     events.forEach(booking => {
-      const ev = document.createElement('button');
-      ev.type = 'button';
-      ev.className = `acal-event ${booking.status}`;
-      ev.textContent = booking.propertyAddress || 'Réservation';
+      const urgent = bookingIsUrgent(booking);
+      const ev = document.createElement('span');
+      ev.className = `acal-event ${booking.status}` + (urgent ? ' urgent' : '');
+      ev.textContent = (urgent ? '⚠ ' : '') + (booking.propertyAddress || 'Réservation');
       const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
-      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
-      ev.onclick = () => focusCalendarBooking(booking);
+      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€${urgent ? ' · à assigner sous 3 jours' : ''}`;
       cell.appendChild(ev);
     });
     adminCalendar.appendChild(cell);
   }
+
+  renderDayPanel();
+}
+
+// Panneau « réservations du jour » sous le calendrier : au clic sur une date,
+// liste chaque réservation avec l'action pertinente (assigner / vérifier).
+function renderDayPanel() {
+  const panel = document.getElementById('calDayPanel');
+  if (!panel) return;
+  panel.innerHTML = '';
+  if (!selectedCalDay) return;
+  const dayBookings = latestBookings
+    .filter(b => b.scheduledDate === selectedCalDay && b.status !== 'cancelled')
+    .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
+  const heading = document.createElement('div');
+  heading.className = 'eyebrow';
+  heading.textContent = `Réservations du ${formatShortDate(selectedCalDay)}`;
+  panel.appendChild(heading);
+  if (dayBookings.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Aucune réservation ce jour.';
+    panel.appendChild(empty);
+    return;
+  }
+  dayBookings.forEach(booking => {
+    const row = document.createElement('div');
+    row.className = 'task-card';
+    const top = document.createElement('div');
+    top.className = 'task-top';
+    const left = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = booking.propertyAddress || booking.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
+    meta.textContent = `${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'}${booking.surface ? ` · ${booking.surface} m²` : ''} · ${who} · ${booking.price}€`;
+    left.appendChild(title);
+    left.appendChild(meta);
+    const pill = document.createElement('div');
+    pill.className = `status-pill ${booking.status}`;
+    pill.textContent = formatBookingStatus(booking.status);
+    top.appendChild(left);
+    top.appendChild(pill);
+    row.appendChild(top);
+    if (bookingIsUrgent(booking)) {
+      const warn = document.createElement('div');
+      warn.className = 'task-meta cal-urgent-note';
+      warn.textContent = '⚠ Non assignée — échéance sous 3 jours';
+      row.appendChild(warn);
+    }
+    if (booking.status === 'pending' || booking.status === 'submitted') {
+      const btn = document.createElement('button');
+      btn.className = 'btn ghost';
+      btn.type = 'button';
+      btn.textContent = booking.status === 'pending' ? 'Assigner' : 'Vérifier';
+      btn.style.marginTop = '12px';
+      btn.onclick = () => focusCalendarBooking(booking);
+      row.appendChild(btn);
+    }
+    panel.appendChild(row);
+  });
 }
 
 // Depuis le calendrier, amener l'admin à l'action pertinente pour la réservation.
@@ -895,6 +1142,11 @@ onAuthStateChanged(auth, async user => {
       await signOut(auth);
       return;
     }
+    if (accountStatus === 'suspended') {
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe Kleining. Contactez-nous pour en savoir plus.', type: '' };
+      await signOut(auth);
+      return;
+    }
     if (accountStatus !== 'approved') {
       authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);
@@ -947,10 +1199,12 @@ if (adminTabs) {
 
 adminCalPrev.addEventListener('click', () => {
   adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() - 1, 1);
+  selectedCalDay = null;
   renderAdminCalendar();
 });
 adminCalNext.addEventListener('click', () => {
   adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() + 1, 1);
+  selectedCalDay = null;
   renderAdminCalendar();
 });
 

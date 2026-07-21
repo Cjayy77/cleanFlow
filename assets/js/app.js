@@ -387,7 +387,15 @@ function renderBookings() {
     bookingsWrap.innerHTML = '<div class="empty-state">Aucune réservation enregistrée pour le moment.</div>';
     return;
   }
-  bookings.forEach(booking => {
+  // Les plus récentes d'abord ; les annulées reléguées en bas — pour garder
+  // en haut ce qui compte (prochain ménage, suivi en cours).
+  const ordered = bookings.slice().sort((a, b) => {
+    const aCancelled = a.status === 'cancelled';
+    const bCancelled = b.status === 'cancelled';
+    if (aCancelled !== bCancelled) return aCancelled ? 1 : -1;
+    return b.scheduledDate.localeCompare(a.scheduledDate);
+  });
+  ordered.forEach(booking => {
     const property = properties.find(p => p.id === booking.propertyId);
     const address = property ? `${property.street}, ${property.city}` : (booking.propertyAddress || 'Bien supprimé');
     const card = document.createElement('div');
