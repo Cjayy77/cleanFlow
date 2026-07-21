@@ -104,7 +104,9 @@ function renderTabBadges() {
   const toAssign = latestBookings.filter(b => b.status === 'pending').length
     + latestBookings.filter(b => b.linenRequested === true && !b.livreurId && b.status !== 'cancelled').length;
   const toVerify = latestBookings.filter(b => b.status === 'submitted').length;
+  const urgentCount = latestBookings.filter(bookingIsUrgent).length;
   setBadge(badgeAssign, toAssign);
+  if (badgeAssign) badgeAssign.classList.toggle('urgent', urgentCount > 0);
   setBadge(badgeVerify, toVerify);
   setBadge(badgeInbox, openMessagesCount + openIncidentsCount);
   setBadge(badgeTeam, accessRequestCount);
@@ -118,6 +120,26 @@ function startOfMonth(date) {
 
 // Ordre d'affichage dans une journée : ce qui demande une action d'abord.
 const CAL_STATUS_ORDER = { pending: 0, submitted: 1, rejected: 2, accepted: 3, verified: 4 };
+
+// Fenêtre d'alerte : une réservation non assignée dont la date arrive dans les
+// 3 jours (ou déjà passée) doit sauter aux yeux.
+const URGENT_DAYS = 3;
+
+function isoInDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Non assignée (prestataire manquant, ou livreur manquant pour les kits) et
+// dont l'échéance est proche ou dépassée.
+function bookingIsUrgent(booking) {
+  if (!booking.scheduledDate || booking.status === 'cancelled') return false;
+  if (booking.scheduledDate > isoInDays(URGENT_DAYS)) return false;
+  const needsPrestataire = booking.status === 'pending';
+  const needsLivreur = booking.linenRequested === true && !booking.livreurId && booking.status !== 'verified';
+  return needsPrestataire || needsLivreur;
+}
 
 function prestataireName(id) {
   const member = prestataires.find(p => p.id === id);
@@ -383,22 +405,25 @@ function renderAdminCalendar() {
     const events = (byDate[iso] || [])
       .slice()
       .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
+    const dayHasUrgent = events.some(bookingIsUrgent);
     if (events.length) {
       cell.classList.add('has-events');
+      if (dayHasUrgent) cell.classList.add('has-urgent');
       if (iso === selectedCalDay) cell.classList.add('sel');
       cell.setAttribute('role', 'button');
       cell.tabIndex = 0;
-      cell.setAttribute('aria-label', `${dayNum} — ${events.length} réservation(s)`);
+      cell.setAttribute('aria-label', `${dayNum} — ${events.length} réservation(s)${dayHasUrgent ? ', dont une non assignée à traiter' : ''}`);
       const open = () => { selectedCalDay = iso; renderAdminCalendar(); };
       cell.onclick = open;
       cell.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
     }
     events.forEach(booking => {
+      const urgent = bookingIsUrgent(booking);
       const ev = document.createElement('span');
-      ev.className = `acal-event ${booking.status}`;
-      ev.textContent = booking.propertyAddress || 'Réservation';
+      ev.className = `acal-event ${booking.status}` + (urgent ? ' urgent' : '');
+      ev.textContent = (urgent ? '⚠ ' : '') + (booking.propertyAddress || 'Réservation');
       const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
-      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
+      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€${urgent ? ' · à assigner sous 3 jours' : ''}`;
       cell.appendChild(ev);
     });
     adminCalendar.appendChild(cell);
@@ -449,6 +474,12 @@ function renderDayPanel() {
     top.appendChild(left);
     top.appendChild(pill);
     row.appendChild(top);
+    if (bookingIsUrgent(booking)) {
+      const warn = document.createElement('div');
+      warn.className = 'task-meta cal-urgent-note';
+      warn.textContent = '⚠ Non assignée — échéance sous 3 jours';
+      row.appendChild(warn);
+    }
     if (booking.status === 'pending' || booking.status === 'submitted') {
       const btn = document.createElement('button');
       btn.className = 'btn ghost';
