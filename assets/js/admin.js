@@ -110,6 +110,7 @@ function renderTabBadges() {
   setBadge(badgeTeam, accessRequestCount);
 }
 let adminCalMonthDate = startOfMonth(new Date());
+let selectedCalDay = null;
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -382,18 +383,83 @@ function renderAdminCalendar() {
     const events = (byDate[iso] || [])
       .slice()
       .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
+    if (events.length) {
+      cell.classList.add('has-events');
+      if (iso === selectedCalDay) cell.classList.add('sel');
+      cell.setAttribute('role', 'button');
+      cell.tabIndex = 0;
+      cell.setAttribute('aria-label', `${dayNum} — ${events.length} réservation(s)`);
+      const open = () => { selectedCalDay = iso; renderAdminCalendar(); };
+      cell.onclick = open;
+      cell.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
+    }
     events.forEach(booking => {
-      const ev = document.createElement('button');
-      ev.type = 'button';
+      const ev = document.createElement('span');
       ev.className = `acal-event ${booking.status}`;
       ev.textContent = booking.propertyAddress || 'Réservation';
       const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
       ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
-      ev.onclick = () => focusCalendarBooking(booking);
       cell.appendChild(ev);
     });
     adminCalendar.appendChild(cell);
   }
+
+  renderDayPanel();
+}
+
+// Panneau « réservations du jour » sous le calendrier : au clic sur une date,
+// liste chaque réservation avec l'action pertinente (assigner / vérifier).
+function renderDayPanel() {
+  const panel = document.getElementById('calDayPanel');
+  if (!panel) return;
+  panel.innerHTML = '';
+  if (!selectedCalDay) return;
+  const dayBookings = latestBookings
+    .filter(b => b.scheduledDate === selectedCalDay && b.status !== 'cancelled')
+    .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
+  const heading = document.createElement('div');
+  heading.className = 'eyebrow';
+  heading.textContent = `Réservations du ${formatShortDate(selectedCalDay)}`;
+  panel.appendChild(heading);
+  if (dayBookings.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Aucune réservation ce jour.';
+    panel.appendChild(empty);
+    return;
+  }
+  dayBookings.forEach(booking => {
+    const row = document.createElement('div');
+    row.className = 'task-card';
+    const top = document.createElement('div');
+    top.className = 'task-top';
+    const left = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = booking.propertyAddress || booking.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
+    meta.textContent = `${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'}${booking.surface ? ` · ${booking.surface} m²` : ''} · ${who} · ${booking.price}€`;
+    left.appendChild(title);
+    left.appendChild(meta);
+    const pill = document.createElement('div');
+    pill.className = `status-pill ${booking.status}`;
+    pill.textContent = formatBookingStatus(booking.status);
+    top.appendChild(left);
+    top.appendChild(pill);
+    row.appendChild(top);
+    if (booking.status === 'pending' || booking.status === 'submitted') {
+      const btn = document.createElement('button');
+      btn.className = 'btn ghost';
+      btn.type = 'button';
+      btn.textContent = booking.status === 'pending' ? 'Assigner' : 'Vérifier';
+      btn.style.marginTop = '12px';
+      btn.onclick = () => focusCalendarBooking(booking);
+      row.appendChild(btn);
+    }
+    panel.appendChild(row);
+  });
 }
 
 // Depuis le calendrier, amener l'admin à l'action pertinente pour la réservation.
@@ -947,10 +1013,12 @@ if (adminTabs) {
 
 adminCalPrev.addEventListener('click', () => {
   adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() - 1, 1);
+  selectedCalDay = null;
   renderAdminCalendar();
 });
 adminCalNext.addEventListener('click', () => {
   adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() + 1, 1);
+  selectedCalDay = null;
   renderAdminCalendar();
 });
 
