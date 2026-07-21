@@ -65,6 +65,7 @@
       <button type="button" class="tab" data-tab="verify">Vérification<span class="tab-badge hidden" id="badgeVerify"></span></button>
       <button type="button" class="tab" data-tab="inbox">Messages<span class="tab-badge hidden" id="badgeInbox"></span></button>
       <button type="button" class="tab" data-tab="team">Équipe<span class="tab-badge hidden" id="badgeTeam"></span></button>
+      <button type="button" class="tab" data-tab="compta">Compta</button>
     </div>
 
     <div id="adminStatus" class="status-banner info hidden" role="status"></div>
@@ -172,6 +173,16 @@
         <p>Chaque demande prestataire, livreur ou admin doit être vérifiée avant approbation : contrôlez le code d’invitation que vous avez transmis à la personne, ou contactez-la directement. Un compte refusé n’a accès à rien.</p>
         <div id="teamStatus" class="status-banner info hidden" role="status"></div>
         <div id="accessRequests"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="compta">
+      <div class="card">
+        <div class="eyebrow">Comptabilité</div>
+        <h2>Compta &amp; ajustements</h2>
+        <p>Montant de chaque mission et ajustements discrétionnaires (bonus / malus). Les totaux excluent les missions annulées.</p>
+        <div class="stat-grid" id="comptaTotals"></div>
+        <div id="comptaList"></div>
       </div>
     </section>
   </div>

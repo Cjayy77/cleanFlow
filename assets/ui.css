@@ -161,6 +161,9 @@ textarea{ min-height:110px; resize:vertical; }
 .tab-badge.urgent{ background:var(--danger-ink); color:var(--white); }
 .tab.active .tab-badge.urgent{ background:var(--white); color:var(--danger-ink); }
 .admin-section.hidden{ display:none; }
+.compta-amount{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:15px; white-space:nowrap; text-align:right; }
+.adj-bonus{ color:var(--ok-ink); }
+.adj-malus{ color:var(--danger-ink); }
 
 /* Roster équipe (admin) */
 .roster-group{ margin-bottom:10px; }
