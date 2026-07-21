@@ -147,6 +147,11 @@ onAuthStateChanged(auth, async user => {
       await signOut(auth);
       return;
     }
+    if (accountStatus === 'suspended') {
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe Kleining. Contactez-nous pour en savoir plus.', type: '' };
+      await signOut(auth);
+      return;
+    }
     if (accountStatus !== 'approved') {
       authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);

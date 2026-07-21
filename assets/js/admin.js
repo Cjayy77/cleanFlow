@@ -82,6 +82,7 @@ let messagesUnsub = null;
 let latestBookings = [];
 let prestataires = [];
 let livreurs = [];
+let suspended = { prestataire: [], livreur: [] };
 let membersUnsubs = [];
 let openMessagesCount = 0;
 let openIncidentsCount = 0;
@@ -166,14 +167,17 @@ function subscribeStats() {
 function subscribeTeamMembers() {
   membersUnsubs.forEach(unsub => unsub());
   membersUnsubs = [];
-  const assign = { prestataire: list => { prestataires = list; }, livreur: list => { livreurs = list; } };
   ['prestataire', 'livreur'].forEach(role => {
     const unsub = onSnapshot(query(collection(db, 'users'), where('role', '==', role)), snapshot => {
-      const list = snapshot.docs
+      const all = snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
-        .filter(member => (member.accountStatus ?? 'approved') === 'approved')
         .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
-      assign[role](list);
+      // Approuvés : dropdowns d'assignation + roster. Suspendus : roster
+      // uniquement (pour réactivation), jamais proposés à l'assignation.
+      const approved = all.filter(m => (m.accountStatus ?? 'approved') === 'approved');
+      const suspendedList = all.filter(m => m.accountStatus === 'suspended');
+      if (role === 'prestataire') { prestataires = approved; suspended.prestataire = suspendedList; }
+      else { livreurs = approved; suspended.livreur = suspendedList; }
       renderAssignments();
     }, error => setAdminStatus(`Impossible de charger l’équipe : ${authErrorMessage(error)}`, 'error'));
     membersUnsubs.push(unsub);
@@ -241,10 +245,10 @@ function renderRoster() {
   if (!roster) return;
   roster.innerHTML = '';
   roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire'));
-  roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur'));
+  roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur', suspended.livreur));
 }
 
-function buildRosterGroup(title, members, role) {
+function buildRosterGroup(title, members, role, suspendedMembers = []) {
   const section = document.createElement('div');
   section.className = 'roster-group';
   const heading = document.createElement('div');
@@ -256,9 +260,16 @@ function buildRosterGroup(title, members, role) {
     empty.className = 'empty-state';
     empty.textContent = `Aucun ${role} approuvé pour le moment.`;
     section.appendChild(empty);
-    return section;
+  } else {
+    members.forEach(member => section.appendChild(buildRosterCard(member, role, false)));
   }
-  members.forEach(member => section.appendChild(buildRosterCard(member, role)));
+  if (suspendedMembers.length) {
+    const subhead = document.createElement('div');
+    subhead.className = 'roster-subhead';
+    subhead.textContent = `Suspendus · ${suspendedMembers.length}`;
+    section.appendChild(subhead);
+    suspendedMembers.forEach(member => section.appendChild(buildRosterCard(member, role, true)));
+  }
   return section;
 }
 
@@ -306,32 +317,18 @@ function buildStaticStars(value) {
   return stars;
 }
 
-function buildRosterCard(member, role) {
+function buildRosterCard(member, role, isSuspended) {
   const card = document.createElement('div');
-  card.className = 'task-card';
-  const title = document.createElement('div');
-  title.className = 'task-title';
-  title.textContent = member.name || member.email;
-  card.appendChild(title);
+  card.className = 'task-card' + (isSuspended ? ' roster-suspended' : '');
 
-  const contact = document.createElement('div');
-  contact.className = 'task-meta';
-  if (member.email) {
-    const mail = document.createElement('a');
-    mail.href = `mailto:${member.email}`;
-    mail.textContent = member.email;
-    contact.appendChild(mail);
-  }
-  if (member.phone) {
-    if (member.email) contact.appendChild(document.createTextNode(' · '));
-    const tel = document.createElement('a');
-    tel.href = `tel:${member.phone}`;
-    tel.textContent = member.phone;
-    contact.appendChild(tel);
-  }
-  card.appendChild(contact);
+  // Le nom ouvre la fiche détaillée du membre (contact, missions, actions).
+  const name = document.createElement('button');
+  name.type = 'button';
+  name.className = 'task-title roster-name';
+  name.textContent = (member.name || member.email) + (isSuspended ? ' · suspendu' : '');
+  name.onclick = () => openMemberModal(member, role);
+  card.appendChild(name);
 
-  // Charge courante calculée à partir des réservations en direct.
   const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
   const load = document.createElement('div');
   load.className = 'task-meta roster-load';
@@ -340,7 +337,6 @@ function buildRosterCard(member, role) {
     : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
   card.appendChild(load);
 
-  // Note moyenne des clients (prestataires uniquement).
   if (role === 'prestataire') {
     const ratingLine = document.createElement('div');
     ratingLine.className = 'task-meta roster-rating';
@@ -355,6 +351,160 @@ function buildRosterCard(member, role) {
     card.appendChild(ratingLine);
   }
   return card;
+}
+
+// Liste des missions/tournées actives d'un membre (pour la fiche).
+function memberActiveJobs(member, role) {
+  if (role === 'prestataire') {
+    return latestBookings
+      .filter(b => b.prestataireId === member.id && ['accepted', 'submitted', 'rejected'].includes(b.status))
+      .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  }
+  return latestBookings
+    .filter(b => b.livreurId === member.id && !b.linenDone && b.status !== 'cancelled' && b.status !== 'verified')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+}
+
+function escCloseModal(event) {
+  if (event.key === 'Escape') closeMemberModal();
+}
+
+function closeMemberModal() {
+  const existing = document.getElementById('memberModal');
+  if (existing) existing.remove();
+  document.removeEventListener('keydown', escCloseModal);
+}
+
+function openMemberModal(member, role) {
+  closeMemberModal();
+  const isSuspended = member.accountStatus === 'suspended';
+  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
+  const jobs = memberActiveJobs(member, role);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'memberModal';
+  overlay.onclick = event => { if (event.target === overlay) closeMemberModal(); };
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'modal-close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Fermer');
+  closeBtn.textContent = '×';
+  closeBtn.onclick = closeMemberModal;
+  modal.appendChild(closeBtn);
+
+  const eyebrow = document.createElement('div');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = (role === 'prestataire' ? 'Prestataire' : 'Livreur') + (isSuspended ? ' · suspendu' : '');
+  modal.appendChild(eyebrow);
+  const h = document.createElement('h2');
+  h.textContent = member.name || member.email;
+  modal.appendChild(h);
+
+  // Contact
+  const contact = document.createElement('div');
+  contact.className = 'modal-contact';
+  if (member.email) {
+    const mail = document.createElement('a');
+    mail.href = `mailto:${member.email}`;
+    mail.textContent = member.email;
+    contact.appendChild(mail);
+  }
+  if (member.phone) {
+    const tel = document.createElement('a');
+    tel.href = `tel:${member.phone}`;
+    tel.textContent = member.phone;
+    contact.appendChild(tel);
+  }
+  modal.appendChild(contact);
+
+  // Charge + note
+  const summary = document.createElement('div');
+  summary.className = 'modal-summary';
+  summary.textContent = role === 'prestataire'
+    ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
+    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
+  modal.appendChild(summary);
+  if (role === 'prestataire') {
+    const ratingLine = document.createElement('div');
+    ratingLine.className = 'modal-summary roster-rating';
+    if (stats.ratingCount === 0) {
+      ratingLine.textContent = 'Aucune évaluation pour le moment';
+    } else {
+      ratingLine.appendChild(buildStaticStars(Math.round(stats.average)));
+      const text = document.createElement('span');
+      text.textContent = `${stats.average.toFixed(1)} / 5 · ${stats.ratingCount} avis`;
+      ratingLine.appendChild(text);
+    }
+    modal.appendChild(ratingLine);
+  }
+
+  // Missions/tournées en cours
+  const jobsHead = document.createElement('div');
+  jobsHead.className = 'eyebrow';
+  jobsHead.style.marginTop = '20px';
+  jobsHead.textContent = role === 'prestataire' ? 'Missions en cours' : 'Tournées en cours';
+  modal.appendChild(jobsHead);
+  if (jobs.length === 0) {
+    const none = document.createElement('div');
+    none.className = 'empty-state';
+    none.textContent = 'Aucune en cours.';
+    modal.appendChild(none);
+  } else {
+    jobs.forEach(job => {
+      const row = document.createElement('div');
+      row.className = 'task-meta';
+      row.textContent = `${formatShortDate(job.scheduledDate)} · ${job.propertyAddress || job.propertyId} · ${formatBookingStatus(job.status)}`;
+      modal.appendChild(row);
+    });
+  }
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  if (isSuspended) {
+    const reactivate = document.createElement('button');
+    reactivate.className = 'btn primary';
+    reactivate.type = 'button';
+    reactivate.textContent = 'Réactiver ce membre';
+    reactivate.onclick = () => setMemberStatus(member, 'approved', `${member.name || member.email} a été réactivé(e).`);
+    actions.appendChild(reactivate);
+  } else {
+    const remove = document.createElement('button');
+    remove.className = 'btn ghost danger';
+    remove.type = 'button';
+    remove.textContent = 'Retirer de l’équipe';
+    remove.onclick = () => {
+      const warn = jobs.length
+        ? `\n\n${jobs.length} intervention(s) en cours lui reste(nt) attribuée(s) : pensez à les réattribuer.`
+        : '';
+      if (!window.confirm(`Retirer ${member.name || member.email} de l’équipe ? Cette personne ne pourra plus se connecter ni recevoir de missions.${warn}`)) return;
+      setMemberStatus(member, 'suspended', `${member.name || member.email} a été retiré(e) de l’équipe.`);
+    };
+    actions.appendChild(remove);
+  }
+  modal.appendChild(actions);
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', escCloseModal);
+  closeBtn.focus();
+}
+
+async function setMemberStatus(member, status, successMessage) {
+  try {
+    await updateDoc(doc(db, 'users', member.id), { accountStatus: status });
+    setAdminStatus(successMessage, 'success');
+    closeMemberModal();
+  } catch (e) {
+    setAdminStatus(`Impossible de mettre à jour ce membre : ${authErrorMessage(e)}`, 'error');
+  }
 }
 
 function renderAdminCalendar() {
@@ -989,6 +1139,11 @@ onAuthStateChanged(auth, async user => {
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
       authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Kleining. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      await signOut(auth);
+      return;
+    }
+    if (accountStatus === 'suspended') {
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe Kleining. Contactez-nous pour en savoir plus.', type: '' };
       await signOut(auth);
       return;
     }

@@ -166,6 +166,23 @@ textarea{ min-height:110px; resize:vertical; }
 .roster a{ color:var(--klein); font-weight:600; text-decoration:none; }
 .roster a:hover{ text-decoration:underline; }
 .roster-load{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--klein-deep); margin-top:8px; }
+.roster-subhead{ font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-top:18px; }
+.roster-name{ background:none; border:none; padding:0; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:15px; color:var(--klein); text-align:left; }
+.roster-name:hover{ text-decoration:underline; }
+.roster-suspended{ opacity:0.6; }
+.roster-suspended .roster-name{ color:var(--muted); }
+
+/* Fiche membre (modale) */
+.modal-overlay{ position:fixed; inset:0; z-index:100; background:rgba(16,16,16,0.5); display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto; }
+.modal{ position:relative; background:var(--white); border:2px solid var(--ink); box-shadow:8px 8px 0 var(--ink); padding:28px 26px; max-width:440px; width:100%; margin:auto; }
+.modal-close{ position:absolute; top:10px; right:14px; background:none; border:none; font-size:26px; line-height:1; cursor:pointer; color:var(--muted); }
+.modal-close:hover{ color:var(--ink); }
+.modal-contact{ display:flex; flex-direction:column; gap:4px; margin:12px 0; }
+.modal-contact a{ color:var(--klein); font-weight:600; text-decoration:none; font-size:14px; }
+.modal-contact a:hover{ text-decoration:underline; }
+.modal-summary{ font-size:13.5px; color:var(--muted); margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.modal-summary .stars-static{ margin-top:0; }
+.modal-actions{ margin-top:24px; padding-top:18px; border-top:1px solid var(--line); display:flex; gap:12px; flex-wrap:wrap; }
 .roster-rating{ display:flex; align-items:center; gap:8px; margin-top:6px; }
 .roster-rating .stars-static{ margin-top:0; }
 .roster-rating .star-static{ font-size:15px; }
