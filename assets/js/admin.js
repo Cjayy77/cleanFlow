@@ -13,6 +13,7 @@ import {
   authErrorMessage,
   withButtonLoading,
   armInlineConfirm,
+  withTimeout,
   resetPassword,
   requestTeamAccess,
   queueEmail,
@@ -642,8 +643,39 @@ function renderDayPanel() {
       btn.onclick = () => focusCalendarBooking(booking);
       row.appendChild(btn);
     }
+    if (['pending', 'accepted', 'submitted', 'rejected'].includes(booking.status)) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn ghost danger';
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = 'Annuler la mission';
+      cancelBtn.style.marginTop = '12px';
+      cancelBtn.style.marginLeft = (booking.status === 'pending' || booking.status === 'submitted') ? '10px' : '0';
+      armInlineConfirm(cancelBtn, 'Confirmer l’annulation', () => cancelBooking(booking, cancelBtn));
+      row.appendChild(cancelBtn);
+    }
     panel.appendChild(row);
   });
+}
+
+// Admin : annuler une mission (toute étape). Notifie le client au mieux.
+async function cancelBooking(booking, button) {
+  try {
+    await withButtonLoading(button, () =>
+      withTimeout(updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }), 15000));
+    try {
+      const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
+      if (clientSnap.exists() && clientSnap.data().email) {
+        queueEmail({
+          to: clientSnap.data().email,
+          subject: `Kleining — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+          text: `Votre ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) a été annulé par l'équipe Kleining. Contactez-nous pour reprogrammer.`,
+        });
+      }
+    } catch (e) { /* la notification ne doit pas bloquer l'annulation */ }
+    setAdminStatus('Mission annulée. Le client est notifié par email.', 'success');
+  } catch (e) {
+    setAdminStatus(`Impossible d’annuler la mission : ${authErrorMessage(e)}`, 'error');
+  }
 }
 
 // Depuis le calendrier, amener l'admin à l'action pertinente pour la réservation.

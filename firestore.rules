@@ -160,6 +160,10 @@ service cloud.firestore {
         || (isAdmin()
           && request.resource.data.status in ['verified', 'rejected']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'adminNote', 'verifiedBy', 'verifiedAt']))
+        // Admin : annuler une mission à n'importe quelle étape.
+        || (isAdmin()
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'adminNote']))
       );
     }
 
