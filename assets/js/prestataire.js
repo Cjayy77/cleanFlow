@@ -288,7 +288,7 @@ function renderActiveBooking() {
   };
   activeBookingContainer.appendChild(button);
 
-  if (activeBooking.status === 'accepted') {
+  if (activeBooking.status === 'accepted' || activeBooking.status === 'rejected') {
     const releaseBtn = document.createElement('button');
     releaseBtn.className = 'btn ghost danger';
     releaseBtn.type = 'button';
@@ -296,17 +296,19 @@ function renderActiveBooking() {
     releaseBtn.style.marginLeft = '12px';
     releaseBtn.onclick = async () => {
       if (!window.confirm('Décliner cette mission ? Elle repart à l’équipe Kleining, qui la réattribuera à un autre prestataire.')) return;
+      const declinedId = activeBooking.id;
+      const declinedRef = `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)}`;
       try {
         await withButtonLoading(releaseBtn, () =>
-          updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'pending', prestataireId: null }));
+          updateDoc(doc(db, 'bookings', declinedId), { status: 'pending', prestataireId: null }));
         queueEmail({
           to: TEAM_EMAIL,
-          subject: `Kleining — mission déclinée · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
-          text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · déclinée par ${currentUser.name || currentUser.email}. À réattribuer dans /admin/.`,
+          subject: `Kleining — mission déclinée · Réf ${declinedId.slice(0, 6).toUpperCase()}`,
+          text: `${declinedRef} · déclinée par ${currentUser.name || currentUser.email}. À réattribuer dans /admin/.`,
         });
         setWorkStatus('Mission déclinée. L’équipe Kleining la réattribuera.', 'success');
       } catch (e) {
-        setWorkStatus(`Impossible de décliner la mission : ${storageErrorMessage(e)}`);
+        setWorkStatus(`Impossible de décliner la mission : ${authErrorMessage(e)}`);
       }
     };
     activeBookingContainer.appendChild(releaseBtn);

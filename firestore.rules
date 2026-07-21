@@ -134,11 +134,12 @@ service cloud.firestore {
           && resource.data.status in ['accepted', 'rejected']
           && request.resource.data.status == 'submitted'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
-        // Prestataire : décliner une mission qu'on lui a assignée ; elle
-        // repart à l'équipe (statut 'pending', sans prestataire) pour réattribution.
+        // Prestataire : décliner une mission qu'on lui a assignée (en cours ou
+        // renvoyée pour correction) ; elle repart à l'équipe (statut 'pending',
+        // sans prestataire) pour réattribution.
         || (isPrestataire()
           && resource.data.prestataireId == request.auth.uid
-          && resource.data.status == 'accepted'
+          && resource.data.status in ['accepted', 'rejected']
           && request.resource.data.status == 'pending'
           && request.resource.data.prestataireId == null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'prestataireId']))
