@@ -12,6 +12,7 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  armInlineConfirm,
   resetPassword,
   requestTeamAccess,
   queueEmail,
@@ -476,17 +477,19 @@ function openMemberModal(member, role) {
     reactivate.onclick = () => setMemberStatus(member, 'approved', `${member.name || member.email} a été réactivé(e).`);
     actions.appendChild(reactivate);
   } else {
+    if (jobs.length) {
+      const nudge = document.createElement('div');
+      nudge.className = 'task-meta';
+      nudge.style.color = 'var(--danger-ink)';
+      nudge.textContent = `${jobs.length} intervention(s) en cours lui reste(nt) attribuée(s) : pensez à les réattribuer après le retrait.`;
+      modal.appendChild(nudge);
+    }
     const remove = document.createElement('button');
     remove.className = 'btn ghost danger';
     remove.type = 'button';
     remove.textContent = 'Retirer de l’équipe';
-    remove.onclick = () => {
-      const warn = jobs.length
-        ? `\n\n${jobs.length} intervention(s) en cours lui reste(nt) attribuée(s) : pensez à les réattribuer.`
-        : '';
-      if (!window.confirm(`Retirer ${member.name || member.email} de l’équipe ? Cette personne ne pourra plus se connecter ni recevoir de missions.${warn}`)) return;
-      setMemberStatus(member, 'suspended', `${member.name || member.email} a été retiré(e) de l’équipe.`);
-    };
+    armInlineConfirm(remove, 'Confirmer le retrait', () =>
+      setMemberStatus(member, 'suspended', `${member.name || member.email} a été retiré(e) de l’équipe.`));
     actions.appendChild(remove);
   }
   modal.appendChild(actions);
@@ -1254,8 +1257,7 @@ function buildAccessRequestCard(req) {
   refuseBtn.className = 'btn ghost danger';
   refuseBtn.type = 'button';
   refuseBtn.textContent = 'Refuser';
-  refuseBtn.onclick = async () => {
-    if (!window.confirm(`Refuser l’accès ${req.role} demandé par ${req.name} ?`)) return;
+  armInlineConfirm(refuseBtn, 'Confirmer le refus', async () => {
     try {
       await withButtonLoading(refuseBtn, () =>
         updateDoc(doc(db, 'users', req.id), { accountStatus: 'rejected' }));
@@ -1263,7 +1265,7 @@ function buildAccessRequestCard(req) {
     } catch (e) {
       setTeamStatus('Impossible de refuser cette demande.', 'error');
     }
-  };
+  });
   actions.appendChild(approveBtn);
   actions.appendChild(refuseBtn);
   card.appendChild(actions);

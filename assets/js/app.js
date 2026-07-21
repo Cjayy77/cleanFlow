@@ -12,6 +12,7 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  armInlineConfirm,
   resetPassword,
   queueEmail,
   TEAM_EMAIL,
@@ -283,13 +284,7 @@ function renderPropertyButtons() {
     deleteBtn.type = 'button';
     deleteBtn.textContent = 'Supprimer';
     deleteBtn.setAttribute('aria-label', `Supprimer ${prop.street}`);
-    deleteBtn.onclick = async () => {
-      const hasActiveBooking = bookings.some(b => b.propertyId === prop.id && ACTIVE_BOOKING_STATUSES.includes(b.status));
-      if (hasActiveBooking) {
-        setAppStatus('Impossible de supprimer ce bien : une réservation est en cours. Annulez-la d’abord ou attendez sa confirmation.', 'error');
-        return;
-      }
-      if (!window.confirm(`Supprimer ${prop.street}, ${prop.city} ? Cette action est définitive.`)) return;
+    armInlineConfirm(deleteBtn, 'Confirmer la suppression', async () => {
       try {
         await deleteDoc(doc(db, 'properties', prop.id));
         if (selectedPropertyId === prop.id) {
@@ -302,7 +297,14 @@ function renderPropertyButtons() {
       } catch (err) {
         setAppStatus(`Impossible de supprimer le bien : ${authErrorMessage(err)}`, 'error');
       }
-    };
+    }, () => {
+      const hasActiveBooking = bookings.some(b => b.propertyId === prop.id && ACTIVE_BOOKING_STATUSES.includes(b.status));
+      if (hasActiveBooking) {
+        setAppStatus('Impossible de supprimer ce bien : une réservation est en cours. Annulez-la d’abord ou attendez sa confirmation.', 'error');
+        return false;
+      }
+      return true;
+    });
     actions.appendChild(editBtn);
     actions.appendChild(deleteBtn);
 
@@ -440,8 +442,7 @@ function renderBookings() {
       cancelBtn.className = 'btn ghost danger';
       cancelBtn.type = 'button';
       cancelBtn.textContent = 'Annuler la réservation';
-      cancelBtn.onclick = async () => {
-        if (!window.confirm(`Annuler le ménage du ${formatShortDate(booking.scheduledDate)} ?`)) return;
+      armInlineConfirm(cancelBtn, 'Confirmer l’annulation', async () => {
         try {
           await withButtonLoading(cancelBtn, () =>
             updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }));
@@ -454,7 +455,7 @@ function renderBookings() {
         } catch (err) {
           setAppStatus('Impossible d’annuler : la mission vient peut-être d’être acceptée par un prestataire. Contactez l’équipe Kleining.', 'error');
         }
-      };
+      });
       card.appendChild(cancelBtn);
     }
     // Note du client (1-5 étoiles) une fois la prestation vérifiée.
