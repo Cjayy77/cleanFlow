@@ -71,6 +71,41 @@
       </div>
     </div>
 
+    <div class="card">
+      <div class="eyebrow">Dispatch</div>
+      <h2>Missions à assigner</h2>
+      <p>Réservations en attente d’un prestataire. Choisissez qui s’en occupe : le prestataire ne voit que les missions que vous lui attribuez.</p>
+      <div id="missionsToAssign"></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Kits &amp; linge</div>
+      <h2>Livraisons à assigner</h2>
+      <p>Réservations avec option kits/linge sans livreur attribué. Choisissez le livreur en charge de la tournée.</p>
+      <div id="kitsToAssign"></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Calendrier</div>
+      <h2>Planning des réservations</h2>
+      <p>Toutes les réservations par date. Cliquez une réservation à assigner ou à vérifier pour aller à l’action correspondante.</p>
+      <div class="cal-header">
+        <button class="btn ghost cal-nav" id="adminCalPrev" type="button" aria-label="Mois précédent">‹</button>
+        <div class="cal-month" id="adminCalMonth" aria-live="polite"></div>
+        <button class="btn ghost cal-nav" id="adminCalNext" type="button" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="acal-scroll">
+        <div class="acal" id="adminCalendar"></div>
+      </div>
+      <div class="acal-legend">
+        <span class="acal-key"><i class="pending"></i>À assigner</span>
+        <span class="acal-key"><i class="accepted"></i>Assignée</span>
+        <span class="acal-key"><i class="submitted"></i>À vérifier</span>
+        <span class="acal-key"><i class="verified"></i>Confirmée</span>
+        <span class="acal-key"><i class="rejected"></i>À corriger</span>
+      </div>
+    </div>
+
     <div class="grid2">
       <div class="card">
         <div class="eyebrow">File d’attente</div>
@@ -107,6 +142,13 @@
       <h2>Incidents ouverts</h2>
       <p>Signalés par les prestataires, toutes missions confondues. Contactez le client concerné puis marquez l’incident traité.</p>
       <div id="openIncidents"></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">Équipe</div>
+      <h2>Prestataires &amp; livreurs</h2>
+      <p>Vos intervenants approuvés et leur charge actuelle, pour répartir les missions équitablement.</p>
+      <div id="roster"></div>
     </div>
 
     <div class="card">

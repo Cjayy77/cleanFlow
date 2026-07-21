@@ -5,7 +5,9 @@ import {
   ROLE_CLIENT,
   loadUserDoc,
   registerClient,
-  formatPrice,
+  computeBookingPrice,
+  ZONES,
+  zoneLabel,
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
@@ -56,13 +58,16 @@ const propertyForm = document.getElementById('propertyForm');
 const propertyStreet = document.getElementById('propertyStreet');
 const propertyCity = document.getElementById('propertyCity');
 const propertyPostal = document.getElementById('propertyPostal');
+const propertySurface = document.getElementById('propertySurface');
+const propertyZone = document.getElementById('propertyZone');
 const propertyNotes = document.getElementById('propertyNotes');
 const propertyFormTitle = document.getElementById('propertyFormTitle');
 const propertySubmitBtn = document.getElementById('propertySubmitBtn');
 const cancelEditWrap = document.getElementById('cancelEditWrap');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const propertyFormCard = document.getElementById('propertyFormCard');
-const linenToggle = document.getElementById('linenToggle');
+const kitCountInput = document.getElementById('kitCount');
+const priceBreakdown = document.getElementById('priceBreakdown');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
 const bookingCard = document.getElementById('bookingCard');
@@ -78,7 +83,7 @@ let currentUser = null;
 let selectedPropertyId = null;
 let selectedDate = null;
 let selectedServiceType = 'normal';
-let linenRequested = false;
+let kitCount = 0;
 let properties = [];
 let bookings = [];
 let propertiesUnsub = null;
@@ -90,6 +95,16 @@ let calendarMonth = startOfMonth(new Date());
 // Une réservation encore en cours bloque la suppression du bien concerné.
 const ACTIVE_BOOKING_STATUSES = ['pending', 'accepted', 'submitted', 'rejected'];
 
+function populateZones() {
+  propertyZone.innerHTML = '';
+  ZONES.forEach(zone => {
+    const option = document.createElement('option');
+    option.value = zone.value;
+    option.textContent = zone.label;
+    propertyZone.appendChild(option);
+  });
+}
+
 function setPropertyFormMode(property = null) {
   editingPropertyId = property ? property.id : null;
   propertyFormCard.open = !!property || properties.length === 0;
@@ -99,6 +114,8 @@ function setPropertyFormMode(property = null) {
   propertyStreet.value = property ? property.street : '';
   propertyCity.value = property ? property.city : '';
   propertyPostal.value = property ? property.postalCode : '';
+  propertySurface.value = property && property.surface ? property.surface : '';
+  propertyZone.value = property && property.zone ? property.zone : (ZONES[0] ? ZONES[0].value : '');
   propertyNotes.value = property ? (property.notes || '') : '';
   if (property) {
     propertyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -142,14 +159,60 @@ function setAppStatus(text, type = 'info') {
   appStatus.className = `status-banner ${type}` + (text ? '' : ' hidden');
 }
 
+// Détail de prix courant, recalculé à chaque changement (bien, service, kits).
+let currentQuote = null;
+
 function updateBookingBar() {
-  const price = formatPrice(selectedServiceType);
-  // TODO: confirm with team — le linge est-il facturé en plus des deux forfaits ?
-  priceValue.textContent = `${price}€`;
-  bookBtn.textContent = selectedDate ? `Réserver le ${formatShortDate(selectedDate)} · ${price}€` : 'Choisir une date pour réserver';
-  bookBtn.disabled = !selectedPropertyId || !selectedDate;
   const property = properties.find(p => p.id === selectedPropertyId);
   bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
+  currentQuote = property
+    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, kitCount, zone: property.zone })
+    : null;
+
+  // Bien sans surface renseignée (ancien bien) : inviter à compléter.
+  if (property && !currentQuote) {
+    priceBreakdown.classList.remove('hidden');
+    priceBreakdown.innerHTML = '<div class="pb-line pb-warn">Renseignez la surface de ce bien (Modifier) pour calculer le prix.</div>';
+    priceValue.textContent = '—';
+    bookBtn.textContent = 'Surface du bien manquante';
+    bookBtn.disabled = true;
+    return;
+  }
+
+  // Surface > 250 m² : tarif sur-mesure, on propose une demande de devis.
+  if (currentQuote && currentQuote.custom) {
+    priceBreakdown.classList.remove('hidden');
+    priceBreakdown.innerHTML = '<div class="pb-line pb-warn">Surface supérieure à 250&nbsp;m² : tarif sur-mesure. Demandez un devis à l’équipe.</div>';
+    priceValue.textContent = 'Sur devis';
+    bookBtn.textContent = selectedDate ? 'Demander un devis' : 'Choisir une date pour le devis';
+    bookBtn.disabled = !selectedDate;
+    return;
+  }
+
+  renderPriceBreakdown(currentQuote);
+  const total = currentQuote ? currentQuote.total : null;
+  priceValue.textContent = total != null ? `${total}€` : '—';
+  bookBtn.textContent = selectedDate && total != null
+    ? `Réserver le ${formatShortDate(selectedDate)} · ${total}€`
+    : 'Choisir une date pour réserver';
+  bookBtn.disabled = !selectedPropertyId || !selectedDate || total == null;
+}
+
+function renderPriceBreakdown(quote) {
+  if (!quote || quote.custom) { priceBreakdown.classList.add('hidden'); return; }
+  const rows = [
+    [`Prestation · ${quote.band.label} · ${quote.serviceType === 'deep' ? 'en profondeur' : 'normal'}`, `${quote.prestation}€`],
+  ];
+  if (quote.kitCount > 0) rows.push([`Kits · ${quote.kitCount} × 20€`, `${quote.kitsTotal}€`]);
+  rows.push(['Frais de déplacement', `${quote.travel}€`]);
+  priceBreakdown.classList.remove('hidden');
+  priceBreakdown.innerHTML = rows
+    .map(([label, value]) => `<div class="pb-line"><span></span><b>${value}</b></div>`)
+    .join('');
+  // Remplit les libellés en texte (évite l'injection HTML depuis les données).
+  priceBreakdown.querySelectorAll('.pb-line span').forEach((span, index) => {
+    span.textContent = rows[index][0];
+  });
 }
 
 // Divulgation progressive : tant qu'aucun bien n'est enregistré, on ne montre
@@ -188,7 +251,8 @@ function renderPropertyButtons() {
     name.textContent = `${prop.street}, ${prop.city}`;
     const meta = document.createElement('div');
     meta.className = 'p-meta';
-    meta.textContent = prop.postalCode;
+    meta.textContent = [prop.postalCode, prop.surface ? `${prop.surface} m²` : null, zoneLabel(prop.zone)]
+      .filter(Boolean).join(' · ');
     const thumb = document.createElement('div');
     thumb.className = 'p-thumb';
     const text = document.createElement('div');
@@ -332,7 +396,7 @@ function renderBookings() {
       <div class="dossier-top">
         <div>
           <div class="dossier-addr"></div>
-          <div class="dossier-meta">${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.linenRequested ? ' · + linge' : ''}</div>
+          <div class="dossier-meta">${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : (booking.linenRequested ? ' · + linge' : '')}</div>
         </div>
         <div class="status-pill ${booking.status}">${formatBookingStatus(booking.status)}</div>
       </div>
@@ -385,6 +449,10 @@ function renderBookings() {
       };
       card.appendChild(cancelBtn);
     }
+    // Note du client (1-5 étoiles) une fois la prestation vérifiée.
+    if (booking.status === 'verified') {
+      card.appendChild(buildRating(booking));
+    }
     // Contacter l'équipe à propos de cette réservation (question, incident,
     // problème constaté après le ménage). Reste dispo même mission terminée.
     if (booking.status !== 'cancelled') {
@@ -392,6 +460,40 @@ function renderBookings() {
     }
     bookingsWrap.appendChild(card);
   });
+}
+
+function buildRating(booking) {
+  const wrap = document.createElement('div');
+  wrap.className = 'rating';
+  const label = document.createElement('div');
+  label.className = 'rating-label';
+  label.textContent = booking.rating ? 'Votre note' : 'Notez cette prestation';
+  const stars = document.createElement('div');
+  stars.className = 'stars';
+  stars.setAttribute('role', 'radiogroup');
+  stars.setAttribute('aria-label', 'Note de 1 à 5 étoiles');
+  for (let value = 1; value <= 5; value += 1) {
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = 'star' + (booking.rating >= value ? ' filled' : '');
+    star.textContent = '★';
+    star.setAttribute('aria-label', `${value} étoile${value > 1 ? 's' : ''}`);
+    star.onclick = async () => {
+      if (star.disabled) return;
+      stars.querySelectorAll('.star').forEach(s => { s.disabled = true; });
+      try {
+        await updateDoc(doc(db, 'bookings', booking.id), { rating: value, ratedAt: serverTimestamp() });
+        setAppStatus('Merci ! Votre note a bien été enregistrée.', 'success');
+      } catch (err) {
+        stars.querySelectorAll('.star').forEach(s => { s.disabled = false; });
+        setAppStatus(`Impossible d’enregistrer la note : ${authErrorMessage(err)}`, 'error');
+      }
+    };
+    stars.appendChild(star);
+  }
+  wrap.appendChild(label);
+  wrap.appendChild(stars);
+  return wrap;
 }
 
 function buildContactTeam(booking, address) {
@@ -575,7 +677,7 @@ signOutBtn.addEventListener('click', async () => {
   await signOut(auth);
   selectedPropertyId = null;
   selectedDate = null;
-  linenRequested = false;
+  kitCount = 0;
   properties = [];
   bookings = [];
 });
@@ -587,8 +689,9 @@ serviceRadios.forEach(radio => {
   });
 });
 
-linenToggle.addEventListener('change', () => {
-  linenRequested = linenToggle.checked;
+kitCountInput.addEventListener('input', () => {
+  kitCount = Math.max(0, Math.floor(Number(kitCountInput.value) || 0));
+  updateBookingBar();
 });
 
 propertyForm.addEventListener('submit', async event => {
@@ -597,9 +700,19 @@ propertyForm.addEventListener('submit', async event => {
   const street = propertyStreet.value.trim();
   const city = propertyCity.value.trim();
   const postalCode = propertyPostal.value.trim();
+  const surface = Math.floor(Number(propertySurface.value) || 0);
+  const zone = propertyZone.value;
   const notes = propertyNotes.value.trim();
   if (!street || !city || !postalCode) {
     setAppStatus('Veuillez renseigner l’adresse complète du bien.', 'error');
+    return;
+  }
+  if (!surface || surface <= 0) {
+    setAppStatus('Indiquez la surface du bien (en m²) : elle détermine le tarif.', 'error');
+    return;
+  }
+  if (!zone) {
+    setAppStatus('Sélectionnez la zone du bien.', 'error');
     return;
   }
   try {
@@ -610,7 +723,7 @@ propertyForm.addEventListener('submit', async event => {
       // pour que prestataire et livreur ne voient jamais l'ancienne.
       const affected = bookings.filter(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
       await withButtonLoading(propertySubmitBtn, async () => {
-        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, notes });
+        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, surface, zone, notes });
         await Promise.all(affected.map(b =>
           updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress })));
       });
@@ -625,6 +738,8 @@ propertyForm.addEventListener('submit', async event => {
           street,
           city,
           postalCode,
+          surface,
+          zone,
           notes,
           createdAt: serverTimestamp(),
         }));
@@ -647,6 +762,30 @@ bookBtn.addEventListener('click', async () => {
   const property = properties.find(p => p.id === selectedPropertyId);
   if (!property) return;
   const bookedDate = selectedDate;
+  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, kitCount, zone: property.zone });
+  if (!quote) {
+    setAppStatus('Renseignez la surface de ce bien avant de réserver.', 'error');
+    return;
+  }
+
+  // Sur-mesure (> 250 m²) : pas de réservation directe, on envoie une demande
+  // de devis à l'équipe qui reviendra vers le client avec un prix.
+  if (quote.custom) {
+    try {
+      await withButtonLoading(bookBtn, async () => {
+        queueEmail({
+          to: TEAM_EMAIL,
+          subject: `Kleining — demande de devis · ${property.street}, ${property.city}`,
+          text: `${formatShortDate(bookedDate)} · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² (sur-mesure) · ${kitCount} kit(s) · zone ${zoneLabel(property.zone)} · client : ${currentUser.name || currentUser.email} (${currentUser.email}).`,
+        });
+      });
+      setAppStatus('Demande de devis envoyée à l’équipe Kleining. Vous serez recontacté avec un tarif sur-mesure.', 'success');
+    } catch (err) {
+      setAppStatus(`Impossible d’envoyer la demande de devis : ${authErrorMessage(err)}`, 'error');
+    }
+    return;
+  }
+
   try {
     await withButtonLoading(bookBtn, () =>
       addDoc(collection(db, 'bookings'), {
@@ -654,21 +793,29 @@ bookBtn.addEventListener('click', async () => {
         propertyId: selectedPropertyId,
         propertyAddress: `${property.street}, ${property.city}`,
         prestataireId: null,
-        serviceType: selectedServiceType,
-        price: formatPrice(selectedServiceType),
+        livreurId: null,
+        serviceType: quote.serviceType,
+        surface: Number(property.surface),
+        zone: property.zone || '',
+        kitCount: quote.kitCount,
+        prestationPrice: quote.prestation,
+        travelFee: quote.travel,
+        price: quote.total,
         scheduledDate: selectedDate,
         status: 'pending',
-        linenRequested,
+        linenRequested: quote.kitCount > 0,
         createdAt: serverTimestamp(),
       }));
     queueEmail({
       to: TEAM_EMAIL,
       subject: `Kleining — nouvelle réservation · ${property.street}, ${property.city}`,
-      text: `${formatShortDate(bookedDate)} · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur (60€)' : 'Nettoyage normal (47€)'}${linenRequested ? ' · option linge' : ''} · client : ${currentUser.email}`,
+      text: `${formatShortDate(bookedDate)} · ${quote.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² · ${quote.kitCount} kit(s) · total ${quote.total}€ · zone ${zoneLabel(property.zone)} · client : ${currentUser.email}`,
     });
     setAppStatus('Réservation enregistrée. Vous serez notifié par email une fois le ménage vérifié par l’équipe Kleining.', 'success');
     selectedDate = null;
     selectedDateLabel.value = 'Aucune date';
+    kitCount = 0;
+    if (kitCountInput) kitCountInput.value = '0';
     renderCalendar();
     updateBookingBar();
   } catch (err) {
@@ -676,4 +823,5 @@ bookBtn.addEventListener('click', async () => {
   }
 });
 
+populateZones();
 updateBookingBar();

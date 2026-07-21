@@ -77,19 +77,29 @@ service cloud.firestore {
       // Les requêtes de liste côté app filtrent toujours sur un seul champ
       // (clientId / prestataireId / status=='pending' / linenRequested), ce qui
       // rend chaque branche ci-dessous prouvable par Firestore.
+      // Le prestataire et le livreur ne voient QUE ce que l'équipe leur a
+      // assigné : plus de pool de missions ouvertes à choisir soi-même.
       allow read: if isSignedIn() && (
         isAdmin()
         || (isClient() && resource.data.clientId == request.auth.uid)
-        || (isPrestataire() && (resource.data.prestataireId == request.auth.uid || resource.data.status == 'pending'))
-        || (isLivreur() && resource.data.linenRequested == true)
+        || (isPrestataire() && resource.data.prestataireId == request.auth.uid)
+        || (isLivreur() && resource.data.get('livreurId', '') == request.auth.uid)
       );
 
+      // Le prix (prestation selon la surface + kits + frais) est calculé côté
+      // client à partir de la grille de shared.js. Les paiements étant hors
+      // périmètre bêta, la règle valide la structure — service, prix numérique
+      // positif, nombre de kits — plutôt que de dupliquer toute la grille ici.
       allow create: if isClient()
         && request.resource.data.clientId == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.prestataireId == null
-        && ((request.resource.data.serviceType == 'normal' && request.resource.data.price == 47)
-            || (request.resource.data.serviceType == 'deep' && request.resource.data.price == 60))
+        && request.resource.data.livreurId == null
+        && request.resource.data.serviceType in ['normal', 'deep']
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.kitCount is int
+        && request.resource.data.kitCount >= 0
         && request.resource.data.scheduledDate is string
         && request.resource.data.linenRequested is bool
         && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;
@@ -107,31 +117,42 @@ service cloud.firestore {
           && resource.data.clientId == request.auth.uid
           && request.resource.data.propertyAddress is string
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['propertyAddress']))
-        // Prestataire : accepter une mission en attente…
-        || (isPrestataire()
-          && resource.data.status == 'pending'
-          && resource.data.prestataireId == null
-          && request.resource.data.status == 'accepted'
-          && request.resource.data.prestataireId == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'prestataireId']))
-        // …ou soumettre / re-soumettre son propre dossier…
+        // Client : noter (1 à 5 étoiles) sa prestation une fois vérifiée.
+        || (isClient()
+          && resource.data.clientId == request.auth.uid
+          && resource.data.status == 'verified'
+          && request.resource.data.status == 'verified'
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'ratedAt']))
+        // Prestataire : soumettre / re-soumettre le dossier de SA mission assignée.
         || (isPrestataire()
           && resource.data.prestataireId == request.auth.uid
           && resource.data.status in ['accepted', 'rejected']
           && request.resource.data.status == 'submitted'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
-        // …ou se désister d'une mission acceptée, qui redevient disponible.
+        // Prestataire : décliner une mission qu'on lui a assignée ; elle
+        // repart à l'équipe (statut 'pending', sans prestataire) pour réattribution.
         || (isPrestataire()
           && resource.data.prestataireId == request.auth.uid
           && resource.data.status == 'accepted'
           && request.resource.data.status == 'pending'
           && request.resource.data.prestataireId == null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'prestataireId']))
-        // Livreur : cocher ou décocher sa tournée de linge, rien d'autre.
+        // Livreur : cocher ou décocher SA tournée assignée, rien d'autre.
         || (isLivreur()
-          && resource.data.linenRequested == true
+          && resource.data.get('livreurId', '') == request.auth.uid
           && request.resource.data.linenDone is bool
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['linenDone']))
+        // Admin : assigner / réassigner un prestataire (la mission passe en cours).
+        || (isAdmin()
+          && request.resource.data.prestataireId is string
+          && request.resource.data.status == 'accepted'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prestataireId', 'status']))
+        // Admin : assigner / retirer un livreur pour la livraison des kits.
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['livreurId']))
         // Admin : verdict de vérification uniquement.
         || (isAdmin()
           && request.resource.data.status in ['verified', 'rejected']

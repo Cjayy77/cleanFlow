@@ -22,7 +22,74 @@ export const ROLE_PRESTATAIRE = 'prestataire';
 export const ROLE_LIVREUR = 'livreur';
 export const ROLE_ADMIN = 'admin';
 
-export const PRICES = { normal: 47, deep: 60 };
+// Grille tarifaire (barème de William). Le prix de la prestation dépend de la
+// surface du logement (m²) et du type de ménage. Source unique de vérité :
+// modifier ici met à jour le portail client et l'affichage admin.
+export const PRICE_BANDS = [
+  { max: 30, label: '0–30 m²', normal: 42, deep: 67 },
+  { max: 40, label: '31–40 m²', normal: 49, deep: 74 },
+  { max: 55, label: '41–55 m²', normal: 63, deep: 88 },
+  { max: 75, label: '56–75 m²', normal: 74, deep: 99 },
+  { max: 120, label: '76–120 m²', normal: 83, deep: 108 },
+  { max: 150, label: '121–150 m²', normal: 97, deep: 132 },
+  { max: 250, label: '151–250 m²', normal: 115, deep: 160 },
+];
+// Au-delà de 250 m² : tarif sur-mesure (devis), pas de prix automatique.
+
+export const KIT_PRICE = 20; // par kit (linge, consommables), à l'unité.
+
+// Frais de déplacement. Provisoire : forfait unique. William fournira une
+// grille par zone (plus la zone est éloignée, plus les frais sont élevés) ;
+// il suffira alors de faire dépendre travelFeeForZone() de la zone.
+export const TRAVEL_FEE = 10;
+
+// Zones = classification / assignation (et, plus tard, frais de déplacement).
+// N'influencent PAS le prix de la prestation. Liste provisoire, ajustable.
+export const ZONES = [
+  { value: 'paris', label: 'Paris (intra-muros)' },
+  { value: 'petite_couronne', label: 'Petite couronne (92 · 93 · 94)' },
+  { value: 'grande_couronne', label: 'Grande couronne (77 · 78 · 91 · 95)' },
+];
+
+export function zoneLabel(value) {
+  return (ZONES.find(z => z.value === value) || {}).label || value || '';
+}
+
+export function travelFeeForZone(/* zone */) {
+  // Provisoire : forfait unique quelle que soit la zone.
+  return TRAVEL_FEE;
+}
+
+// Trouve la tranche de surface. Renvoie { custom:true } au-delà de 250 m².
+export function bandForSurface(surface) {
+  const s = Number(surface);
+  if (!Number.isFinite(s) || s <= 0) return null;
+  if (s > 250) return { custom: true, label: '+250 m²' };
+  return PRICE_BANDS.find(band => s <= band.max) || null;
+}
+
+// Calcule le détail de prix d'une réservation. Renvoie null si la surface est
+// invalide, ou { custom:true } si elle relève du devis sur-mesure.
+export function computeBookingPrice({ surface, serviceType, kitCount = 0, zone }) {
+  const band = bandForSurface(surface);
+  if (!band) return null;
+  if (band.custom) return { custom: true, band };
+  const service = serviceType === 'deep' ? 'deep' : 'normal';
+  const kits = Math.max(0, Math.floor(Number(kitCount) || 0));
+  const prestation = band[service];
+  const kitsTotal = kits * KIT_PRICE;
+  const travel = travelFeeForZone(zone);
+  return {
+    custom: false,
+    band,
+    serviceType: service,
+    prestation,
+    kitCount: kits,
+    kitsTotal,
+    travel,
+    total: prestation + kitsTotal + travel,
+  };
+}
 
 // Boîte de réception de l'équipe pour les notifications internes.
 // Doit rester identique à l'adresse autorisée dans firestore.rules (/mail).
@@ -141,10 +208,6 @@ export function formatBookingStatus(status) {
     case 'cancelled': return 'Annulée';
     default: return status.charAt(0).toUpperCase() + status.slice(1);
   }
-}
-
-export function formatPrice(serviceType) {
-  return PRICES[serviceType] ?? PRICES.normal;
 }
 
 // Demande d'accès prestataire/livreur/admin : crée le compte en statut

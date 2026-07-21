@@ -58,6 +58,13 @@ const statSubmitted = document.getElementById('statSubmitted');
 const statVerified = document.getElementById('statVerified');
 const openIncidents = document.getElementById('openIncidents');
 const clientMessages = document.getElementById('clientMessages');
+const missionsToAssign = document.getElementById('missionsToAssign');
+const kitsToAssign = document.getElementById('kitsToAssign');
+const adminCalendar = document.getElementById('adminCalendar');
+const adminCalMonth = document.getElementById('adminCalMonth');
+const adminCalPrev = document.getElementById('adminCalPrev');
+const adminCalNext = document.getElementById('adminCalNext');
+const roster = document.getElementById('roster');
 
 let currentUser = null;
 let authNotice = null;
@@ -67,20 +74,409 @@ let bookingQueueUnsub = null;
 let statsUnsub = null;
 let incidentsUnsub = null;
 let messagesUnsub = null;
+let latestBookings = [];
+let prestataires = [];
+let livreurs = [];
+let membersUnsubs = [];
+let adminCalMonthDate = startOfMonth(new Date());
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+// Ordre d'affichage dans une journée : ce qui demande une action d'abord.
+const CAL_STATUS_ORDER = { pending: 0, submitted: 1, rejected: 2, accepted: 3, verified: 4 };
+
+function prestataireName(id) {
+  const member = prestataires.find(p => p.id === id);
+  return member ? (member.name || member.email) : 'prestataire';
+}
 
 function subscribeStats() {
   if (statsUnsub) statsUnsub();
   statsUnsub = onSnapshot(collection(db, 'bookings'), snapshot => {
+    latestBookings = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
     const counts = { pending: 0, accepted: 0, submitted: 0, verified: 0 };
-    snapshot.docs.forEach(docSnap => {
-      const status = docSnap.data().status;
-      if (counts[status] !== undefined) counts[status] += 1;
+    latestBookings.forEach(booking => {
+      if (counts[booking.status] !== undefined) counts[booking.status] += 1;
     });
     statPending.textContent = counts.pending;
     statAccepted.textContent = counts.accepted;
     statSubmitted.textContent = counts.submitted;
     statVerified.textContent = counts.verified;
+    renderAssignments();
   }, error => setAdminStatus(`Impossible de charger la vue d’ensemble : ${authErrorMessage(error)}`, 'error'));
+}
+
+// Prestataires et livreurs approuvés, pour les listes déroulantes d'assignation.
+function subscribeTeamMembers() {
+  membersUnsubs.forEach(unsub => unsub());
+  membersUnsubs = [];
+  const assign = { prestataire: list => { prestataires = list; }, livreur: list => { livreurs = list; } };
+  ['prestataire', 'livreur'].forEach(role => {
+    const unsub = onSnapshot(query(collection(db, 'users'), where('role', '==', role)), snapshot => {
+      const list = snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter(member => (member.accountStatus ?? 'approved') === 'approved')
+        .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+      assign[role](list);
+      renderAssignments();
+    }, error => setAdminStatus(`Impossible de charger l’équipe : ${authErrorMessage(error)}`, 'error'));
+    membersUnsubs.push(unsub);
+  });
+}
+
+function buildMemberSelect(members, placeholder, annotate) {
+  const select = document.createElement('select');
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = placeholder;
+  select.appendChild(first);
+  members.forEach(member => {
+    const option = document.createElement('option');
+    option.value = member.id;
+    const suffix = annotate ? annotate(member) : '';
+    option.textContent = suffix ? `${member.name || member.email} — ${suffix}` : (member.name || member.email);
+    select.appendChild(option);
+  });
+  return select;
+}
+
+function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn, annotate) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = booking.propertyAddress || booking.propertyId;
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  meta.textContent = metaText;
+  card.appendChild(title);
+  card.appendChild(meta);
+  if (members.length === 0) {
+    const note = document.createElement('div');
+    note.className = 'task-meta';
+    note.textContent = noMembersNote;
+    card.appendChild(note);
+    container.appendChild(card);
+    return;
+  }
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center;';
+  const select = buildMemberSelect(members, placeholder, annotate);
+  const assignBtn = document.createElement('button');
+  assignBtn.className = 'btn primary';
+  assignBtn.type = 'button';
+  assignBtn.textContent = 'Assigner';
+  assignBtn.onclick = () => assignFn(select.value, assignBtn);
+  row.appendChild(select);
+  row.appendChild(assignBtn);
+  card.appendChild(row);
+  container.appendChild(card);
+}
+
+function renderAssignments() {
+  renderMissionsToAssign();
+  renderKitsToAssign();
+  renderAdminCalendar();
+  renderRoster();
+}
+
+function renderRoster() {
+  if (!roster) return;
+  roster.innerHTML = '';
+  roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire'));
+  roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur'));
+}
+
+function buildRosterGroup(title, members, role) {
+  const section = document.createElement('div');
+  section.className = 'roster-group';
+  const heading = document.createElement('div');
+  heading.className = 'eyebrow';
+  heading.textContent = `${title} · ${members.length}`;
+  section.appendChild(heading);
+  if (members.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = `Aucun ${role} approuvé pour le moment.`;
+    section.appendChild(empty);
+    return section;
+  }
+  members.forEach(member => section.appendChild(buildRosterCard(member, role)));
+  return section;
+}
+
+// Charge + note d'un prestataire, calculées depuis les réservations en direct.
+function prestataireStats(memberId) {
+  let active = 0;
+  let done = 0;
+  let ratingSum = 0;
+  let ratingCount = 0;
+  latestBookings.forEach(booking => {
+    if (booking.prestataireId !== memberId) return;
+    if (['accepted', 'submitted', 'rejected'].includes(booking.status)) {
+      active += 1;
+    } else if (booking.status === 'verified') {
+      done += 1;
+      if (typeof booking.rating === 'number') { ratingSum += booking.rating; ratingCount += 1; }
+    }
+  });
+  return { active, done, ratingCount, average: ratingCount ? ratingSum / ratingCount : null };
+}
+
+function livreurStats(memberId) {
+  let active = 0;
+  let done = 0;
+  latestBookings.forEach(booking => {
+    if (booking.livreurId !== memberId || booking.status === 'cancelled') return;
+    if (booking.linenDone) done += 1;
+    else active += 1;
+  });
+  return { active, done };
+}
+
+function buildStaticStars(value) {
+  const stars = document.createElement('div');
+  stars.className = 'stars-static';
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', `${value} étoile${value > 1 ? 's' : ''} sur 5`);
+  for (let i = 1; i <= 5; i += 1) {
+    const star = document.createElement('span');
+    star.className = 'star-static' + (i <= value ? ' filled' : '');
+    star.textContent = '★';
+    star.setAttribute('aria-hidden', 'true');
+    stars.appendChild(star);
+  }
+  return stars;
+}
+
+function buildRosterCard(member, role) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = member.name || member.email;
+  card.appendChild(title);
+
+  const contact = document.createElement('div');
+  contact.className = 'task-meta';
+  if (member.email) {
+    const mail = document.createElement('a');
+    mail.href = `mailto:${member.email}`;
+    mail.textContent = member.email;
+    contact.appendChild(mail);
+  }
+  if (member.phone) {
+    if (member.email) contact.appendChild(document.createTextNode(' · '));
+    const tel = document.createElement('a');
+    tel.href = `tel:${member.phone}`;
+    tel.textContent = member.phone;
+    contact.appendChild(tel);
+  }
+  card.appendChild(contact);
+
+  // Charge courante calculée à partir des réservations en direct.
+  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
+  const load = document.createElement('div');
+  load.className = 'task-meta roster-load';
+  load.textContent = role === 'prestataire'
+    ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
+    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
+  card.appendChild(load);
+
+  // Note moyenne des clients (prestataires uniquement).
+  if (role === 'prestataire') {
+    const ratingLine = document.createElement('div');
+    ratingLine.className = 'task-meta roster-rating';
+    if (stats.ratingCount === 0) {
+      ratingLine.textContent = 'Aucune évaluation pour le moment';
+    } else {
+      ratingLine.appendChild(buildStaticStars(Math.round(stats.average)));
+      const text = document.createElement('span');
+      text.textContent = `${stats.average.toFixed(1)} / 5 · ${stats.ratingCount} avis`;
+      ratingLine.appendChild(text);
+    }
+    card.appendChild(ratingLine);
+  }
+  return card;
+}
+
+function renderAdminCalendar() {
+  if (!adminCalendar) return;
+  adminCalendar.innerHTML = '';
+  const monthLabel = adminCalMonthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  adminCalMonth.textContent = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+
+  ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(label => {
+    const dow = document.createElement('div');
+    dow.className = 'acal-dow';
+    dow.textContent = label;
+    adminCalendar.appendChild(dow);
+  });
+
+  const year = adminCalMonthDate.getFullYear();
+  const month = adminCalMonthDate.getMonth();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Réservations du mois (hors annulées), groupées par date.
+  const byDate = {};
+  latestBookings.forEach(booking => {
+    if (!booking.scheduledDate || booking.status === 'cancelled') return;
+    (byDate[booking.scheduledDate] = byDate[booking.scheduledDate] || []).push(booking);
+  });
+
+  const mondayOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  for (let i = 0; i < mondayOffset; i += 1) {
+    const filler = document.createElement('div');
+    filler.className = 'acal-cell empty';
+    adminCalendar.appendChild(filler);
+  }
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum += 1) {
+    const day = new Date(year, month, dayNum);
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'acal-cell'
+      + (day.getTime() === today.getTime() ? ' today' : '')
+      + (day < today ? ' past' : '');
+    const num = document.createElement('div');
+    num.className = 'acal-num';
+    num.textContent = dayNum;
+    cell.appendChild(num);
+
+    const events = (byDate[iso] || [])
+      .slice()
+      .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
+    events.forEach(booking => {
+      const ev = document.createElement('button');
+      ev.type = 'button';
+      ev.className = `acal-event ${booking.status}`;
+      ev.textContent = booking.propertyAddress || 'Réservation';
+      const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
+      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
+      ev.onclick = () => focusCalendarBooking(booking);
+      cell.appendChild(ev);
+    });
+    adminCalendar.appendChild(cell);
+  }
+}
+
+// Depuis le calendrier, amener l'admin à l'action pertinente pour la réservation.
+async function focusCalendarBooking(booking) {
+  if (booking.status === 'submitted') {
+    const queued = bookingQueueData.find(b => b.id === booking.id);
+    if (queued) {
+      selectedBooking = queued;
+      try { await refreshBookingDetail(); } catch (e) { /* le détail se rechargera au prochain snapshot */ }
+      renderBookingQueue();
+      renderBookingDetail();
+      bookingTitle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+  }
+  if (booking.status === 'pending' && missionsToAssign) {
+    missionsToAssign.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  adminCalendar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderMissionsToAssign() {
+  if (!missionsToAssign) return;
+  missionsToAssign.innerHTML = '';
+  const pending = latestBookings
+    .filter(booking => booking.status === 'pending')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  if (pending.length === 0) {
+    missionsToAssign.innerHTML = '<div class="empty-state">Aucune réservation en attente d’assignation.</div>';
+    return;
+  }
+  // Classement pour l'assignation : mieux notés d'abord, puis les moins
+  // chargés — pour répartir le travail sans sacrifier la qualité.
+  const rankedPrestataires = prestataires.slice().sort((a, b) => {
+    const sa = prestataireStats(a.id);
+    const sb = prestataireStats(b.id);
+    const ra = sa.average ?? -1;
+    const rb = sb.average ?? -1;
+    if (rb !== ra) return rb - ra;
+    if (sa.active !== sb.active) return sa.active - sb.active;
+    return (a.name || a.email).localeCompare(b.name || b.email);
+  });
+  const prestataireAnnotate = member => {
+    const s = prestataireStats(member.id);
+    const ratingPart = s.average != null ? `★${s.average.toFixed(1)} (${s.ratingCount})` : 'non noté';
+    return `${ratingPart} · ${s.active} en cours`;
+  };
+
+  pending.forEach(booking => {
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.surface ? ` · ${booking.surface} m²` : ''}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
+    appendAssignCard(missionsToAssign, booking, rankedPrestataires, 'Choisir un prestataire…',
+      'Aucun prestataire approuvé. Approuvez d’abord une demande d’accès.', metaText,
+      async (prestataireId, assignBtn) => {
+        if (!prestataireId) { setAdminStatus('Choisissez un prestataire avant d’assigner.', 'error'); return; }
+        const member = prestataires.find(p => p.id === prestataireId);
+        try {
+          await withButtonLoading(assignBtn, () =>
+            updateDoc(doc(db, 'bookings', booking.id), { prestataireId, status: 'accepted' }));
+          if (member?.email) {
+            queueEmail({
+              to: member.email,
+              subject: `Kleining — nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              text: `${booking.propertyAddress || 'Mission'} · ${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}. Retrouvez-la dans votre interface prestataire.`,
+            });
+          }
+          setAdminStatus(`Mission assignée à ${member?.name || member?.email || 'ce prestataire'}.`, 'success');
+        } catch (e) {
+          setAdminStatus(`Impossible d’assigner la mission : ${authErrorMessage(e)}`, 'error');
+        }
+      }, prestataireAnnotate);
+  });
+}
+
+function renderKitsToAssign() {
+  if (!kitsToAssign) return;
+  kitsToAssign.innerHTML = '';
+  const needing = latestBookings
+    .filter(booking => booking.linenRequested === true && !booking.livreurId && booking.status !== 'cancelled')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  if (needing.length === 0) {
+    kitsToAssign.innerHTML = '<div class="empty-state">Aucune livraison de kits en attente d’assignation.</div>';
+    return;
+  }
+  const rankedLivreurs = livreurs.slice().sort((a, b) => {
+    const sa = livreurStats(a.id);
+    const sb = livreurStats(b.id);
+    if (sa.active !== sb.active) return sa.active - sb.active;
+    return (a.name || a.email).localeCompare(b.name || b.email);
+  });
+  const livreurAnnotate = member => `${livreurStats(member.id).active} à faire`;
+
+  needing.forEach(booking => {
+    const metaText = `${formatShortDate(booking.scheduledDate)}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · dépôt kits / linge propre + récupération`;
+    appendAssignCard(kitsToAssign, booking, rankedLivreurs, 'Choisir un livreur…',
+      'Aucun livreur approuvé. Approuvez d’abord une demande d’accès.', metaText,
+      async (livreurId, assignBtn) => {
+        if (!livreurId) { setAdminStatus('Choisissez un livreur avant d’assigner.', 'error'); return; }
+        const member = livreurs.find(l => l.id === livreurId);
+        try {
+          await withButtonLoading(assignBtn, () =>
+            updateDoc(doc(db, 'bookings', booking.id), { livreurId }));
+          if (member?.email) {
+            queueEmail({
+              to: member.email,
+              subject: `Kleining — nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              text: `${booking.propertyAddress || 'Tournée'} · ${formatShortDate(booking.scheduledDate)} · dépôt des kits / linge propre et récupération. Retrouvez-la dans votre interface livreur.`,
+            });
+          }
+          setAdminStatus(`Tournée assignée à ${member?.name || member?.email || 'ce livreur'}.`, 'success');
+        } catch (e) {
+          setAdminStatus(`Impossible d’assigner la tournée : ${authErrorMessage(e)}`, 'error');
+        }
+      }, livreurAnnotate);
+  });
 }
 
 function subscribeOpenIncidents() {
@@ -266,7 +662,7 @@ function renderBookingDetail() {
   }
 
   bookingTitle.textContent = selectedBooking.propertyAddress || selectedBooking.propertyId;
-  bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.linenRequested ? ' · + linge' : ''}`;
+  bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.surface ? ` · ${selectedBooking.surface} m²` : ''}${selectedBooking.kitCount ? ` · ${selectedBooking.kitCount} kit(s)` : ''} · ${selectedBooking.price}€`;
   photoGrid.innerHTML = '';
 
   PHOTO_SLOTS.forEach(slot => {
@@ -440,6 +836,8 @@ onAuthStateChanged(auth, async user => {
     if (statsUnsub) statsUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();
+    membersUnsubs.forEach(unsub => unsub());
+    membersUnsubs = [];
     if (authNotice) {
       showAuth(authNotice.message, authNotice.type);
       authNotice = null;
@@ -471,6 +869,7 @@ onAuthStateChanged(auth, async user => {
     refreshQueue();
     subscribeAccessRequests();
     subscribeStats();
+    subscribeTeamMembers();
     subscribeOpenIncidents();
     subscribeClientMessages();
   } catch (error) {
@@ -500,6 +899,15 @@ signOutBtn.addEventListener('click', async () => {
 
 verifyBtn.addEventListener('click', () => resolveBooking('verified'));
 rejectBtn.addEventListener('click', () => resolveBooking('rejected'));
+
+adminCalPrev.addEventListener('click', () => {
+  adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() - 1, 1);
+  renderAdminCalendar();
+});
+adminCalNext.addEventListener('click', () => {
+  adminCalMonthDate = new Date(adminCalMonthDate.getFullYear(), adminCalMonthDate.getMonth() + 1, 1);
+  renderAdminCalendar();
+});
 
 const teamStatus = document.getElementById('teamStatus');
 const accessRequests = document.getElementById('accessRequests');

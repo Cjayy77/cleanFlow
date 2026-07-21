@@ -46,9 +46,10 @@ const switchToRequest = document.getElementById('switchToRequest');
 const switchToSignIn = document.getElementById('switchToSignIn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
-const pendingList = document.getElementById('pendingList');
 const assignedList = document.getElementById('assignedList');
 const activeBookingContainer = document.getElementById('activeBooking');
+const ratingSummary = document.getElementById('ratingSummary');
+const ratingList = document.getElementById('ratingList');
 const incidentForm = document.getElementById('incidentForm');
 const incidentStatus = document.getElementById('incidentStatus');
 const incidentType = document.getElementById('incidentType');
@@ -68,12 +69,11 @@ const ACTIONABLE_STATUSES = ['accepted', 'submitted', 'rejected'];
 
 let currentUser = null;
 let authNotice = null;
-let pendingBookings = [];
 let assignedBookings = [];
+let ratedBookings = [];
 let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
-let pendingUnsub = null;
 let assignedUnsub = null;
 
 function setAuthMessage(message, type = '') {
@@ -105,31 +105,6 @@ function showApp() {
   userNameLabel.textContent = currentUser.name || currentUser.email;
 }
 
-function buildBookingCard(booking, buttonText, action) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'task-card';
-  wrapper.innerHTML = `
-    <div class="task-top">
-      <div>
-        <div class="task-title"></div>
-        <div class="task-meta">${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.linenRequested ? ' · + linge' : ''}</div>
-      </div>
-      <div class="status-pill ${booking.status}">${formatBookingStatus(booking.status)}</div>
-    </div>
-    <div class="task-meta">${booking.price}€ · Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
-  `;
-  wrapper.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
-  if (buttonText) {
-    const btn = document.createElement('button');
-    btn.className = 'btn primary';
-    btn.type = 'button';
-    btn.textContent = buttonText;
-    btn.onclick = action;
-    wrapper.appendChild(btn);
-  }
-  return wrapper;
-}
-
 async function loadPhotosForBooking(bookingId) {
   const photoDocs = await loadPhotoDocs(bookingId);
   activePhotoRecords = photoDocs.reduce((acc, photo) => ({ ...acc, [photo.slot]: photo }), {});
@@ -139,30 +114,12 @@ function countUploadedPhotos() {
   return PHOTO_SLOTS.filter(slot => activePhotoRecords[slot.key]).length;
 }
 
-function renderPendingList() {
-  pendingList.innerHTML = '';
-  if (pendingBookings.length === 0) {
-    pendingList.innerHTML = '<div class="empty-state">Aucune nouvelle mission disponible.</div>';
-    return;
-  }
-  pendingBookings.forEach(booking => {
-    const card = buildBookingCard(booking, 'Accepter la mission', async () => {
-      try {
-        await updateDoc(doc(db, 'bookings', booking.id), {
-          prestataireId: currentUser.uid,
-          status: 'accepted',
-        });
-      } catch (e) {
-        setWorkStatus(`Impossible d’accepter la mission : ${storageErrorMessage(e)}`);
-      }
-    });
-    pendingList.appendChild(card);
-  });
-}
-
 function renderAssignedList() {
   assignedList.innerHTML = '';
-  if (assignedBookings.length === 0) return;
+  if (assignedBookings.length === 0) {
+    assignedList.innerHTML = '<div class="empty-state">Aucune mission ne vous est assignée pour le moment. L’équipe Kleining vous attribue vos missions.</div>';
+    return;
+  }
   assignedBookings.forEach(booking => {
     const item = document.createElement('div');
     item.className = 'task-card selectable' + (booking.id === selectedMissionId ? ' active' : '');
@@ -187,12 +144,66 @@ function renderAssignedList() {
   });
 }
 
-function renderActiveBooking() {
-  activeBookingContainer.innerHTML = '';
-  if (!activeBooking) {
-    activeBookingContainer.innerHTML = '<div class="empty-state">Aucune mission en cours.</div>';
+function buildStaticStars(value) {
+  const stars = document.createElement('div');
+  stars.className = 'stars-static';
+  stars.setAttribute('role', 'img');
+  stars.setAttribute('aria-label', `${value} étoile${value > 1 ? 's' : ''} sur 5`);
+  for (let i = 1; i <= 5; i += 1) {
+    const star = document.createElement('span');
+    star.className = 'star-static' + (i <= value ? ' filled' : '');
+    star.textContent = '★';
+    star.setAttribute('aria-hidden', 'true');
+    stars.appendChild(star);
+  }
+  return stars;
+}
+
+function renderRatings() {
+  if (!ratingSummary) return;
+  ratingSummary.innerHTML = '';
+  ratingList.innerHTML = '';
+  if (ratedBookings.length === 0) {
+    ratingSummary.innerHTML = '<div class="empty-state">Aucune évaluation pour le moment. Les clients notent la prestation une fois vérifiée par l’équipe Kleining.</div>';
     return;
   }
+  const average = ratedBookings.reduce((sum, b) => sum + b.rating, 0) / ratedBookings.length;
+  const avgWrap = document.createElement('div');
+  avgWrap.className = 'rating-avg';
+  const num = document.createElement('span');
+  num.className = 'rating-avg-num';
+  num.textContent = average.toFixed(1);
+  const out = document.createElement('span');
+  out.className = 'rating-avg-out';
+  out.textContent = '/ 5';
+  avgWrap.appendChild(num);
+  avgWrap.appendChild(out);
+  avgWrap.appendChild(buildStaticStars(Math.round(average)));
+  const sub = document.createElement('div');
+  sub.className = 'task-meta';
+  sub.textContent = `Moyenne sur ${ratedBookings.length} évaluation${ratedBookings.length > 1 ? 's' : ''}`;
+  ratingSummary.appendChild(avgWrap);
+  ratingSummary.appendChild(sub);
+
+  ratedBookings.forEach(booking => {
+    const item = document.createElement('div');
+    item.className = 'task-card';
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = booking.propertyAddress || booking.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}`;
+    item.appendChild(title);
+    item.appendChild(meta);
+    item.appendChild(buildStaticStars(booking.rating));
+    ratingList.appendChild(item);
+  });
+}
+
+function renderActiveBooking() {
+  activeBookingContainer.innerHTML = '';
+  if (!activeBooking) return;
   const heading = document.createElement('div');
   heading.className = 'eyebrow';
   heading.textContent = `Dossier ${activeBooking.id.slice(0, 6).toUpperCase()} · ${formatBookingStatus(activeBooking.status)}`;
@@ -281,21 +292,21 @@ function renderActiveBooking() {
     const releaseBtn = document.createElement('button');
     releaseBtn.className = 'btn ghost danger';
     releaseBtn.type = 'button';
-    releaseBtn.textContent = 'Se désister de cette mission';
+    releaseBtn.textContent = 'Décliner cette mission';
     releaseBtn.style.marginLeft = '12px';
     releaseBtn.onclick = async () => {
-      if (!window.confirm('Vous désister ? La mission redeviendra disponible pour les autres prestataires.')) return;
+      if (!window.confirm('Décliner cette mission ? Elle repart à l’équipe Kleining, qui la réattribuera à un autre prestataire.')) return;
       try {
         await withButtonLoading(releaseBtn, () =>
           updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'pending', prestataireId: null }));
         queueEmail({
           to: TEAM_EMAIL,
-          subject: `Kleining — mission libérée · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
-          text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · libérée par ${currentUser.name || currentUser.email}. La mission est de nouveau disponible.`,
+          subject: `Kleining — mission déclinée · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+          text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · déclinée par ${currentUser.name || currentUser.email}. À réattribuer dans /admin/.`,
         });
-        setWorkStatus('Mission libérée. Elle est de nouveau disponible pour les autres prestataires.', 'success');
+        setWorkStatus('Mission déclinée. L’équipe Kleining la réattribuera.', 'success');
       } catch (e) {
-        setWorkStatus(`Impossible de vous désister : ${storageErrorMessage(e)}`);
+        setWorkStatus(`Impossible de décliner la mission : ${storageErrorMessage(e)}`);
       }
     };
     activeBookingContainer.appendChild(releaseBtn);
@@ -307,10 +318,13 @@ function loadAssignedBookings() {
   // Filtre unique + tri côté client : aucun index composite à créer.
   const assignedQuery = query(collection(db, 'bookings'), where('prestataireId', '==', currentUser.uid));
   assignedUnsub = onSnapshot(assignedQuery, async snapshot => {
-    assignedBookings = snapshot.docs
-      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    const mine = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+    assignedBookings = mine
       .filter(booking => ACTIONABLE_STATUSES.includes(booking.status))
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+    ratedBookings = mine
+      .filter(booking => booking.status === 'verified' && typeof booking.rating === 'number')
+      .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
     const stillThere = assignedBookings.find(b => b.id === selectedMissionId);
     activeBooking = stillThere || assignedBookings[0] || null;
     selectedMissionId = activeBooking ? activeBooking.id : null;
@@ -321,24 +335,13 @@ function loadAssignedBookings() {
     }
     renderAssignedList();
     renderActiveBooking();
+    renderRatings();
   }, error => setWorkStatus(`Impossible de charger vos missions : ${storageErrorMessage(error)}`));
-}
-
-function loadPendingBookings() {
-  if (pendingUnsub) pendingUnsub();
-  const pendingQuery = query(collection(db, 'bookings'), where('status', '==', 'pending'));
-  pendingUnsub = onSnapshot(pendingQuery, snapshot => {
-    pendingBookings = snapshot.docs
-      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
-      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
-    renderPendingList();
-  }, error => setWorkStatus(`Impossible de charger les missions disponibles : ${storageErrorMessage(error)}`));
 }
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
     currentUser = null;
-    if (pendingUnsub) pendingUnsub();
     if (assignedUnsub) assignedUnsub();
     if (authNotice) {
       showAuth(authNotice.message, authNotice.type);
@@ -368,7 +371,6 @@ onAuthStateChanged(auth, async user => {
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
-    loadPendingBookings();
     loadAssignedBookings();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
@@ -392,7 +394,7 @@ signInForm.addEventListener('submit', async event => {
 signOutBtn.addEventListener('click', async () => {
   await signOut(auth);
   activeBooking = null;
-  pendingBookings = [];
+  assignedBookings = [];
   activePhotoRecords = {};
 });
 
