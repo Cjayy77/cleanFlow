@@ -292,15 +292,35 @@ function renderActiveBooking() {
     const releaseBtn = document.createElement('button');
     releaseBtn.className = 'btn ghost danger';
     releaseBtn.type = 'button';
-    releaseBtn.textContent = 'Décliner cette mission';
     releaseBtn.style.marginLeft = '12px';
+    // Confirmation en deux temps sur le bouton lui-même : pas de window.confirm
+    // (qui reste muet si les boîtes de dialogue ont été bloquées par le
+    // navigateur), donc un clic produit toujours un retour visible.
+    let armed = false;
+    let armTimer = null;
+    const disarm = () => {
+      armed = false;
+      releaseBtn.textContent = 'Décliner cette mission';
+      releaseBtn.classList.remove('confirm');
+      if (armTimer) { clearTimeout(armTimer); armTimer = null; }
+    };
+    disarm();
     releaseBtn.onclick = async () => {
-      if (!window.confirm('Décliner cette mission ? Elle repart à l’équipe Kleining, qui la réattribuera à un autre prestataire.')) return;
+      if (!activeBooking) return;
+      if (!armed) {
+        armed = true;
+        releaseBtn.textContent = 'Confirmer le désistement';
+        releaseBtn.classList.add('confirm');
+        armTimer = setTimeout(disarm, 5000);
+        return;
+      }
+      if (armTimer) { clearTimeout(armTimer); armTimer = null; }
       const declinedId = activeBooking.id;
       const declinedRef = `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)}`;
+      setWorkStatus('Désistement en cours…', 'info');
       try {
         await withButtonLoading(releaseBtn, () =>
-          updateDoc(doc(db, 'bookings', declinedId), { status: 'pending', prestataireId: null }));
+          withTimeout(updateDoc(doc(db, 'bookings', declinedId), { status: 'pending', prestataireId: null }), 15000));
         queueEmail({
           to: TEAM_EMAIL,
           subject: `Kleining — mission déclinée · Réf ${declinedId.slice(0, 6).toUpperCase()}`,
@@ -308,6 +328,7 @@ function renderActiveBooking() {
         });
         setWorkStatus('Mission déclinée. L’équipe Kleining la réattribuera.', 'success');
       } catch (e) {
+        console.error('Décliner mission — échec:', e);
         setWorkStatus(`Impossible de décliner la mission : ${authErrorMessage(e)}`);
       }
     };

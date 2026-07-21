@@ -318,6 +318,8 @@ export function authErrorMessage(error) {
     case 'auth/network-request-failed':
     case 'unavailable':
       return 'Problème de connexion. Vérifiez votre réseau et réessayez.';
+    case 'app/timeout':
+      return 'La base de données ne répond pas. Vérifiez votre connexion et réessayez.';
     case 'permission-denied':
       return 'Accès refusé par la base de données. Les règles Firestore ne sont probablement pas publiées (voir SETUP.md, étape 3).';
     default:
