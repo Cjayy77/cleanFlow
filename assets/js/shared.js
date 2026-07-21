@@ -262,6 +262,35 @@ export function queueEmail({ to, subject, text }) {
   }).catch(() => {});
 }
 
+// Confirmation « deux clics » directement sur un bouton, sans window.confirm
+// (celui-ci reste muet si l'utilisateur a bloqué les dialogues du site). Le
+// premier clic arme le bouton (libellé rouge, 5 s) ; le second exécute l'action.
+// `guard` (optionnel) est évalué au premier clic : s'il renvoie false, on n'arme
+// pas (il peut afficher son propre message).
+export function armInlineConfirm(button, confirmLabel, onConfirm, guard) {
+  const idleLabel = button.textContent;
+  let armed = false;
+  let timer = null;
+  const disarm = () => {
+    armed = false;
+    button.textContent = idleLabel;
+    button.classList.remove('confirm');
+    if (timer) { clearTimeout(timer); timer = null; }
+  };
+  button.addEventListener('click', () => {
+    if (!armed) {
+      if (guard && !guard()) return;
+      armed = true;
+      button.textContent = confirmLabel;
+      button.classList.add('confirm');
+      timer = setTimeout(disarm, 5000);
+      return;
+    }
+    disarm();
+    onConfirm();
+  });
+}
+
 // État visuel de chargement d'un bouton pendant une action asynchrone.
 export async function withButtonLoading(button, task) {
   if (button) button.classList.add('loading');
