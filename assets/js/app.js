@@ -780,13 +780,25 @@ bookBtn.addEventListener('click', async () => {
   // Sur-mesure (> 250 m²) : pas de réservation directe, on envoie une demande
   // de devis à l'équipe qui reviendra vers le client avec un prix.
   if (quote.custom) {
+    const address = `${property.street}, ${property.city}`;
+    const devisText = `Demande de devis (sur-mesure, > 250 m²) — ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${kitCount} kit(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
     try {
-      await withButtonLoading(bookBtn, async () => {
-        queueEmail({
-          to: TEAM_EMAIL,
-          subject: `Kleining — demande de devis · ${property.street}, ${property.city}`,
-          text: `${formatShortDate(bookedDate)} · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² (sur-mesure) · ${kitCount} kit(s) · zone ${zoneLabel(property.zone)} · client : ${currentUser.name || currentUser.email} (${currentUser.email}).`,
-        });
+      // Trace la demande côté équipe (onglet Messages de l'admin) en plus de l'email.
+      await withButtonLoading(bookBtn, () =>
+        addDoc(collection(db, 'messages'), {
+          bookingId: '',
+          clientId: currentUser.uid,
+          clientEmail: currentUser.email,
+          clientName: currentUser.name || '',
+          propertyAddress: address,
+          text: devisText,
+          status: 'open',
+          createdAt: serverTimestamp(),
+        }));
+      queueEmail({
+        to: TEAM_EMAIL,
+        subject: `Kleining — demande de devis · ${address}`,
+        text: `${devisText} Client : ${currentUser.name || currentUser.email} (${currentUser.email}).`,
       });
       setAppStatus('Demande de devis envoyée à l’équipe Kleining. Vous serez recontacté avec un tarif sur-mesure.', 'success');
     } catch (err) {
