@@ -738,9 +738,10 @@ function renderCompta() {
   const rows = latestBookings
     .filter(b => b.status !== 'cancelled')
     .sort((a, b) => (b.scheduledDate || '').localeCompare(a.scheduledDate || ''));
-  const gross = rows.reduce((s, b) => s + (Number(b.price) || 0), 0);
+  // Deux poches distinctes : les revenus clients (prix des missions) ne
+  // bougent pas ; le bonus/malus ajuste séparément la paie des prestataires.
+  const revenue = rows.reduce((s, b) => s + (Number(b.price) || 0), 0);
   const adjSum = rows.reduce((s, b) => s + (Number(b.adjustment) || 0), 0);
-  const net = gross + adjSum;
 
   const stat = (value, label) => {
     const d = document.createElement('div');
@@ -755,9 +756,8 @@ function renderCompta() {
   };
   totals.innerHTML = '';
   totals.appendChild(stat(`${rows.length}`, 'Missions'));
-  totals.appendChild(stat(`${gross}€`, 'Montant brut'));
-  totals.appendChild(stat(`${adjSum >= 0 ? '+' : '−'}${Math.abs(adjSum)}€`, 'Bonus / malus'));
-  totals.appendChild(stat(`${net}€`, 'Net'));
+  totals.appendChild(stat(`${revenue}€`, 'Revenus clients'));
+  totals.appendChild(stat(`${adjSum >= 0 ? '+' : '−'}${Math.abs(adjSum)}€`, 'Bonus / malus prestataires'));
 
   list.innerHTML = '';
   if (rows.length === 0) {
@@ -786,30 +786,28 @@ function buildComptaRow(booking) {
   const adj = Number(booking.adjustment) || 0;
   const amount = document.createElement('div');
   amount.className = 'compta-amount';
-  const priceSpan = document.createElement('span');
-  priceSpan.textContent = `${Number(booking.price) || 0}€`;
-  amount.appendChild(priceSpan);
-  if (adj) {
-    const a = document.createElement('span');
-    a.className = adj > 0 ? 'adj-bonus' : 'adj-malus';
-    a.textContent = ` ${adj > 0 ? '+' : '−'}${Math.abs(adj)}€`;
-    amount.appendChild(a);
-  }
+  amount.textContent = `${Number(booking.price) || 0}€`;
   top.appendChild(left);
   top.appendChild(amount);
   row.appendChild(top);
-  if (booking.adjustmentNote) {
-    const note = document.createElement('div');
-    note.className = 'task-meta';
-    note.textContent = `Motif : ${booking.adjustmentNote}`;
-    row.appendChild(note);
+  // Le bonus/malus concerne la paie du prestataire, pas le revenu client :
+  // affiché sur une ligne distincte et libellée.
+  if (adj) {
+    const adjLine = document.createElement('div');
+    adjLine.className = 'task-meta';
+    const badge = document.createElement('span');
+    badge.className = adj > 0 ? 'adj-bonus' : 'adj-malus';
+    badge.textContent = `Prestataire : ${adj > 0 ? 'bonus +' : 'malus −'}${Math.abs(adj)}€`;
+    adjLine.appendChild(badge);
+    if (booking.adjustmentNote) adjLine.appendChild(document.createTextNode(` · ${booking.adjustmentNote}`));
+    row.appendChild(adjLine);
   }
 
   const adjBtn = document.createElement('button');
   adjBtn.className = 'mini-btn';
   adjBtn.type = 'button';
   adjBtn.style.marginTop = '10px';
-  adjBtn.textContent = adj ? 'Modifier le bonus / malus' : 'Ajouter un bonus / malus';
+  adjBtn.textContent = adj ? 'Modifier le bonus / malus prestataire' : 'Ajouter un bonus / malus prestataire';
   adjBtn.onclick = () => {
     const existing = row.querySelector('.adj-box');
     if (existing) { existing.remove(); return; }
