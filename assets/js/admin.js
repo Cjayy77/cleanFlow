@@ -696,7 +696,7 @@ function openReschedule(booking, row, triggerBtn) {
   const input = document.createElement('input');
   input.type = 'date';
   input.value = booking.scheduledDate || '';
-  input.min = new Date().toISOString().slice(0, 10);
+  input.min = isoInDays(0); // aujourd'hui en date locale (cohérent avec le calendrier)
   input.style.maxWidth = '190px';
   const save = document.createElement('button');
   save.className = 'btn primary';
