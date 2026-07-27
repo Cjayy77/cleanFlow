@@ -8,6 +8,7 @@ import {
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
+  withTimeout,
   resetPassword,
   requestTeamAccess,
 } from './shared.js';
@@ -98,7 +99,7 @@ function renderTasks(bookings) {
     toggleBtn.onclick = async () => {
       try {
         await withButtonLoading(toggleBtn, () =>
-          updateDoc(doc(db, 'bookings', booking.id), { linenDone: !booking.linenDone }));
+          withTimeout(updateDoc(doc(db, 'bookings', booking.id), { linenDone: !booking.linenDone }), 15000));
       } catch (e) {
         setWorkStatus(`Impossible de mettre à jour la tournée : ${authErrorMessage(e)}`);
       }

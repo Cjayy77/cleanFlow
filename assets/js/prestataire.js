@@ -276,7 +276,7 @@ function renderActiveBooking() {
   button.onclick = async () => {
     try {
       await withButtonLoading(button, () =>
-        updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' }));
+        withTimeout(updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' }), 15000));
       queueEmail({
         to: TEAM_EMAIL,
         subject: `Kleining — dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
@@ -457,7 +457,7 @@ incidentForm.addEventListener('submit', async event => {
         await withTimeout(uploadBytes(incidentRef, file, { contentType: file.type || 'image/jpeg' }), 30000);
         incidentPayload.photoRefs = [await withTimeout(getDownloadURL(incidentRef), 15000)];
       }
-      await addDoc(collection(db, 'incidents'), incidentPayload);
+      await withTimeout(addDoc(collection(db, 'incidents'), incidentPayload), 15000);
     });
     incidentForm.reset();
     setIncidentMessage('Signalement envoyé à l’équipe Kleining.', 'success');

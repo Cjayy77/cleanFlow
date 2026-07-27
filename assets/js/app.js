@@ -13,6 +13,7 @@ import {
   authErrorMessage,
   withButtonLoading,
   armInlineConfirm,
+  withTimeout,
   resetPassword,
   queueEmail,
   TEAM_EMAIL,
@@ -286,7 +287,7 @@ function renderPropertyButtons() {
     deleteBtn.setAttribute('aria-label', `Supprimer ${prop.street}`);
     armInlineConfirm(deleteBtn, 'Confirmer la suppression', async () => {
       try {
-        await deleteDoc(doc(db, 'properties', prop.id));
+        await withTimeout(deleteDoc(doc(db, 'properties', prop.id)), 15000);
         if (selectedPropertyId === prop.id) {
           selectedPropertyId = null;
           selectedDate = null;
@@ -445,7 +446,7 @@ function renderBookings() {
       armInlineConfirm(cancelBtn, 'Confirmer l’annulation', async () => {
         try {
           await withButtonLoading(cancelBtn, () =>
-            updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }));
+            withTimeout(updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }), 15000));
           queueEmail({
             to: TEAM_EMAIL,
             subject: `Kleining — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
@@ -491,7 +492,7 @@ function buildRating(booking) {
       if (star.disabled) return;
       stars.querySelectorAll('.star').forEach(s => { s.disabled = true; });
       try {
-        await updateDoc(doc(db, 'bookings', booking.id), { rating: value, ratedAt: serverTimestamp() });
+        await withTimeout(updateDoc(doc(db, 'bookings', booking.id), { rating: value, ratedAt: serverTimestamp() }), 15000);
         setAppStatus('Merci ! Votre note a bien été enregistrée.', 'success');
       } catch (err) {
         stars.querySelectorAll('.star').forEach(s => { s.disabled = false; });
@@ -532,8 +533,8 @@ function buildContactTeam(booking, address) {
     if (!text) { note.textContent = 'Écrivez un message avant d’envoyer.'; return; }
     note.textContent = '';
     try {
-      await withButtonLoading(send, async () => {
-        await addDoc(collection(db, 'messages'), {
+      await withButtonLoading(send, () =>
+        withTimeout(addDoc(collection(db, 'messages'), {
           bookingId: booking.id,
           clientId: currentUser.uid,
           clientEmail: currentUser.email,
@@ -542,8 +543,7 @@ function buildContactTeam(booking, address) {
           text,
           status: 'open',
           createdAt: serverTimestamp(),
-        });
-      });
+        }), 15000));
       queueEmail({
         to: TEAM_EMAIL,
         subject: `Kleining — message client · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
@@ -731,18 +731,18 @@ propertyForm.addEventListener('submit', async event => {
       // Recopie la nouvelle adresse sur les réservations en cours de ce bien
       // pour que prestataire et livreur ne voient jamais l'ancienne.
       const affected = bookings.filter(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
-      await withButtonLoading(propertySubmitBtn, async () => {
+      await withButtonLoading(propertySubmitBtn, () => withTimeout((async () => {
         await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, surface, zone, notes });
         await Promise.all(affected.map(b =>
           updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress })));
-      });
+      })(), 20000));
       setPropertyFormMode(null);
       setAppStatus(affected.length
         ? 'Bien modifié. Les réservations en cours ont été mises à jour.'
         : 'Bien modifié.', 'success');
     } else {
       await withButtonLoading(propertySubmitBtn, () =>
-        addDoc(collection(db, 'properties'), {
+        withTimeout(addDoc(collection(db, 'properties'), {
           ownerId: currentUser.uid,
           street,
           city,
@@ -751,7 +751,7 @@ propertyForm.addEventListener('submit', async event => {
           zone,
           notes,
           createdAt: serverTimestamp(),
-        }));
+        }), 15000));
       propertyForm.reset();
       propertyFormCard.open = false;
       setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.', 'success');
@@ -785,7 +785,7 @@ bookBtn.addEventListener('click', async () => {
     try {
       // Trace la demande côté équipe (onglet Messages de l'admin) en plus de l'email.
       await withButtonLoading(bookBtn, () =>
-        addDoc(collection(db, 'messages'), {
+        withTimeout(addDoc(collection(db, 'messages'), {
           bookingId: '',
           clientId: currentUser.uid,
           clientEmail: currentUser.email,
@@ -794,7 +794,7 @@ bookBtn.addEventListener('click', async () => {
           text: devisText,
           status: 'open',
           createdAt: serverTimestamp(),
-        }));
+        }), 15000));
       queueEmail({
         to: TEAM_EMAIL,
         subject: `Kleining — demande de devis · ${address}`,
@@ -809,7 +809,7 @@ bookBtn.addEventListener('click', async () => {
 
   try {
     await withButtonLoading(bookBtn, () =>
-      addDoc(collection(db, 'bookings'), {
+      withTimeout(addDoc(collection(db, 'bookings'), {
         clientId: currentUser.uid,
         propertyId: selectedPropertyId,
         propertyAddress: `${property.street}, ${property.city}`,
@@ -826,7 +826,7 @@ bookBtn.addEventListener('click', async () => {
         status: 'pending',
         linenRequested: quote.kitCount > 0,
         createdAt: serverTimestamp(),
-      }));
+      }), 15000));
     queueEmail({
       to: TEAM_EMAIL,
       subject: `Kleining — nouvelle réservation · ${property.street}, ${property.city}`,
