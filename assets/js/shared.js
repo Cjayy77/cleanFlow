@@ -142,7 +142,7 @@ export async function loadUserDoc(uid) {
 // règles Firestore refusent tout autre rôle à l'auto-inscription.
 export async function registerClient({ name, email, password, phone }) {
   const credential = await createUserWithEmailAndPassword(auth, email, password);
-  await setDoc(doc(db, 'users', credential.user.uid), {
+  await withTimeout(setDoc(doc(db, 'users', credential.user.uid), {
     uid: credential.user.uid,
     role: ROLE_CLIENT,
     name,
@@ -150,7 +150,7 @@ export async function registerClient({ name, email, password, phone }) {
     phone,
     accountStatus: 'approved',
     createdAt: serverTimestamp(),
-  });
+  }), 15000);
   return credential.user;
 }
 
@@ -220,7 +220,7 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
   const secondaryDb = getFirestore(secondary);
   try {
     const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-    await setDoc(doc(secondaryDb, 'users', credential.user.uid), {
+    await withTimeout(setDoc(doc(secondaryDb, 'users', credential.user.uid), {
       uid: credential.user.uid,
       role,
       name,
@@ -229,15 +229,15 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
       inviteCode: inviteCode || '',
       accountStatus: 'pending',
       createdAt: serverTimestamp(),
-    });
-    await addDoc(collection(secondaryDb, 'mail'), {
+    }), 15000);
+    await withTimeout(addDoc(collection(secondaryDb, 'mail'), {
       to: TEAM_EMAIL,
       message: {
         subject: `Kleining — nouvelle demande d’accès ${role}`,
         text: `${name} (${email}, ${phone}) demande un accès ${role}.${inviteCode ? ` Code d’invitation saisi : ${inviteCode}.` : ' Aucun code d’invitation saisi.'} À traiter dans /admin/.`,
       },
       createdAt: serverTimestamp(),
-    }).catch(() => {});
+    }), 10000).catch(() => {});
     return credential.user.uid;
   } finally {
     await signOut(secondaryAuth).catch(() => {});

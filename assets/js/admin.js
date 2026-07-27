@@ -504,7 +504,7 @@ function openMemberModal(member, role) {
 
 async function setMemberStatus(member, status, successMessage) {
   try {
-    await updateDoc(doc(db, 'users', member.id), { accountStatus: status });
+    await withTimeout(updateDoc(doc(db, 'users', member.id), { accountStatus: status }), 15000);
     setAdminStatus(successMessage, 'success');
     closeMemberModal();
   } catch (e) {
@@ -905,7 +905,7 @@ function renderMissionsToAssign() {
         const member = prestataires.find(p => p.id === prestataireId);
         try {
           await withButtonLoading(assignBtn, () =>
-            updateDoc(doc(db, 'bookings', booking.id), { prestataireId, status: 'accepted' }));
+            withTimeout(updateDoc(doc(db, 'bookings', booking.id), { prestataireId, status: 'accepted' }), 15000));
           if (member?.email) {
             queueEmail({
               to: member.email,
@@ -948,7 +948,7 @@ function renderKitsToAssign() {
         const member = livreurs.find(l => l.id === livreurId);
         try {
           await withButtonLoading(assignBtn, () =>
-            updateDoc(doc(db, 'bookings', booking.id), { livreurId }));
+            withTimeout(updateDoc(doc(db, 'bookings', booking.id), { livreurId }), 15000));
           if (member?.email) {
             queueEmail({
               to: member.email,
@@ -1020,7 +1020,7 @@ function renderClientMessages(messages) {
     resolveBtn.onclick = async () => {
       try {
         await withButtonLoading(resolveBtn, () =>
-          updateDoc(doc(db, 'messages', message.id), { status: 'resolved' }));
+          withTimeout(updateDoc(doc(db, 'messages', message.id), { status: 'resolved' }), 15000));
       } catch (e) {
         setAdminStatus(`Impossible de clore le message : ${authErrorMessage(e)}`, 'error');
       }
@@ -1064,7 +1064,7 @@ function renderOpenIncidents(incidents) {
     resolveBtn.onclick = async () => {
       try {
         await withButtonLoading(resolveBtn, () =>
-          updateDoc(doc(db, 'incidents', incident.id), { status: 'resolved' }));
+          withTimeout(updateDoc(doc(db, 'incidents', incident.id), { status: 'resolved' }), 15000));
       } catch (e) {
         setAdminStatus(`Impossible de clore l’incident : ${authErrorMessage(e)}`, 'error');
       }
@@ -1275,7 +1275,7 @@ async function resolveBooking(status) {
   const actionBtn = status === 'verified' ? verifyBtn : rejectBtn;
   actionBtn.classList.add('loading');
   try {
-    await updateDoc(doc(db, 'bookings', selectedBooking.id), update);
+    await withTimeout(updateDoc(doc(db, 'bookings', selectedBooking.id), update), 15000);
     if (status === 'verified' && selectedBooking.photos) {
       const batch = writeBatch(db);
       Object.values(selectedBooking.photos).forEach(photo => {
@@ -1285,7 +1285,7 @@ async function resolveBooking(status) {
           verifiedAt: serverTimestamp(),
         });
       });
-      await batch.commit();
+      await withTimeout(batch.commit(), 15000);
     }
     if (status === 'verified' && selectedBooking.clientEmail) {
       queueEmail({
@@ -1450,7 +1450,7 @@ function buildAccessRequestCard(req) {
   approveBtn.onclick = async () => {
     try {
       await withButtonLoading(approveBtn, () =>
-        updateDoc(doc(db, 'users', req.id), { accountStatus: 'approved' }));
+        withTimeout(updateDoc(doc(db, 'users', req.id), { accountStatus: 'approved' }), 15000));
       setTeamStatus(`Accès ${req.role} approuvé pour ${req.name}. La personne peut maintenant se connecter.`, 'success');
     } catch (e) {
       setTeamStatus('Impossible d’approuver cette demande.', 'error');
@@ -1463,7 +1463,7 @@ function buildAccessRequestCard(req) {
   armInlineConfirm(refuseBtn, 'Confirmer le refus', async () => {
     try {
       await withButtonLoading(refuseBtn, () =>
-        updateDoc(doc(db, 'users', req.id), { accountStatus: 'rejected' }));
+        withTimeout(updateDoc(doc(db, 'users', req.id), { accountStatus: 'rejected' }), 15000));
       setTeamStatus(`Demande de ${req.name} refusée. Ce compte n’a accès à aucune interface.`, 'success');
     } catch (e) {
       setTeamStatus('Impossible de refuser cette demande.', 'error');
