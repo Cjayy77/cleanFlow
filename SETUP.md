@@ -1,4 +1,4 @@
-# Kleining — Mise en route (100% depuis le navigateur)
+# CleanFlow — Mise en route (100% depuis le navigateur)
 
 Hébergement : **Vercel** (site statique). Backend : **Firebase** (Auth,
 Firestore, Storage). Aucune ligne de commande nécessaire — tout se fait
@@ -42,7 +42,7 @@ indispensable avant de mettre de vraies données.
 ## 4. Autoriser le domaine Vercel pour la connexion
 
 Console Firebase → **Authentication** → *Settings* → **Authorized domains** →
-ajoutez votre domaine Vercel (ex. `kleining.vercel.app`) et, plus tard, votre
+ajoutez votre domaine Vercel (ex. `cleanflow.vercel.app`) et, plus tard, votre
 domaine personnalisé. Sans cela, la connexion échouera depuis le site.
 
 ## 5. Déployer sur Vercel
@@ -104,7 +104,7 @@ navigateur :
      Le plus simple : un compte gratuit **Brevo** ou **SendGrid** (SMTP
      fourni en 5 minutes), ou le SMTP Gmail avec un « mot de passe
      d'application ».
-   - *Default FROM address* : ex. `Kleining <w.wanecque@gmail.com>`.
+   - *Default FROM address* : ex. `CleanFlow <w.wanecque@gmail.com>`.
 3. C'est tout. Sans l'extension, l'application fonctionne normalement — les
    notifications s'accumulent simplement dans la collection `mail` sans
    partir.

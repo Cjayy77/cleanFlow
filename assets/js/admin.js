@@ -1,4 +1,4 @@
-// Kleining — interface admin : file de vérification des dossiers photo.
+// CleanFlow — interface admin : file de vérification des dossiers photo.
 // Rien ne s'approuve automatiquement : chaque dossier passe par un humain ici.
 import {
   auth,
@@ -676,8 +676,8 @@ async function cancelBooking(booking, button) {
       if (clientSnap.exists() && clientSnap.data().email) {
         queueEmail({
           to: clientSnap.data().email,
-          subject: `Kleining — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
-          text: `Votre ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) a été annulé par l'équipe Kleining. Contactez-nous pour reprogrammer.`,
+          subject: `CleanFlow — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+          text: `Votre ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) a été annulé par l'équipe CleanFlow. Contactez-nous pour reprogrammer.`,
         });
       }
     } catch (e) { /* la notification ne doit pas bloquer l'annulation */ }
@@ -714,8 +714,8 @@ function openReschedule(booking, row, triggerBtn) {
         if (clientSnap.exists() && clientSnap.data().email) {
           queueEmail({
             to: clientSnap.data().email,
-            subject: `Kleining — ménage reprogrammé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
-            text: `Votre ménage (${booking.propertyAddress || 'votre bien'}) a été reprogrammé au ${formatShortDate(newDate)} par l'équipe Kleining.`,
+            subject: `CleanFlow — ménage reprogrammé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+            text: `Votre ménage (${booking.propertyAddress || 'votre bien'}) a été reprogrammé au ${formatShortDate(newDate)} par l'équipe CleanFlow.`,
           });
         }
       } catch (e) { /* la notification ne doit pas bloquer la reprogrammation */ }
@@ -731,6 +731,19 @@ function openReschedule(booking, row, triggerBtn) {
 }
 
 // Comptabilité : montant de chaque mission + ajustements bonus/malus discrétionnaires.
+// Détail financier d'une mission. CleanFlow encaisse tout (revenu client) et
+// verse au prestataire une rémunération (base fixée par l'admin) + bonus/malus.
+function comptaLine(booking) {
+  const price = Number(booking.price) || 0;
+  const prestation = Number(booking.prestationPrice) || 0;
+  const travel = Number(booking.travelFee) || 0;
+  const kits = Math.max(0, price - prestation - travel);
+  const base = Number(booking.prestatairePay) || 0;
+  const adj = Number(booking.adjustment) || 0;
+  const payout = base + adj;
+  return { price, prestation, travel, kits, base, adj, payout, margin: price - payout };
+}
+
 function renderCompta() {
   const totals = document.getElementById('comptaTotals');
   const list = document.getElementById('comptaList');
@@ -738,10 +751,13 @@ function renderCompta() {
   const rows = latestBookings
     .filter(b => b.status !== 'cancelled')
     .sort((a, b) => (b.scheduledDate || '').localeCompare(a.scheduledDate || ''));
-  // Deux poches distinctes : les revenus clients (prix des missions) ne
-  // bougent pas ; le bonus/malus ajuste séparément la paie des prestataires.
-  const revenue = rows.reduce((s, b) => s + (Number(b.price) || 0), 0);
-  const adjSum = rows.reduce((s, b) => s + (Number(b.adjustment) || 0), 0);
+  const agg = rows.reduce((acc, b) => {
+    const l = comptaLine(b);
+    acc.revenue += l.price;
+    acc.payout += l.payout;
+    return acc;
+  }, { revenue: 0, payout: 0 });
+  const margin = agg.revenue - agg.payout;
 
   const stat = (value, label) => {
     const d = document.createElement('div');
@@ -756,8 +772,9 @@ function renderCompta() {
   };
   totals.innerHTML = '';
   totals.appendChild(stat(`${rows.length}`, 'Missions'));
-  totals.appendChild(stat(`${revenue}€`, 'Revenus clients'));
-  totals.appendChild(stat(`${adjSum >= 0 ? '+' : '−'}${Math.abs(adjSum)}€`, 'Bonus / malus prestataires'));
+  totals.appendChild(stat(`${agg.revenue}€`, 'Revenus clients'));
+  totals.appendChild(stat(`${agg.payout}€`, 'Versé aux prestataires'));
+  totals.appendChild(stat(`${margin}€`, 'Marge CleanFlow'));
 
   list.innerHTML = '';
   if (rows.length === 0) {
@@ -768,8 +785,10 @@ function renderCompta() {
 }
 
 function buildComptaRow(booking) {
+  const l = comptaLine(booking);
   const row = document.createElement('div');
   row.className = 'task-card';
+
   const top = document.createElement('div');
   top.className = 'task-top';
   const left = document.createElement('div');
@@ -782,70 +801,94 @@ function buildComptaRow(booking) {
   meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${who} · ${formatBookingStatus(booking.status)}`;
   left.appendChild(title);
   left.appendChild(meta);
-
-  const adj = Number(booking.adjustment) || 0;
   const amount = document.createElement('div');
   amount.className = 'compta-amount';
-  amount.textContent = `${Number(booking.price) || 0}€`;
+  amount.textContent = `${l.price}€`;
   top.appendChild(left);
   top.appendChild(amount);
   row.appendChild(top);
-  // Le bonus/malus concerne la paie du prestataire, pas le revenu client :
-  // affiché sur une ligne distincte et libellée.
-  if (adj) {
-    const adjLine = document.createElement('div');
-    adjLine.className = 'task-meta';
-    const badge = document.createElement('span');
-    badge.className = adj > 0 ? 'adj-bonus' : 'adj-malus';
-    badge.textContent = `Prestataire : ${adj > 0 ? 'bonus +' : 'malus −'}${Math.abs(adj)}€`;
-    adjLine.appendChild(badge);
-    if (booking.adjustmentNote) adjLine.appendChild(document.createTextNode(` · ${booking.adjustmentNote}`));
-    row.appendChild(adjLine);
-  }
 
-  const adjBtn = document.createElement('button');
-  adjBtn.className = 'mini-btn';
-  adjBtn.type = 'button';
-  adjBtn.style.marginTop = '10px';
-  adjBtn.textContent = adj ? 'Modifier le bonus / malus prestataire' : 'Ajouter un bonus / malus prestataire';
-  adjBtn.onclick = () => {
+  // Revenu client (d'où vient l'argent).
+  const rev = document.createElement('div');
+  rev.className = 'task-meta';
+  rev.textContent = `Revenu : prestation ${l.prestation}€${l.kits ? ` · kits ${l.kits}€` : ''}${l.travel ? ` · déplacement ${l.travel}€` : ''}`;
+  row.appendChild(rev);
+
+  // Ce qui est versé au prestataire (base + bonus/malus).
+  const pay = document.createElement('div');
+  pay.className = 'task-meta';
+  if (!l.base && !l.adj) {
+    pay.textContent = 'Prestataire : rémunération à définir';
+  } else {
+    const adjPart = l.adj ? ` ${l.adj > 0 ? '+' : '−'}${Math.abs(l.adj)}€ (${l.adj > 0 ? 'bonus' : 'malus'})` : '';
+    const badge = document.createElement('span');
+    badge.className = l.adj < 0 ? 'adj-malus' : 'adj-bonus';
+    badge.textContent = `Prestataire : ${l.base}€${adjPart} = ${l.payout}€`;
+    pay.appendChild(badge);
+    if (booking.adjustmentNote) pay.appendChild(document.createTextNode(` · ${booking.adjustmentNote}`));
+  }
+  row.appendChild(pay);
+
+  // Marge CleanFlow.
+  const marginLine = document.createElement('div');
+  marginLine.className = 'task-meta roster-load';
+  marginLine.textContent = `Marge CleanFlow : ${l.margin}€`;
+  row.appendChild(marginLine);
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'mini-btn';
+  editBtn.type = 'button';
+  editBtn.style.marginTop = '10px';
+  editBtn.textContent = (l.base || l.adj) ? 'Modifier la rémunération' : 'Définir la rémunération';
+  editBtn.onclick = () => {
     const existing = row.querySelector('.adj-box');
     if (existing) { existing.remove(); return; }
     const box = document.createElement('div');
     box.className = 'adj-box';
     box.style.cssText = 'margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;';
-    const num = document.createElement('input');
-    num.type = 'number';
-    num.step = '1';
-    num.placeholder = '+ bonus / − malus (€)';
-    num.value = adj || '';
-    num.style.maxWidth = '170px';
+    const baseIn = document.createElement('input');
+    baseIn.type = 'number';
+    baseIn.step = '1';
+    baseIn.placeholder = 'Rémunération (€)';
+    baseIn.value = l.base || '';
+    baseIn.style.maxWidth = '150px';
+    const adjIn = document.createElement('input');
+    adjIn.type = 'number';
+    adjIn.step = '1';
+    adjIn.placeholder = '+ bonus / − malus (€)';
+    adjIn.value = l.adj || '';
+    adjIn.style.maxWidth = '160px';
     const noteInput = document.createElement('input');
     noteInput.type = 'text';
     noteInput.placeholder = 'Motif (optionnel)';
     noteInput.value = booking.adjustmentNote || '';
-    noteInput.style.maxWidth = '210px';
+    noteInput.style.maxWidth = '200px';
     const save = document.createElement('button');
     save.className = 'btn primary';
     save.type = 'button';
     save.textContent = 'Enregistrer';
     save.onclick = async () => {
-      const value = Math.round(Number(num.value) || 0);
+      const payload = {
+        prestatairePay: Math.round(Number(baseIn.value) || 0),
+        adjustment: Math.round(Number(adjIn.value) || 0),
+        adjustmentNote: noteInput.value.trim(),
+      };
       try {
         await withButtonLoading(save, () =>
-          withTimeout(updateDoc(doc(db, 'bookings', booking.id), { adjustment: value, adjustmentNote: noteInput.value.trim() }), 15000));
-        setAdminStatus('Ajustement enregistré.', 'success');
+          withTimeout(updateDoc(doc(db, 'bookings', booking.id), payload), 15000));
+        setAdminStatus('Rémunération enregistrée.', 'success');
       } catch (e) {
-        setAdminStatus(`Impossible d’enregistrer l’ajustement : ${authErrorMessage(e)}`, 'error');
+        setAdminStatus(`Impossible d’enregistrer : ${authErrorMessage(e)}`, 'error');
       }
     };
-    box.appendChild(num);
+    box.appendChild(baseIn);
+    box.appendChild(adjIn);
     box.appendChild(noteInput);
     box.appendChild(save);
     row.appendChild(box);
-    num.focus();
+    baseIn.focus();
   };
-  row.appendChild(adjBtn);
+  row.appendChild(editBtn);
   return row;
 }
 
@@ -909,7 +952,7 @@ function renderMissionsToAssign() {
           if (member?.email) {
             queueEmail({
               to: member.email,
-              subject: `Kleining — nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              subject: `CleanFlow — nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
               text: `${booking.propertyAddress || 'Mission'} · ${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}. Retrouvez-la dans votre interface prestataire.`,
             });
           }
@@ -952,7 +995,7 @@ function renderKitsToAssign() {
           if (member?.email) {
             queueEmail({
               to: member.email,
-              subject: `Kleining — nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              subject: `CleanFlow — nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
               text: `${booking.propertyAddress || 'Tournée'} · ${formatShortDate(booking.scheduledDate)} · dépôt des kits / linge propre et récupération. Retrouvez-la dans votre interface livreur.`,
             });
           }
@@ -1290,8 +1333,8 @@ async function resolveBooking(status) {
     if (status === 'verified' && selectedBooking.clientEmail) {
       queueEmail({
         to: selectedBooking.clientEmail,
-        subject: `Kleining — votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
-        text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe Kleining. Retrouvez le détail dans votre espace client.`,
+        subject: `CleanFlow — votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
+        text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe CleanFlow. Retrouvez le détail dans votre espace client.`,
       });
     }
     if (status === 'rejected' && selectedBooking.prestataireId) {
@@ -1300,7 +1343,7 @@ async function resolveBooking(status) {
         if (prestataireSnap.exists() && prestataireSnap.data().email) {
           queueEmail({
             to: prestataireSnap.data().email,
-            subject: `Kleining — dossier à corriger · Réf ${selectedBooking.id.slice(0, 6).toUpperCase()}`,
+            subject: `CleanFlow — dossier à corriger · Réf ${selectedBooking.id.slice(0, 6).toUpperCase()}`,
             text: `Le dossier de ${selectedBooking.propertyAddress || 'la mission'} (${formatShortDate(selectedBooking.scheduledDate)}) a été renvoyé pour correction. Note de l’équipe : ${note}. Corrigez les photos puis re-soumettez depuis votre interface.`,
           });
         }
@@ -1344,17 +1387,17 @@ onAuthStateChanged(auth, async user => {
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Kleining. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe CleanFlow. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
       await signOut(auth);
       return;
     }
     if (accountStatus === 'suspended') {
-      authNotice = { message: 'Votre accès a été suspendu par l’équipe Kleining. Contactez-nous pour en savoir plus.', type: '' };
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe CleanFlow. Contactez-nous pour en savoir plus.', type: '' };
       await signOut(auth);
       return;
     }
     if (accountStatus !== 'approved') {
-      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe CleanFlow si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);
       return;
     }
@@ -1525,7 +1568,7 @@ requestForm.addEventListener('submit', async event => {
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+    setAuthMessage('Demande envoyée. L’équipe CleanFlow va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }

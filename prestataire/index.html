@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>Kleining — Prestataire</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
+<title>CleanFlow — Prestataire</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/ui.css">
@@ -14,7 +14,7 @@
 <div class="app-wrap">
   <div class="top-row">
     <div>
-      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil Kleining"><span class="k">Klein</span>ing</a></div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil CleanFlow"><span class="k">Clean</span>Flow</a></div>
       <div class="role-tag">Interface prestataire</div>
     </div>
     <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
@@ -27,7 +27,7 @@
   <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion prestataire</h1>
-    <p>Espace réservé aux entreprises de ménage partenaires. L’accès se fait sur demande, vérifiée et approuvée par l’équipe Kleining.</p>
+    <p>Espace réservé aux entreprises de ménage partenaires. L’accès se fait sur demande, vérifiée et approuvée par l’équipe CleanFlow.</p>
     <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
@@ -37,7 +37,7 @@
       <div class="note-box"><a href="#" id="switchToRequest">Demander un accès prestataire</a></div>
     </form>
     <form id="requestForm" class="hidden">
-      <p>Votre demande sera vérifiée par l’équipe Kleining avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
+      <p>Votre demande sera vérifiée par l’équipe CleanFlow avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
       <div class="form-cols">
         <div class="form-row"><label for="requestName">Nom de l'entreprise</label><input id="requestName" type="text" required></div>
         <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
@@ -46,7 +46,7 @@
         <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
         <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
       </div>
-      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Kleining)</label><input id="requestCode" type="text"></div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par CleanFlow)</label><input id="requestCode" type="text"></div>
       <button class="btn primary" type="submit">Envoyer la demande</button>
       <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte, me connecter</a></div>
     </form>
@@ -56,7 +56,7 @@
     <div class="card">
       <div class="eyebrow">Bonjour</div>
       <h1 id="userNameLabel">Prestataire</h1>
-      <p>Réalisez les missions que l’équipe Kleining vous assigne, puis soumettez le jeu de photos exigé. L’équipe contrôle chaque dossier avant confirmation au client.</p>
+      <p>Réalisez les missions que l’équipe CleanFlow vous assigne, puis soumettez le jeu de photos exigé. L’équipe contrôle chaque dossier avant confirmation au client.</p>
     </div>
 
     <div id="workStatus" class="status-banner hidden" role="alert"></div>
@@ -104,6 +104,19 @@
       <div class="collapse-body">
         <div id="ratingSummary"></div>
         <div id="ratingList"></div>
+      </div>
+    </details>
+
+    <details class="card" id="comptaCard">
+      <summary>
+        <div>
+          <div class="eyebrow">Ma compta</div>
+          <h2>Ma rémunération</h2>
+        </div>
+      </summary>
+      <div class="collapse-body">
+        <div id="myComptaSummary"></div>
+        <div id="myComptaList"></div>
       </div>
     </details>
   </div>

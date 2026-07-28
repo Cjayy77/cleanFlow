@@ -1,4 +1,4 @@
-// Kleining — espace client : biens, calendrier de réservation, historique.
+// CleanFlow — espace client : biens, calendrier de réservation, historique.
 import {
   auth,
   db,
@@ -77,7 +77,7 @@ const historyCard = document.getElementById('historyCard');
 const bookingFor = document.getElementById('bookingFor');
 
 // Étapes affichées au client — la transparence du process est la promesse
-// centrale de Kleining.
+// centrale de CleanFlow.
 const BOOKING_STEPS = ['Réservée', 'Prise en charge', 'Ménage + photos', 'Confirmée'];
 const STATUS_STEP = { pending: 0, accepted: 1, submitted: 2, rejected: 2, verified: 3 };
 
@@ -230,7 +230,7 @@ function updateOnboardingState() {
   } else if (!hasBookings) {
     welcomeText.textContent = 'Votre bien est enregistré. Choisissez une date sur le calendrier, le prix est affiché avant confirmation.';
   } else {
-    welcomeText.textContent = 'Réservez un ménage, suivez sa vérification par l’équipe Kleining, et recevez la confirmation une fois le contrôle photo effectué.';
+    welcomeText.textContent = 'Réservez un ménage, suivez sa vérification par l’équipe CleanFlow, et recevez la confirmation une fois le contrôle photo effectué.';
   }
 }
 
@@ -449,12 +449,12 @@ function renderBookings() {
             withTimeout(updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }), 15000));
           queueEmail({
             to: TEAM_EMAIL,
-            subject: `Kleining — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+            subject: `CleanFlow — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
             text: `${address} · ${formatShortDate(booking.scheduledDate)} · annulée par le client ${currentUser.email}.`,
           });
           setAppStatus('Réservation annulée. La date est de nouveau disponible.', 'success');
         } catch (err) {
-          setAppStatus('Impossible d’annuler : la mission vient peut-être d’être acceptée par un prestataire. Contactez l’équipe Kleining.', 'error');
+          setAppStatus('Impossible d’annuler : la mission vient peut-être d’être acceptée par un prestataire. Contactez l’équipe CleanFlow.', 'error');
         }
       });
       card.appendChild(cancelBtn);
@@ -516,7 +516,7 @@ function buildContactTeam(booking, address) {
   const form = document.createElement('div');
   form.className = 'contact-form hidden';
   const textarea = document.createElement('textarea');
-  textarea.placeholder = 'Votre message à l’équipe Kleining (question, problème constaté, suite d’un incident…).';
+  textarea.placeholder = 'Votre message à l’équipe CleanFlow (question, problème constaté, suite d’un incident…).';
   textarea.rows = 3;
   const send = document.createElement('button');
   send.className = 'btn primary';
@@ -546,12 +546,12 @@ function buildContactTeam(booking, address) {
         }), 15000));
       queueEmail({
         to: TEAM_EMAIL,
-        subject: `Kleining — message client · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+        subject: `CleanFlow — message client · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
         text: `${currentUser.name || currentUser.email} (${currentUser.email}) à propos de ${address} (${formatShortDate(booking.scheduledDate)}) :\n\n${text}`,
       });
       textarea.value = '';
       form.classList.add('hidden');
-      setAppStatus('Message envoyé à l’équipe Kleining. Vous serez recontacté par email ou téléphone.', 'success');
+      setAppStatus('Message envoyé à l’équipe CleanFlow. Vous serez recontacté par email ou téléphone.', 'success');
     } catch (err) {
       note.textContent = `Impossible d’envoyer le message : ${authErrorMessage(err)}`;
     }
@@ -797,10 +797,10 @@ bookBtn.addEventListener('click', async () => {
         }), 15000));
       queueEmail({
         to: TEAM_EMAIL,
-        subject: `Kleining — demande de devis · ${address}`,
+        subject: `CleanFlow — demande de devis · ${address}`,
         text: `${devisText} Client : ${currentUser.name || currentUser.email} (${currentUser.email}).`,
       });
-      setAppStatus('Demande de devis envoyée à l’équipe Kleining. Vous serez recontacté avec un tarif sur-mesure.', 'success');
+      setAppStatus('Demande de devis envoyée à l’équipe CleanFlow. Vous serez recontacté avec un tarif sur-mesure.', 'success');
     } catch (err) {
       setAppStatus(`Impossible d’envoyer la demande de devis : ${authErrorMessage(err)}`, 'error');
     }
@@ -829,10 +829,10 @@ bookBtn.addEventListener('click', async () => {
       }), 15000));
     queueEmail({
       to: TEAM_EMAIL,
-      subject: `Kleining — nouvelle réservation · ${property.street}, ${property.city}`,
+      subject: `CleanFlow — nouvelle réservation · ${property.street}, ${property.city}`,
       text: `${formatShortDate(bookedDate)} · ${quote.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² · ${quote.kitCount} kit(s) · total ${quote.total}€ · zone ${zoneLabel(property.zone)} · client : ${currentUser.email}`,
     });
-    setAppStatus('Réservation enregistrée. Vous serez notifié par email une fois le ménage vérifié par l’équipe Kleining.', 'success');
+    setAppStatus('Réservation enregistrée. Vous serez notifié par email une fois le ménage vérifié par l’équipe CleanFlow.', 'success');
     selectedDate = null;
     selectedDateLabel.value = 'Aucune date';
     kitCount = 0;

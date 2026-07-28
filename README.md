@@ -1,7 +1,7 @@
-# Kleining
+# CleanFlow
 
 Le ménage vérifié pour les locations saisonnières à Paris. Réservation par
-calendrier, dossier photo obligatoire, contrôle humain par l'équipe Kleining
+calendrier, dossier photo obligatoire, contrôle humain par l'équipe CleanFlow
 avant toute confirmation au client.
 
 ## Structure
@@ -11,7 +11,7 @@ index.html            Site vitrine public
 app/                  Espace client (auto-inscription)
 prestataire/          Interface prestataire (lien direct, compte créé à la main)
 livreur/              Interface livreur (lien direct, compte créé à la main)
-admin/                File de vérification Kleining (lien direct, compte créé à la main)
+admin/                File de vérification CleanFlow (lien direct, compte créé à la main)
 legal/                CGU + politique de confidentialité
 assets/               ui.css partagé + JS des quatre interfaces
 firebase-config.js    Config du projet Firebase (à remplir — voir SETUP.md)

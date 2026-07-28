@@ -1,4 +1,4 @@
-// Kleining — couche de données Firebase partagée par les quatre interfaces.
+// CleanFlow — couche de données Firebase partagée par les quatre interfaces.
 // Firestore = données, Firebase Auth = connexion, Firebase Storage = photos.
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -110,7 +110,7 @@ if (configMissing) {
   const renderNotice = () => {
     document.body.innerHTML = `
       <div style="max-width:560px;margin:80px auto;padding:36px;font-family:sans-serif;border:1px solid #DCE1EE;border-radius:8px;background:#fff;color:#10131A;">
-        <div style="font-family:monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#002FA7;margin-bottom:12px;">Kleining — configuration requise</div>
+        <div style="font-family:monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#002FA7;margin-bottom:12px;">CleanFlow — configuration requise</div>
         <h1 style="font-size:20px;margin:0 0 12px;">Firebase n'est pas encore configuré</h1>
         <p style="line-height:1.6;color:#5A6472;">Copiez la configuration web de votre projet Firebase dans <code>firebase-config.js</code>, puis rechargez la page. Les étapes complètes sont dans <code>SETUP.md</code>.</p>
       </div>`;
@@ -233,7 +233,7 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
     await withTimeout(addDoc(collection(secondaryDb, 'mail'), {
       to: TEAM_EMAIL,
       message: {
-        subject: `Kleining — nouvelle demande d’accès ${role}`,
+        subject: `CleanFlow — nouvelle demande d’accès ${role}`,
         text: `${name} (${email}, ${phone}) demande un accès ${role}.${inviteCode ? ` Code d’invitation saisi : ${inviteCode}.` : ' Aucun code d’invitation saisi.'} À traiter dans /admin/.`,
       },
       createdAt: serverTimestamp(),

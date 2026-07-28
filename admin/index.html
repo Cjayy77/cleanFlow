@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>Kleining — Vérification</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E">
+<title>CleanFlow — Vérification</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23002FA7'/%3E%3Ctext x='50' y='74' font-size='68' font-family='Georgia,serif' font-style='italic' fill='%23D9A441' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/ui.css">
@@ -14,8 +14,8 @@
 <div class="app-wrap">
   <div class="top-row">
     <div>
-      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil Kleining"><span class="k">Klein</span>ing</a></div>
-      <div class="role-tag">Vérification Kleining</div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil CleanFlow"><span class="k">Clean</span>Flow</a></div>
+      <div class="role-tag">Vérification CleanFlow</div>
     </div>
     <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
   </div>
@@ -27,7 +27,7 @@
   <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion admin</h1>
-    <p>Espace réservé à l’équipe Kleining pour le contrôle des dossiers photo. Tout nouvel accès doit être approuvé par un admin existant.</p>
+    <p>Espace réservé à l’équipe CleanFlow pour le contrôle des dossiers photo. Tout nouvel accès doit être approuvé par un admin existant.</p>
     <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
@@ -37,7 +37,7 @@
       <div class="note-box"><a href="#" id="switchToRequest">Demander un accès admin</a></div>
     </form>
     <form id="requestForm" class="hidden">
-      <p>Votre demande sera vérifiée par l’équipe Kleining avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
+      <p>Votre demande sera vérifiée par l’équipe CleanFlow avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
       <div class="form-cols">
         <div class="form-row"><label for="requestName">Nom</label><input id="requestName" type="text" required></div>
         <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
@@ -46,7 +46,7 @@
         <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
         <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
       </div>
-      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Kleining)</label><input id="requestCode" type="text"></div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par CleanFlow)</label><input id="requestCode" type="text"></div>
       <button class="btn primary" type="submit">Envoyer la demande</button>
       <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte, me connecter</a></div>
     </form>
@@ -55,7 +55,7 @@
   <div id="appScreen" class="hidden">
     <div class="card">
       <div class="eyebrow">Contrôle qualité</div>
-      <h1 id="userNameLabel">Équipe Kleining</h1>
+      <h1 id="userNameLabel">Équipe CleanFlow</h1>
       <p>Aucun dossier ne se valide automatiquement : chaque jeu de photos est contrôlé ici avant que le client ne soit notifié.</p>
     </div>
 

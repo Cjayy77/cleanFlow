@@ -172,9 +172,9 @@ service cloud.firestore {
         || (isAdmin()
           && request.resource.data.scheduledDate is string
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scheduledDate']))
-        // Admin : ajustement compta discrétionnaire (bonus/malus) sur une mission.
+        // Admin : compta — rémunération prestataire (base) + bonus/malus.
         || (isAdmin()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adjustment', 'adjustmentNote']))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prestatairePay', 'adjustment', 'adjustmentNote']))
       );
     }
 

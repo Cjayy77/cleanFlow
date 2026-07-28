@@ -1,4 +1,4 @@
-// Kleining — interface prestataire : missions disponibles, photos, incidents.
+// CleanFlow — interface prestataire : missions disponibles, photos, incidents.
 import {
   auth,
   db,
@@ -50,6 +50,8 @@ const assignedList = document.getElementById('assignedList');
 const activeBookingContainer = document.getElementById('activeBooking');
 const ratingSummary = document.getElementById('ratingSummary');
 const ratingList = document.getElementById('ratingList');
+const myComptaSummary = document.getElementById('myComptaSummary');
+const myComptaList = document.getElementById('myComptaList');
 const incidentForm = document.getElementById('incidentForm');
 const incidentStatus = document.getElementById('incidentStatus');
 const incidentType = document.getElementById('incidentType');
@@ -71,6 +73,7 @@ let currentUser = null;
 let authNotice = null;
 let assignedBookings = [];
 let ratedBookings = [];
+let allMyBookings = [];
 let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
@@ -117,7 +120,7 @@ function countUploadedPhotos() {
 function renderAssignedList() {
   assignedList.innerHTML = '';
   if (assignedBookings.length === 0) {
-    assignedList.innerHTML = '<div class="empty-state">Aucune mission ne vous est assignée pour le moment. L’équipe Kleining vous attribue vos missions.</div>';
+    assignedList.innerHTML = '<div class="empty-state">Aucune mission ne vous est assignée pour le moment. L’équipe CleanFlow vous attribue vos missions.</div>';
     return;
   }
   assignedBookings.forEach(booking => {
@@ -164,7 +167,7 @@ function renderRatings() {
   ratingSummary.innerHTML = '';
   ratingList.innerHTML = '';
   if (ratedBookings.length === 0) {
-    ratingSummary.innerHTML = '<div class="empty-state">Aucune évaluation pour le moment. Les clients notent la prestation une fois vérifiée par l’équipe Kleining.</div>';
+    ratingSummary.innerHTML = '<div class="empty-state">Aucune évaluation pour le moment. Les clients notent la prestation une fois vérifiée par l’équipe CleanFlow.</div>';
     return;
   }
   const average = ratedBookings.reduce((sum, b) => sum + b.rating, 0) / ratedBookings.length;
@@ -201,6 +204,61 @@ function renderRatings() {
   });
 }
 
+// Compta du prestataire : ce que CleanFlow lui verse par mission (base fixée
+// par l'équipe + bonus/malus). Le paiement effectif se fait hors application.
+function renderMyCompta() {
+  if (!myComptaSummary) return;
+  myComptaSummary.innerHTML = '';
+  myComptaList.innerHTML = '';
+  const payout = b => (Number(b.prestatairePay) || 0) + (Number(b.adjustment) || 0);
+  const total = allMyBookings.reduce((s, b) => s + payout(b), 0);
+
+  const summary = document.createElement('div');
+  summary.className = 'rating-avg';
+  const num = document.createElement('span');
+  num.className = 'rating-avg-num';
+  num.textContent = `${total}€`;
+  const sub = document.createElement('span');
+  sub.className = 'rating-avg-out';
+  sub.textContent = `sur ${allMyBookings.length} mission${allMyBookings.length > 1 ? 's' : ''}`;
+  summary.appendChild(num);
+  summary.appendChild(sub);
+  myComptaSummary.appendChild(summary);
+  const note = document.createElement('div');
+  note.className = 'task-meta';
+  note.textContent = 'Rémunération fixée par l’équipe CleanFlow. Le règlement se fait hors application.';
+  myComptaSummary.appendChild(note);
+
+  if (allMyBookings.length === 0) {
+    myComptaList.innerHTML = '<div class="empty-state">Aucune mission pour le moment.</div>';
+    return;
+  }
+  allMyBookings.forEach(booking => {
+    const base = Number(booking.prestatairePay) || 0;
+    const adj = Number(booking.adjustment) || 0;
+    const item = document.createElement('div');
+    item.className = 'task-card';
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = booking.propertyAddress || booking.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${formatBookingStatus(booking.status)}`;
+    item.appendChild(title);
+    item.appendChild(meta);
+    const payLine = document.createElement('div');
+    payLine.className = 'task-meta roster-load';
+    if (!base && !adj) {
+      payLine.textContent = 'Rémunération à définir';
+    } else {
+      const adjPart = adj ? ` ${adj > 0 ? '+' : '−'}${Math.abs(adj)}€ (${adj > 0 ? 'bonus' : 'malus'})` : '';
+      payLine.textContent = `${base}€${adjPart} = ${base + adj}€`;
+    }
+    item.appendChild(payLine);
+    myComptaList.appendChild(item);
+  });
+}
+
 function renderActiveBooking() {
   activeBookingContainer.innerHTML = '';
   if (!activeBooking) return;
@@ -218,7 +276,7 @@ function renderActiveBooking() {
   if (activeBooking.status === 'rejected' && activeBooking.adminNote) {
     const note = document.createElement('div');
     note.className = 'status-banner';
-    note.textContent = `Dossier renvoyé par Kleining : ${activeBooking.adminNote}`;
+    note.textContent = `Dossier renvoyé par CleanFlow : ${activeBooking.adminNote}`;
     activeBookingContainer.appendChild(note);
   }
 
@@ -270,7 +328,7 @@ function renderActiveBooking() {
   button.className = 'btn gold';
   button.type = 'button';
   button.textContent = activeBooking.status === 'submitted'
-    ? 'Dossier envoyé, en attente de vérification Kleining'
+    ? 'Dossier envoyé, en attente de vérification CleanFlow'
     : `Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`;
   button.disabled = !canUpload || count < PHOTO_SLOTS.length;
   button.onclick = async () => {
@@ -279,7 +337,7 @@ function renderActiveBooking() {
         withTimeout(updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' }), 15000));
       queueEmail({
         to: TEAM_EMAIL,
-        subject: `Kleining — dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+        subject: `CleanFlow — dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
         text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · soumis par ${currentUser.name || currentUser.email}. À contrôler dans /admin/.`,
       });
     } catch (e) {
@@ -323,10 +381,10 @@ function renderActiveBooking() {
           withTimeout(updateDoc(doc(db, 'bookings', declinedId), { status: 'pending', prestataireId: null }), 15000));
         queueEmail({
           to: TEAM_EMAIL,
-          subject: `Kleining — mission déclinée · Réf ${declinedId.slice(0, 6).toUpperCase()}`,
+          subject: `CleanFlow — mission déclinée · Réf ${declinedId.slice(0, 6).toUpperCase()}`,
           text: `${declinedRef} · déclinée par ${currentUser.name || currentUser.email}. À réattribuer dans /admin/.`,
         });
-        setWorkStatus('Mission déclinée. L’équipe Kleining la réattribuera.', 'success');
+        setWorkStatus('Mission déclinée. L’équipe CleanFlow la réattribuera.', 'success');
       } catch (e) {
         console.error('Décliner mission — échec:', e);
         setWorkStatus(`Impossible de décliner la mission : ${authErrorMessage(e)}`);
@@ -348,6 +406,9 @@ function loadAssignedBookings() {
     ratedBookings = mine
       .filter(booking => booking.status === 'verified' && typeof booking.rating === 'number')
       .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+    allMyBookings = mine
+      .filter(booking => booking.status !== 'cancelled')
+      .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
     const stillThere = assignedBookings.find(b => b.id === selectedMissionId);
     activeBooking = stillThere || assignedBookings[0] || null;
     selectedMissionId = activeBooking ? activeBooking.id : null;
@@ -359,6 +420,7 @@ function loadAssignedBookings() {
     renderAssignedList();
     renderActiveBooking();
     renderRatings();
+    renderMyCompta();
   }, error => setWorkStatus(`Impossible de charger vos missions : ${storageErrorMessage(error)}`));
 }
 
@@ -383,17 +445,17 @@ onAuthStateChanged(auth, async user => {
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Kleining. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe CleanFlow. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
       await signOut(auth);
       return;
     }
     if (accountStatus === 'suspended') {
-      authNotice = { message: 'Votre accès a été suspendu par l’équipe Kleining. Contactez-nous pour en savoir plus.', type: '' };
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe CleanFlow. Contactez-nous pour en savoir plus.', type: '' };
       await signOut(auth);
       return;
     }
     if (accountStatus !== 'approved') {
-      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe CleanFlow si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);
       return;
     }
@@ -460,7 +522,7 @@ incidentForm.addEventListener('submit', async event => {
       await withTimeout(addDoc(collection(db, 'incidents'), incidentPayload), 15000);
     });
     incidentForm.reset();
-    setIncidentMessage('Signalement envoyé à l’équipe Kleining.', 'success');
+    setIncidentMessage('Signalement envoyé à l’équipe CleanFlow.', 'success');
   } catch (err) {
     setIncidentMessage(`Impossible d’envoyer le signalement : ${storageErrorMessage(err)}`, 'error');
   }
@@ -494,7 +556,7 @@ requestForm.addEventListener('submit', async event => {
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+    setAuthMessage('Demande envoyée. L’équipe CleanFlow va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }

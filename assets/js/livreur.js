@@ -1,4 +1,4 @@
-// Kleining — interface livreur : tournées de linge liées aux réservations.
+// CleanFlow — interface livreur : tournées de linge liées aux réservations.
 import {
   auth,
   db,
@@ -75,7 +75,7 @@ function showApp() {
 function renderTasks(bookings) {
   taskList.innerHTML = '';
   if (bookings.length === 0) {
-    taskList.innerHTML = '<div class="empty-state">Aucune tournée ne vous est assignée pour le moment. L’équipe Kleining vous attribue vos tournées.</div>';
+    taskList.innerHTML = '<div class="empty-state">Aucune tournée ne vous est assignée pour le moment. L’équipe CleanFlow vous attribue vos tournées.</div>';
     return;
   }
   bookings.forEach(booking => {
@@ -111,7 +111,7 @@ function renderTasks(bookings) {
 
 function loadLaundryTasks() {
   if (taskUnsub) taskUnsub();
-  // Le livreur ne voit que les tournées que l'équipe Kleining lui a assignées.
+  // Le livreur ne voit que les tournées que l'équipe CleanFlow lui a assignées.
   // Filtre unique + tri côté client : aucun index composite à créer.
   const taskQuery = query(collection(db, 'bookings'), where('livreurId', '==', currentUser.uid));
   taskUnsub = onSnapshot(taskQuery, snapshot => {
@@ -144,17 +144,17 @@ onAuthStateChanged(auth, async user => {
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Kleining. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe CleanFlow. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
       await signOut(auth);
       return;
     }
     if (accountStatus === 'suspended') {
-      authNotice = { message: 'Votre accès a été suspendu par l’équipe Kleining. Contactez-nous pour en savoir plus.', type: '' };
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe CleanFlow. Contactez-nous pour en savoir plus.', type: '' };
       await signOut(auth);
       return;
     }
     if (accountStatus !== 'approved') {
-      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe CleanFlow si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);
       return;
     }
@@ -212,7 +212,7 @@ requestForm.addEventListener('submit', async event => {
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+    setAuthMessage('Demande envoyée. L’équipe CleanFlow va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }
