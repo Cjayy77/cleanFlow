@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="CleanFlow — le ménage vérifié pour vos locations saisonnières à Paris. Réservation par calendrier, photos obligatoires, contrôle humain avant chaque confirmation. Prix transparents selon la surface, sans engagement.">
-<title>CleanFlow — Le ménage vérifié pour vos locations saisonnières</title>
+<meta name="description" content="CleanFlow — le ménage vérifié pour vos logements. Réservation par calendrier, photos obligatoires, contrôle humain avant chaque confirmation. Prix transparents selon la surface, sans engagement.">
+<title>CleanFlow — Le ménage vérifié</title>
 
 <!-- Aperçu de lien (Open Graph + Twitter). NOTE : remplacer cleanflow.vercel.app
      par le domaine définitif si un domaine personnalisé est ajouté. -->
@@ -12,19 +12,19 @@
 <meta property="og:site_name" content="CleanFlow">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:url" content="https://cleanflow.vercel.app/">
-<meta property="og:title" content="CleanFlow — Le ménage vérifié pour vos locations saisonnières">
-<meta property="og:description" content="Ménage vérifié pour locations saisonnières à Paris : photos obligatoires, contrôle humain avant chaque confirmation. Prix transparents selon la surface, sans engagement.">
+<meta property="og:title" content="CleanFlow — Le ménage vérifié">
+<meta property="og:description" content="Ménage vérifié : photos obligatoires, contrôle humain avant chaque confirmation. Prix transparents selon la surface, sans engagement.">
 <meta property="og:image" content="https://cleanflow.vercel.app/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="CleanFlow — Le ménage vérifié, avant chaque confirmation.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="CleanFlow — Le ménage vérifié pour vos locations saisonnières">
-<meta name="twitter:description" content="Photos obligatoires, contrôle humain avant chaque confirmation. Locations saisonnières à Paris.">
+<meta name="twitter:title" content="CleanFlow — Le ménage vérifié">
+<meta name="twitter:description" content="Photos obligatoires, contrôle humain avant chaque confirmation. Prix transparents, sans engagement.">
 <meta name="twitter:image" content="https://cleanflow.vercel.app/assets/og.png">
 <link rel="icon" href="assets/fan-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Mulish:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --pink:#E6007E; --pink-deep:#B80068; --pink-soft:#FF74B8; --purple:#7A1FA2;
@@ -38,9 +38,9 @@
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; }
-  body{ font-family:'Mulish', sans-serif; color:var(--ink); background:var(--white); font-size:16px; line-height:1.65; }
+  body{ font-family:'Poppins', sans-serif; color:var(--ink); background:var(--white); font-size:16px; line-height:1.6; }
   .wrap{ max-width: 1160px; margin:0 auto; padding: 0 32px; }
-  h1,h2,h3,h4{ font-family:'Fraunces', Georgia, serif; font-weight:600; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
+  h1,h2,h3,h4{ font-family:'Poppins', sans-serif; font-weight:700; letter-spacing:-0.02em; line-height:1.1; color:var(--ink); }
   a{ color:inherit; }
   ::selection{ background:var(--pink); color:#fff; }
 
@@ -93,7 +93,7 @@
   .hero p{ font-size:18px; line-height:1.65; color: var(--muted); max-width:520px; margin-bottom:32px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
   .hero-stats{ display:flex; gap:38px; margin-top:44px; flex-wrap:wrap; }
-  .hero-stat b{ display:block; font-family:'Fraunces', Georgia, serif; font-size:30px; font-weight:600; color:var(--pink); }
+  .hero-stat b{ display:block; font-size:28px; font-weight:800; color:var(--pink); }
   .hero-stat span{ font-size:13px; color:var(--muted); }
   .hero-feather{ display:flex; justify-content:center; }
   .hero-feather img{ width:100%; max-width:470px; height:auto; }
@@ -129,10 +129,10 @@
   .process-list{ max-width:780px; }
   .process-item{ display:grid; grid-template-columns: 64px 1fr; gap:28px; padding: 26px 0; align-items:start; border-top:1px solid var(--line); }
   .process-item:first-child{ border-top:none; }
-  .process-num{ width:50px; height:50px; border-radius:12px; background:var(--tint); color:var(--pink); font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:24px; display:flex; align-items:center; justify-content:center; }
+  .process-num{ width:50px; height:50px; border-radius:12px; background:var(--tint); color:var(--pink); font-weight:800; font-size:22px; display:flex; align-items:center; justify-content:center; }
   .process-item.verify .process-num{ background:var(--pink); color:#fff; }
   .process-text h4{ font-size:20px; margin-bottom:6px; }
-  .process-item.verify .process-text h4::after{ content:'l’étape CleanFlow'; font-size:11px; color:var(--pink); margin-left:12px; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; vertical-align:middle; font-family:'Mulish', sans-serif; }
+  .process-item.verify .process-text h4::after{ content:'l’étape CleanFlow'; font-size:11px; color:var(--pink); margin-left:12px; letter-spacing:0.12em; text-transform:uppercase; font-weight:800; vertical-align:middle; }
   .process-text p{ font-size:15px; color: var(--muted); line-height:1.7; }
   @media (max-width:640px){ .process-item{ grid-template-columns:48px 1fr; gap:18px; } }
 
@@ -184,7 +184,7 @@
   /* BANDE ROSE UNIE */
   .goal-outer{ background: var(--pink); padding: 64px 0; }
   .goal-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:40px; }
-  .goal-item b{ display:block; font-family:'Fraunces', Georgia, serif; font-size: clamp(23px,2.6vw,32px); font-weight:600; margin-bottom:8px; color:#fff; }
+  .goal-item b{ display:block; font-size: clamp(22px,2.5vw,30px); font-weight:800; margin-bottom:8px; color:#fff; }
   .goal-item span{ font-size:14px; color: rgba(255,255,255,0.85); line-height:1.55; display:block; max-width:260px; }
   @media (max-width:760px){ .goal-grid{ grid-template-columns:1fr; gap:28px; } }
 
@@ -240,7 +240,7 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div class="hero-content">
-      <div class="hero-kicker">Paris · Locations saisonnières</div>
+      <div class="hero-kicker">Contrôle humain avant confirmation</div>
       <h1>Le ménage <em>vérifié</em>, avant chaque confirmation.</h1>
       <p>Des prestataires professionnels, un dossier photo pour chaque intervention, une vérification par notre équipe avant confirmation. Pas de mauvaise surprise.</p>
       <div class="btn-row">
@@ -250,7 +250,7 @@
       <div class="hero-stats">
         <div class="hero-stat"><b>100%</b><span>vérifié par un humain</span></div>
         <div class="hero-stat"><b>0</b><span>engagement · sans commission</span></div>
-        <div class="hero-stat"><b>Paris</b><span>locations saisonnières</span></div>
+        <div class="hero-stat"><b>Photos</b><span>à chaque intervention</span></div>
       </div>
     </div>
     <div class="hero-feather" aria-hidden="true">
@@ -349,7 +349,7 @@
     <div class="stamp-mock reveal">
       <div class="stamp-kicker">Dossier · Rue de la Pompe, 16e</div>
       <div class="stamp-row"><span>Photos soumises</span><b>6 / 6</b></div>
-      <div class="stamp-row"><span>Prestataire</span><b>Net&Pro Paris</b></div>
+      <div class="stamp-row"><span>Prestataire</span><b>Net&Pro</b></div>
       <div class="stamp-row"><span>Contrôlé par</span><b>Équipe CleanFlow</b></div>
       <div class="stamp-status">✓ Vérifié — en attente de confirmation client</div>
     </div>
@@ -423,8 +423,8 @@
     </div>
     <div class="faq-list reveal">
       <details>
-        <summary>Dans quelles villes intervenez-vous ?</summary>
-        <p>À Paris pour la bêta. D'autres villes suivront une fois le processus rodé.</p>
+        <summary>Où intervenez-vous ?</summary>
+        <p>Nous démarrons en bêta sur une zone pilote. D'autres secteurs suivront une fois le processus rodé.</p>
       </details>
       <details>
         <summary>Qui réalise le ménage ?</summary>
@@ -462,7 +462,7 @@
 
 <div class="goal-outer" id="beta">
   <div class="wrap goal-grid">
-    <div class="goal-item reveal"><b>Places limitées</b><span>bêta parisienne en petit comité, qualité d'abord</span></div>
+    <div class="goal-item reveal"><b>Places limitées</b><span>bêta en petit comité, qualité d'abord</span></div>
     <div class="goal-item reveal"><b>100% humain</b><span>chaque dossier photo vérifié par notre équipe</span></div>
     <div class="goal-item reveal"><b>0 engagement</b><span>paiement au ménage, prix transparents, sans commission</span></div>
   </div>
@@ -473,7 +473,7 @@
   <div class="wrap">
     <div class="cta-card reveal">
       <h2>Envie de tester CleanFlow <em>sur votre bien ?</em></h2>
-      <p>La bêta est ouverte à un petit nombre de propriétaires parisiens. Créez votre compte et réservez votre premier ménage.</p>
+      <p>La bêta est ouverte à un petit nombre de propriétaires. Créez votre compte et réservez votre premier ménage.</p>
       <a href="/app/" class="btn-a pink">Créer mon compte client →</a>
       <div class="cta-contact">Une question ? Écrivez-nous à <a href="mailto:w.wanecque@gmail.com">w.wanecque@gmail.com</a></div>
     </div>
@@ -489,7 +489,7 @@
           <img class="mark" src="assets/fan-mark.svg" alt="" aria-hidden="true">
           <span>Clean</span>Flow
         </b>
-        <p>Le ménage vérifié pour vos locations saisonnières à Paris. Photos obligatoires, contrôle humain avant chaque confirmation.</p>
+        <p>Le ménage vérifié pour vos logements. Photos obligatoires, contrôle humain avant chaque confirmation.</p>
       </div>
       <div class="footer-col">
         <h5>Espaces</h5>
