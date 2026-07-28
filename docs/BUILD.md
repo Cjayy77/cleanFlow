@@ -1,6 +1,6 @@
-# Kleining — Technical Documentation & Scope of Work
+# CleanFlow — Technical Documentation & Scope of Work
 
-Reference document describing the entire Kleining platform: every page, its
+Reference document describing the entire CleanFlow platform: every page, its
 logic, its rules, the data model, and the infrastructure. Intended as the basis
 for invoicing (deliverables summary in Section 10).
 
@@ -8,9 +8,9 @@ for invoicing (deliverables summary in Section 10).
 
 ## 1. Overview
 
-Kleining is a web platform for **verified cleaning of Paris short-term
+CleanFlow is a web platform for **verified cleaning of Paris short-term
 rentals**. Its defining feature: every job is documented with a mandatory set of
-photos, **reviewed by a human (the Kleining team) before any confirmation is
+photos, **reviewed by a human (the CleanFlow team) before any confirmation is
 sent to the client**. Nothing is validated automatically.
 
 Four roles, four distinct interfaces:
@@ -20,7 +20,7 @@ Four roles, four distinct interfaces:
 | **Client** | Rental property owner | Free self sign-up |
 | **Prestataire** (cleaner) | Partner cleaning company | On approved request |
 | **Livreur** (delivery) | Linen / kit delivery service | On approved request |
-| **Admin** | Kleining team (review + operations) | On approved request |
+| **Admin** | CleanFlow team (review + operations) | On approved request |
 
 ---
 
@@ -51,7 +51,7 @@ Four roles, four distinct interfaces:
 /app/                 Client portal
 /prestataire/         Cleaner interface
 /livreur/             Delivery interface
-/admin/               Kleining admin console
+/admin/               CleanFlow admin console
 /legal/cgu.html       Terms of use
 /legal/confidentialite.html   Privacy policy
 ```
@@ -85,7 +85,7 @@ price grid is members-only, visible after sign-up).
 - **Sticky nav bar** with anchors and a "Book a cleaning" CTA.
 - **Hero** — value proposition (cleaning verified before confirmation), dual
   CTA, animated "Verified cleaning" stamp.
-- **Roles** — four cards (client, cleaner, delivery, Kleining).
+- **Roles** — four cards (client, cleaner, delivery, CleanFlow).
 - **Process** — 5-step flow (booking → assignment → cleaning + photos →
   verification → confirmation).
 - **Verification band** — human-review emphasis (sample dossier mock-up).

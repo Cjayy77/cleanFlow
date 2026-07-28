@@ -1,4 +1,4 @@
-// Kleining — interface admin : file de vérification des dossiers photo.
+// CleanFlow — interface admin : file de vérification des dossiers photo.
 // Rien ne s'approuve automatiquement : chaque dossier passe par un humain ici.
 import {
   auth,
@@ -676,8 +676,8 @@ async function cancelBooking(booking, button) {
       if (clientSnap.exists() && clientSnap.data().email) {
         queueEmail({
           to: clientSnap.data().email,
-          subject: `Kleining — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
-          text: `Votre ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) a été annulé par l'équipe Kleining. Contactez-nous pour reprogrammer.`,
+          subject: `CleanFlow — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+          text: `Votre ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) a été annulé par l'équipe CleanFlow. Contactez-nous pour reprogrammer.`,
         });
       }
     } catch (e) { /* la notification ne doit pas bloquer l'annulation */ }
@@ -714,8 +714,8 @@ function openReschedule(booking, row, triggerBtn) {
         if (clientSnap.exists() && clientSnap.data().email) {
           queueEmail({
             to: clientSnap.data().email,
-            subject: `Kleining — ménage reprogrammé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
-            text: `Votre ménage (${booking.propertyAddress || 'votre bien'}) a été reprogrammé au ${formatShortDate(newDate)} par l'équipe Kleining.`,
+            subject: `CleanFlow — ménage reprogrammé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+            text: `Votre ménage (${booking.propertyAddress || 'votre bien'}) a été reprogrammé au ${formatShortDate(newDate)} par l'équipe CleanFlow.`,
           });
         }
       } catch (e) { /* la notification ne doit pas bloquer la reprogrammation */ }
@@ -909,7 +909,7 @@ function renderMissionsToAssign() {
           if (member?.email) {
             queueEmail({
               to: member.email,
-              subject: `Kleining — nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              subject: `CleanFlow — nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
               text: `${booking.propertyAddress || 'Mission'} · ${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}. Retrouvez-la dans votre interface prestataire.`,
             });
           }
@@ -952,7 +952,7 @@ function renderKitsToAssign() {
           if (member?.email) {
             queueEmail({
               to: member.email,
-              subject: `Kleining — nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              subject: `CleanFlow — nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
               text: `${booking.propertyAddress || 'Tournée'} · ${formatShortDate(booking.scheduledDate)} · dépôt des kits / linge propre et récupération. Retrouvez-la dans votre interface livreur.`,
             });
           }
@@ -1290,8 +1290,8 @@ async function resolveBooking(status) {
     if (status === 'verified' && selectedBooking.clientEmail) {
       queueEmail({
         to: selectedBooking.clientEmail,
-        subject: `Kleining — votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
-        text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe Kleining. Retrouvez le détail dans votre espace client.`,
+        subject: `CleanFlow — votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
+        text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe CleanFlow. Retrouvez le détail dans votre espace client.`,
       });
     }
     if (status === 'rejected' && selectedBooking.prestataireId) {
@@ -1300,7 +1300,7 @@ async function resolveBooking(status) {
         if (prestataireSnap.exists() && prestataireSnap.data().email) {
           queueEmail({
             to: prestataireSnap.data().email,
-            subject: `Kleining — dossier à corriger · Réf ${selectedBooking.id.slice(0, 6).toUpperCase()}`,
+            subject: `CleanFlow — dossier à corriger · Réf ${selectedBooking.id.slice(0, 6).toUpperCase()}`,
             text: `Le dossier de ${selectedBooking.propertyAddress || 'la mission'} (${formatShortDate(selectedBooking.scheduledDate)}) a été renvoyé pour correction. Note de l’équipe : ${note}. Corrigez les photos puis re-soumettez depuis votre interface.`,
           });
         }
@@ -1344,17 +1344,17 @@ onAuthStateChanged(auth, async user => {
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Kleining. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe CleanFlow. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
       await signOut(auth);
       return;
     }
     if (accountStatus === 'suspended') {
-      authNotice = { message: 'Votre accès a été suspendu par l’équipe Kleining. Contactez-nous pour en savoir plus.', type: '' };
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe CleanFlow. Contactez-nous pour en savoir plus.', type: '' };
       await signOut(auth);
       return;
     }
     if (accountStatus !== 'approved') {
-      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Kleining si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe CleanFlow si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);
       return;
     }
@@ -1525,7 +1525,7 @@ requestForm.addEventListener('submit', async event => {
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe Kleining va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+    setAuthMessage('Demande envoyée. L’équipe CleanFlow va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }
