@@ -50,6 +50,8 @@ const assignedList = document.getElementById('assignedList');
 const activeBookingContainer = document.getElementById('activeBooking');
 const ratingSummary = document.getElementById('ratingSummary');
 const ratingList = document.getElementById('ratingList');
+const myComptaSummary = document.getElementById('myComptaSummary');
+const myComptaList = document.getElementById('myComptaList');
 const incidentForm = document.getElementById('incidentForm');
 const incidentStatus = document.getElementById('incidentStatus');
 const incidentType = document.getElementById('incidentType');
@@ -71,6 +73,7 @@ let currentUser = null;
 let authNotice = null;
 let assignedBookings = [];
 let ratedBookings = [];
+let allMyBookings = [];
 let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
@@ -198,6 +201,61 @@ function renderRatings() {
     item.appendChild(meta);
     item.appendChild(buildStaticStars(booking.rating));
     ratingList.appendChild(item);
+  });
+}
+
+// Compta du prestataire : ce que CleanFlow lui verse par mission (base fixée
+// par l'équipe + bonus/malus). Le paiement effectif se fait hors application.
+function renderMyCompta() {
+  if (!myComptaSummary) return;
+  myComptaSummary.innerHTML = '';
+  myComptaList.innerHTML = '';
+  const payout = b => (Number(b.prestatairePay) || 0) + (Number(b.adjustment) || 0);
+  const total = allMyBookings.reduce((s, b) => s + payout(b), 0);
+
+  const summary = document.createElement('div');
+  summary.className = 'rating-avg';
+  const num = document.createElement('span');
+  num.className = 'rating-avg-num';
+  num.textContent = `${total}€`;
+  const sub = document.createElement('span');
+  sub.className = 'rating-avg-out';
+  sub.textContent = `sur ${allMyBookings.length} mission${allMyBookings.length > 1 ? 's' : ''}`;
+  summary.appendChild(num);
+  summary.appendChild(sub);
+  myComptaSummary.appendChild(summary);
+  const note = document.createElement('div');
+  note.className = 'task-meta';
+  note.textContent = 'Rémunération fixée par l’équipe CleanFlow. Le règlement se fait hors application.';
+  myComptaSummary.appendChild(note);
+
+  if (allMyBookings.length === 0) {
+    myComptaList.innerHTML = '<div class="empty-state">Aucune mission pour le moment.</div>';
+    return;
+  }
+  allMyBookings.forEach(booking => {
+    const base = Number(booking.prestatairePay) || 0;
+    const adj = Number(booking.adjustment) || 0;
+    const item = document.createElement('div');
+    item.className = 'task-card';
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = booking.propertyAddress || booking.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${formatBookingStatus(booking.status)}`;
+    item.appendChild(title);
+    item.appendChild(meta);
+    const payLine = document.createElement('div');
+    payLine.className = 'task-meta roster-load';
+    if (!base && !adj) {
+      payLine.textContent = 'Rémunération à définir';
+    } else {
+      const adjPart = adj ? ` ${adj > 0 ? '+' : '−'}${Math.abs(adj)}€ (${adj > 0 ? 'bonus' : 'malus'})` : '';
+      payLine.textContent = `${base}€${adjPart} = ${base + adj}€`;
+    }
+    item.appendChild(payLine);
+    myComptaList.appendChild(item);
   });
 }
 
@@ -348,6 +406,9 @@ function loadAssignedBookings() {
     ratedBookings = mine
       .filter(booking => booking.status === 'verified' && typeof booking.rating === 'number')
       .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+    allMyBookings = mine
+      .filter(booking => booking.status !== 'cancelled')
+      .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
     const stillThere = assignedBookings.find(b => b.id === selectedMissionId);
     activeBooking = stillThere || assignedBookings[0] || null;
     selectedMissionId = activeBooking ? activeBooking.id : null;
@@ -359,6 +420,7 @@ function loadAssignedBookings() {
     renderAssignedList();
     renderActiveBooking();
     renderRatings();
+    renderMyCompta();
   }, error => setWorkStatus(`Impossible de charger vos missions : ${storageErrorMessage(error)}`));
 }
 
