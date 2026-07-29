@@ -202,7 +202,8 @@
   .footer-top{ display:grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap:40px; padding-bottom:40px; border-bottom:1px solid rgba(255,255,255,0.14); }
   @media (max-width:760px){ .footer-top{ grid-template-columns:1fr 1fr; gap:30px 24px; } }
   .footer-brand b{ display:flex; align-items:center; gap:9px; color:#fff; font-size:19px; font-weight:700; }
-  .footer-brand b span{ color:var(--pink-soft); }
+  .footer-brand b span.wm{ color:#fff; }
+  .footer-brand b span.wm span{ color:var(--pink-soft); }
   .footer-brand p{ color: rgba(255,255,255,0.6); margin-top:12px; font-size:13.5px; max-width:280px; line-height:1.6; }
   .footer-col h5{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--pink-soft); margin-bottom:15px; font-weight:600; }
   .footer-col a, .footer-col span{ display:block; color: rgba(255,255,255,0.78); text-decoration:none; margin-bottom:10px; transition: color .15s ease-out; }
@@ -487,7 +488,7 @@
       <div class="footer-brand">
         <b>
           <img class="mark" src="assets/fan-mark.svg" alt="" aria-hidden="true">
-          <span>Clean</span>Flow
+          <span class="wm"><span>Clean</span>Flow</span>
         </b>
         <p>Le ménage vérifié pour vos logements. Photos obligatoires, contrôle humain avant chaque confirmation.</p>
       </div>
