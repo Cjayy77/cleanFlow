@@ -196,25 +196,27 @@ function updateBookingBar() {
   }
 
   renderPriceBreakdown(currentQuote);
-  const total = currentQuote ? currentQuote.total : null;
-  priceValue.textContent = total != null ? `${total}€` : '—';
-  bookBtn.textContent = selectedDate && total != null
-    ? `Réserver le ${formatShortDate(selectedDate)} · ${total}€`
+  const ttc = currentQuote ? currentQuote.totalTTC : null;
+  priceValue.textContent = ttc != null ? `${ttc}€` : '—';
+  bookBtn.textContent = selectedDate && ttc != null
+    ? `Réserver le ${formatShortDate(selectedDate)} · ${ttc}€`
     : 'Choisir une date pour réserver';
-  bookBtn.disabled = !selectedPropertyId || !selectedDate || total == null;
+  bookBtn.disabled = !selectedPropertyId || !selectedDate || ttc == null;
 }
 
 function renderPriceBreakdown(quote) {
   if (!quote || quote.custom) { priceBreakdown.classList.add('hidden'); return; }
   const h = String(quote.hours).replace('.', ',');
   const rows = [
-    [`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${h} h × ${quote.hourlyRate}€/h`, `${quote.prestation}€`],
+    [`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${h} h × ${quote.hourlyRate}€/h`, `${quote.prestation}€`, ''],
   ];
-  if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''} × 20€`, `${quote.kitsTotal}€`]);
-  rows.push(['Frais de déplacement', `${quote.travel}€`]);
+  if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''}`, `${quote.kitsTotal}€`, '']);
+  rows.push(['Frais de déplacement', `${quote.travel}€`, '']);
+  rows.push(['Total HT', `${quote.total}€`, 'pb-total']);
+  rows.push([`TVA (${Math.round(quote.vatRate * 100)} %)`, `${quote.vat}€`, '']);
   priceBreakdown.classList.remove('hidden');
   priceBreakdown.innerHTML = rows
-    .map(([label, value]) => `<div class="pb-line"><span></span><b>${value}</b></div>`)
+    .map(([label, value, cls]) => `<div class="pb-line ${cls}"><span></span><b>${value}</b></div>`)
     .join('');
   // Remplit les libellés en texte (évite l'injection HTML depuis les données).
   priceBreakdown.querySelectorAll('.pb-line span').forEach((span, index) => {

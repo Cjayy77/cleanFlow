@@ -146,6 +146,10 @@ export function computeBookingPrice({ surface, serviceType, beds, bedrooms, kitC
   const kitsTotal = kits * P.kitPrice;
   const amenitiesTotal = Math.max(0, Number(amenitiesPrice) || 0);
   const travel = travelFeeForZone(zone);
+  // Les tarifs sont HT ; la TVA est un pass-through (n'entre pas dans la marge).
+  const total = prestation + kitsTotal + amenitiesTotal + travel; // total HT
+  const vatRate = P.vatRate;
+  const vat = Math.round(total * vatRate);
   return {
     custom: false,
     serviceType: service,
@@ -158,8 +162,18 @@ export function computeBookingPrice({ surface, serviceType, beds, bedrooms, kitC
     kitsTotal,
     amenitiesTotal,
     travel,
-    total: prestation + kitsTotal + amenitiesTotal + travel,
+    total,
+    vatRate,
+    vat,
+    totalTTC: total + vat,
   };
+}
+
+// TVA / TTC à partir d'un total HT et du taux courant (pour l'affichage admin).
+export function vatBreakdown(totalHT) {
+  const rate = getPricing().vatRate;
+  const vat = Math.round((Number(totalHT) || 0) * rate);
+  return { rate, vat, ttc: (Number(totalHT) || 0) + vat };
 }
 
 // Boîte de réception de l'équipe pour les notifications internes.

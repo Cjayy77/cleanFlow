@@ -1483,12 +1483,17 @@ function renderBookingCost(booking) {
   const hstr = booking.hours ? `${String(booking.hours).replace('.', ',')} h · ` : '';
   const rows = [[`Prestation · ${hstr}${booking.surface ? `${booking.surface} m²` : ''}`.replace(/· $/, ''), l.prestation]];
   if (l.kits) rows.push([`Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, l.kits]);
-  rows.push(['Amenities (consommables)', l.amenities]);
-  if (l.travel) rows.push(['Frais de déplacement', l.travel]);
-  rows.push(['Total client', l.price]);
+  rows.push(['Amenities (consommables)', l.amenities, '']);
+  if (l.travel) rows.push(['Frais de déplacement', l.travel, '']);
+  // HT → TVA → TTC (TVA = pass-through, hors marge).
+  const rate = getPricing().vatRate;
+  const vat = Math.round(l.price * rate);
+  rows.push(['Total HT', l.price, 'pb-total']);
+  rows.push([`TVA (${Math.round(rate * 100)} %)`, vat, '']);
+  rows.push(['Total TTC (payé par le client)', l.price + vat, 'pb-warn']);
   bookingCost.classList.remove('hidden');
   bookingCost.innerHTML = rows
-    .map((r, i) => `<div class="pb-line${i === rows.length - 1 ? ' pb-warn' : ''}"><span></span><b>${r[1]}€</b></div>`)
+    .map(r => `<div class="pb-line ${r[2] || ''}"><span></span><b>${r[1]}€</b></div>`)
     .join('');
   bookingCost.querySelectorAll('.pb-line span').forEach((span, i) => { span.textContent = rows[i][0]; });
 }
