@@ -411,7 +411,7 @@
         <div class="sim-save-amount" id="simSavings">—</div>
         <div class="sim-save-pct" id="simPct"></div>
       </div>
-      <p class="sim-note">Estimation indicative. Hypothèses provisoires : commission conciergerie 22&nbsp;%, coût moyen d'un ménage 55&nbsp;€, abonnement 10&nbsp;€/mois. Le coût exact CleanFlow dépend de votre logement.</p>
+      <p class="sim-note">Estimation indicative. Hypothèses provisoires : commission conciergerie 22&nbsp;%, ménage facturé à l'heure (30&nbsp;€/h, durée moyenne&nbsp;2,5&nbsp;h), abonnement 10&nbsp;€/mois. Le coût exact CleanFlow dépend de votre logement (surface, lits, salles de bain).</p>
     </div>
   </div>
 </div>
@@ -546,7 +546,8 @@
   // (paiement au ménage). Hypothèses provisoires, à centraliser dans le back-office.
   (function () {
     var CONCIERGERIE_RATE = 0.22;  // commission conciergerie classique (% des revenus)
-    var CLEANFLOW_CLEANING = 55;   // coût moyen d'un ménage (€) — provisoire, selon logement
+    var HOURLY_STANDARD = 30;      // tarif horaire ménage standard (€ HT / h)
+    var AVG_HOURS = 2.5;           // durée moyenne d'un ménage (h) — provisoire, selon logement
     var SUBSCRIPTION = 10;         // abonnement mensuel (€ / mois)
 
     var night = document.getElementById('simNight');
@@ -562,7 +563,7 @@
       var nights = Math.round(365 * Math.min(100, num(occ)) / 100);
       var revenue = num(night) * nights;
       var concierge = revenue * CONCIERGERIE_RATE;
-      var cleanflow = num(bk) * 12 * CLEANFLOW_CLEANING + 12 * SUBSCRIPTION;
+      var cleanflow = num(bk) * 12 * (HOURLY_STANDARD * AVG_HOURS) + 12 * SUBSCRIPTION;
       var savings = concierge - cleanflow;
       set('simRevenue', eur.format(revenue));
       set('simConcierge', eur.format(concierge));
