@@ -42,7 +42,7 @@ indispensable avant de mettre de vraies données.
 ## 4. Autoriser le domaine Vercel pour la connexion
 
 Console Firebase → **Authentication** → *Settings* → **Authorized domains** →
-ajoutez votre domaine Vercel (ex. `cleanflow.vercel.app`) et, plus tard, votre
+ajoutez votre domaine Vercel (ex. `clean-flow-dun.vercel.app`) et, plus tard, votre
 domaine personnalisé. Sans cela, la connexion échouera depuis le site.
 
 ## 5. Déployer sur Vercel
