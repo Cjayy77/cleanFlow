@@ -38,7 +38,7 @@
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; }
-  body{ font-family:'Poppins', sans-serif; color:var(--ink); background:var(--white); font-size:16px; line-height:1.6; }
+  body{ font-family:'Poppins', sans-serif; color:var(--ink); background:var(--white); font-size:16px; line-height:1.6; overflow-x:hidden; }
   .wrap{ max-width: 1160px; margin:0 auto; padding: 0 32px; }
   h1,h2,h3,h4{ font-family:'Poppins', sans-serif; font-weight:700; letter-spacing:-0.02em; line-height:1.1; color:var(--ink); }
   a{ color:inherit; }
@@ -62,9 +62,24 @@
   .nav-cta:hover{ transform: translateY(-1px); background: var(--pink-deep); }
   @media (max-width:760px){
     .nav-inner{ flex-wrap:wrap; height:auto; padding-top:12px; }
-    .nav-links{ order:3; width:100%; overflow-x:auto; white-space:nowrap; gap:20px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .nav-links{ order:3; width:100%; min-width:0; flex-basis:100%; overflow-x:auto; white-space:nowrap; gap:20px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
     .nav-links a{ padding:8px 0 14px; }
     .nav-links::-webkit-scrollbar{ display:none; }
+  }
+
+  /* Mobile : resserrer l'espace vertical pour un rendu plus épuré */
+  @media (max-width:640px){
+    section{ padding:58px 0; }
+    .hero{ padding:44px 0 40px; }
+    .verify-outer{ padding:58px 0; }
+    .sec-head{ margin-bottom:30px; }
+    .hero h1{ font-size:34px; }
+    .hero p{ font-size:16px; margin-bottom:26px; }
+    .hero-stats{ gap:22px 32px; margin-top:30px; }
+    .wrap{ padding:0 22px; }
+    /* Nav épurée sur mobile : le bouton CTA est déjà dans le hero juste dessous */
+    .nav-inner{ padding:0 22px; }
+    .nav-cta{ display:none; }
   }
 
   :focus-visible{ outline:3px solid var(--pink); outline-offset:3px; }
@@ -85,7 +100,7 @@
     background: radial-gradient(1100px 480px at 88% -12%, rgba(230,0,126,.14), transparent 60%),
                 radial-gradient(820px 460px at 100% 34%, rgba(122,31,162,.10), transparent 55%), #fff; }
   .hero-grid{ display:grid; grid-template-columns: 1.05fr .95fr; gap:40px; align-items:center; }
-  @media (max-width:920px){ .hero-grid{ grid-template-columns:1fr; } .hero-feather{ display:none; } }
+  @media (max-width:920px){ .hero-grid{ grid-template-columns:1fr; } }
   .hero-kicker{ display:inline-block; font-size:12px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; color:var(--pink); border-left:3px solid var(--pink); padding-left:12px; line-height:1; margin-bottom:24px; }
   .hero h1{ font-size: clamp(40px,6vw,66px); margin-bottom:20px; letter-spacing:-0.01em; }
   .hero h1 em{ font-style:italic; color:var(--pink); position:relative; }
@@ -97,6 +112,8 @@
   .hero-stat span{ font-size:13px; color:var(--muted); }
   .hero-feather{ display:flex; justify-content:center; }
   .hero-feather img{ width:100%; max-width:470px; height:auto; }
+  /* Placé après la règle de base pour bien l'emporter : pas de fan sur mobile/tablette */
+  @media (max-width:920px){ .hero-feather{ display:none !important; } }
   img.mark{ object-fit:contain; }
 
   @keyframes rise{ from{ opacity:0; transform:translateY(22px); } to{ opacity:1; transform:none; } }
