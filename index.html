@@ -78,12 +78,10 @@
     .hero-stats{ gap:22px 32px; margin-top:30px; }
     .wrap{ padding:0 22px; }
     /* Nav plus aérée : on éloigne la marque de la barre d'état (heure/notch) */
-    .nav-inner{ padding:18px 22px 12px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); row-gap:8px; }
-    /* CTA d'accès rapide gardé en haut à droite, en version compacte */
-    .nav-cta{ padding:9px 15px; font-size:13px; }
+    .nav-inner{ padding:18px 16px 12px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); row-gap:8px; }
+    /* CTA d'accès rapide gardé en haut à droite, libellé complet mais compact */
+    .nav-cta{ padding:8px 12px; font-size:12px; }
   }
-  /* Sur les petits écrans, on raccourcit le libellé pour éviter tout débordement */
-  @media (max-width:560px){ .cta-more{ display:none; } }
 
   :focus-visible{ outline:3px solid var(--pink); outline-offset:3px; }
 
