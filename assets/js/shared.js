@@ -36,7 +36,12 @@ export const PRICE_BANDS = [
 ];
 // Au-delà de 250 m² : tarif sur-mesure (devis), pas de prix automatique.
 
-export const KIT_PRICE = 20; // par kit (linge, consommables), à l'unité.
+export const KIT_PRICE = 20; // par kit de bienvenue (linge, consommables) — 1 kit / chambre.
+
+// Amenities (consommables d'accueil), DISTINCTS des kits. Tarification à définir
+// par William : provisoirement 0 €. Le champ existe déjà côté réservation et
+// dans la compta admin pour que l'ajout ultérieur ne demande aucune migration.
+export const AMENITIES_PRICE = 0;
 
 // Frais de déplacement. Provisoire : forfait unique. William fournira une
 // grille par zone (plus la zone est éloignée, plus les frais sont élevés) ;
@@ -70,24 +75,29 @@ export function bandForSurface(surface) {
 
 // Calcule le détail de prix d'une réservation. Renvoie null si la surface est
 // invalide, ou { custom:true } si elle relève du devis sur-mesure.
-export function computeBookingPrice({ surface, serviceType, kitCount = 0, zone }) {
+export function computeBookingPrice({ surface, serviceType, bedrooms, kitCount = 0, zone, amenitiesPrice = AMENITIES_PRICE }) {
   const band = bandForSurface(surface);
   if (!band) return null;
   if (band.custom) return { custom: true, band };
   const service = serviceType === 'deep' ? 'deep' : 'normal';
-  const kits = Math.max(0, Math.floor(Number(kitCount) || 0));
+  // 1 kit de bienvenue par chambre : le nombre de chambres pilote le nombre de kits.
+  const rooms = bedrooms != null ? bedrooms : kitCount;
+  const kits = Math.max(0, Math.floor(Number(rooms) || 0));
   const prestation = band[service];
   const kitsTotal = kits * KIT_PRICE;
+  const amenitiesTotal = Math.max(0, Number(amenitiesPrice) || 0);
   const travel = travelFeeForZone(zone);
   return {
     custom: false,
     band,
     serviceType: service,
     prestation,
+    bedrooms: kits,
     kitCount: kits,
     kitsTotal,
+    amenitiesTotal,
     travel,
-    total: prestation + kitsTotal + travel,
+    total: prestation + kitsTotal + amenitiesTotal + travel,
   };
 }
 

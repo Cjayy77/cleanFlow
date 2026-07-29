@@ -48,6 +48,7 @@ const userNameLabel = document.getElementById('userNameLabel');
 const bookingQueue = document.getElementById('bookingQueue');
 const bookingTitle = document.getElementById('bookingTitle');
 const bookingMeta = document.getElementById('bookingMeta');
+const bookingCost = document.getElementById('bookingCost');
 const photoGrid = document.getElementById('photoGrid');
 const verifyBtn = document.getElementById('verifyBtn');
 const rejectBtn = document.getElementById('rejectBtn');
@@ -120,6 +121,8 @@ let selectedCalDay = null;
 // Période de la compta : semaine / mois / année en cours, tout, ou plage libre.
 let comptaRange = 'month';
 let comptaCustom = { from: '', to: '' };
+let comptaPrestataire = ''; // '' = tous les prestataires
+let comptaSearch = '';      // recherche par adresse / bien
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -741,11 +744,25 @@ function comptaLine(booking) {
   const price = Number(booking.price) || 0;
   const prestation = Number(booking.prestationPrice) || 0;
   const travel = Number(booking.travelFee) || 0;
-  const kits = Math.max(0, price - prestation - travel);
+  const amenities = Number(booking.amenitiesPrice) || 0;
+  // Les kits sont le reliquat (prix client − prestation − amenities − déplacement).
+  const kits = Math.max(0, price - prestation - amenities - travel);
   const base = Number(booking.prestatairePay) || 0;
   const adj = Number(booking.adjustment) || 0;
   const payout = base + adj;
-  return { price, prestation, travel, kits, base, adj, payout, margin: price - payout };
+  return { price, prestation, travel, kits, amenities, base, adj, payout, margin: price - payout };
+}
+
+// Décomposition « ce que coûte quoi » d'une mission, pour que l'admin sache
+// comment le prix client se répartit (il fixe ensuite lui-même la paie).
+function comptaBreakdownText(booking) {
+  const l = comptaLine(booking);
+  const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
+  const parts = [`prestation ${l.prestation}€`];
+  if (l.kits) parts.push(`kits ${l.kits}€${rooms ? ` (${rooms} chambre${rooms > 1 ? 's' : ''})` : ''}`);
+  parts.push(`amenities ${l.amenities}€`);
+  if (l.travel) parts.push(`déplacement ${l.travel}€`);
+  return parts.join(' · ');
 }
 
 function isoOf(date) {
@@ -814,17 +831,52 @@ function renderComptaFilter(bounds) {
     lbl.textContent = `${formatShortDate(bounds.from)} — ${formatShortDate(bounds.to)}`;
     host.appendChild(lbl);
   }
+
+  // Deuxième ligne : filtrer par prestataire et rechercher un bien/une mission.
+  const drill = document.createElement('div');
+  drill.className = 'seg-drill';
+  const sel = document.createElement('select');
+  sel.setAttribute('aria-label', 'Filtrer par prestataire');
+  const optAll = document.createElement('option');
+  optAll.value = ''; optAll.textContent = 'Tous les prestataires';
+  sel.appendChild(optAll);
+  prestataires.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.name || p.email || p.id;
+    if (p.id === comptaPrestataire) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => { comptaPrestataire = sel.value; renderComptaResults(); };
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.placeholder = 'Rechercher un bien / une adresse';
+  search.value = comptaSearch;
+  search.setAttribute('aria-label', 'Rechercher une mission');
+  search.oninput = () => { comptaSearch = search.value; renderComptaResults(); };
+  drill.appendChild(sel);
+  drill.appendChild(search);
+  host.appendChild(drill);
 }
 
 function renderCompta() {
+  renderComptaFilter(comptaBounds());
+  renderComptaResults();
+}
+
+// Totaux + liste seuls (sans reconstruire la barre de filtres), pour que la
+// saisie dans le champ de recherche ne perde pas le focus à chaque frappe.
+function renderComptaResults() {
   const totals = document.getElementById('comptaTotals');
   const list = document.getElementById('comptaList');
   if (!totals || !list) return;
   const bounds = comptaBounds();
-  renderComptaFilter(bounds);
+  const q = comptaSearch.trim().toLowerCase();
   const rows = latestBookings
     .filter(b => b.status !== 'cancelled')
     .filter(b => !bounds || (b.scheduledDate && b.scheduledDate >= bounds.from && b.scheduledDate <= bounds.to))
+    .filter(b => !comptaPrestataire || b.prestataireId === comptaPrestataire)
+    .filter(b => !q || `${b.propertyAddress || b.propertyId || ''}`.toLowerCase().includes(q))
     .sort((a, b) => (b.scheduledDate || '').localeCompare(a.scheduledDate || ''));
   const agg = rows.reduce((acc, b) => {
     const l = comptaLine(b);
@@ -853,7 +905,8 @@ function renderCompta() {
 
   list.innerHTML = '';
   if (rows.length === 0) {
-    list.innerHTML = `<div class="empty-state">Aucune mission ${comptaRange === 'all' ? 'à comptabiliser' : 'sur cette période'}.</div>`;
+    const filtered = comptaPrestataire || comptaSearch.trim();
+    list.innerHTML = `<div class="empty-state">Aucune mission ${filtered ? 'pour ce filtre' : (comptaRange === 'all' ? 'à comptabiliser' : 'sur cette période')}.</div>`;
     return;
   }
   rows.forEach(booking => list.appendChild(buildComptaRow(booking)));
@@ -886,7 +939,7 @@ function buildComptaRow(booking) {
   // Revenu client (d'où vient l'argent).
   const rev = document.createElement('div');
   rev.className = 'task-meta';
-  rev.textContent = `Revenu : prestation ${l.prestation}€${l.kits ? ` · kits ${l.kits}€` : ''}${l.travel ? ` · déplacement ${l.travel}€` : ''}`;
+  rev.textContent = `Revenu : ${comptaBreakdownText(booking)}`;
   row.appendChild(rev);
 
   // Ce qui est versé au prestataire (base + bonus/malus).
@@ -1257,10 +1310,29 @@ function renderBookingQueue() {
   bookingQueueData.forEach(booking => bookingQueue.appendChild(buildBookingQueueItem(booking)));
 }
 
+// Décomposition du prix client d'une mission dans la vue Vérification :
+// l'admin voit « ce que coûte quoi » avant de fixer la paie du prestataire.
+function renderBookingCost(booking) {
+  if (!bookingCost) return;
+  const l = comptaLine(booking);
+  const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
+  const rows = [[`Prestation${booking.surface ? ` · ${booking.surface} m²` : ''}`, l.prestation]];
+  if (l.kits) rows.push([`Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, l.kits]);
+  rows.push(['Amenities (consommables)', l.amenities]);
+  if (l.travel) rows.push(['Frais de déplacement', l.travel]);
+  rows.push(['Total client', l.price]);
+  bookingCost.classList.remove('hidden');
+  bookingCost.innerHTML = rows
+    .map((r, i) => `<div class="pb-line${i === rows.length - 1 ? ' pb-warn' : ''}"><span></span><b>${r[1]}€</b></div>`)
+    .join('');
+  bookingCost.querySelectorAll('.pb-line span').forEach((span, i) => { span.textContent = rows[i][0]; });
+}
+
 function renderBookingDetail() {
   if (!selectedBooking) {
     bookingTitle.textContent = 'Aucun dossier sélectionné';
     bookingMeta.textContent = 'Sélectionnez un dossier dans la file pour contrôler les photos.';
+    if (bookingCost) { bookingCost.classList.add('hidden'); bookingCost.innerHTML = ''; }
     photoGrid.innerHTML = '';
     incidentList.innerHTML = '';
     verifyBtn.disabled = true;
@@ -1270,6 +1342,7 @@ function renderBookingDetail() {
 
   bookingTitle.textContent = selectedBooking.propertyAddress || selectedBooking.propertyId;
   bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.surface ? ` · ${selectedBooking.surface} m²` : ''}${selectedBooking.kitCount ? ` · ${selectedBooking.kitCount} kit(s)` : ''} · ${selectedBooking.price}€`;
+  renderBookingCost(selectedBooking);
   photoGrid.innerHTML = '';
 
   PHOTO_SLOTS.forEach(slot => {

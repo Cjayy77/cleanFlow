@@ -68,7 +68,7 @@ const propertySubmitBtn = document.getElementById('propertySubmitBtn');
 const cancelEditWrap = document.getElementById('cancelEditWrap');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const propertyFormCard = document.getElementById('propertyFormCard');
-const kitCountInput = document.getElementById('kitCount');
+const bedroomsInput = document.getElementById('bedrooms');
 const priceBreakdown = document.getElementById('priceBreakdown');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
@@ -85,7 +85,7 @@ let currentUser = null;
 let selectedPropertyId = null;
 let selectedDate = null;
 let selectedServiceType = 'normal';
-let kitCount = 0;
+let bedrooms = 0;
 let properties = [];
 let bookings = [];
 let propertiesUnsub = null;
@@ -168,7 +168,7 @@ function updateBookingBar() {
   const property = properties.find(p => p.id === selectedPropertyId);
   bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
   currentQuote = property
-    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, kitCount, zone: property.zone })
+    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, bedrooms, zone: property.zone })
     : null;
 
   // Bien sans surface renseignée (ancien bien) : inviter à compléter.
@@ -205,7 +205,7 @@ function renderPriceBreakdown(quote) {
   const rows = [
     [`Prestation · ${quote.band.label} · ${quote.serviceType === 'deep' ? 'en profondeur' : 'normal'}`, `${quote.prestation}€`],
   ];
-  if (quote.kitCount > 0) rows.push([`Kits · ${quote.kitCount} × 20€`, `${quote.kitsTotal}€`]);
+  if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''} × 20€`, `${quote.kitsTotal}€`]);
   rows.push(['Frais de déplacement', `${quote.travel}€`]);
   priceBreakdown.classList.remove('hidden');
   priceBreakdown.innerHTML = rows
@@ -686,7 +686,7 @@ signOutBtn.addEventListener('click', async () => {
   await signOut(auth);
   selectedPropertyId = null;
   selectedDate = null;
-  kitCount = 0;
+  bedrooms = 0;
   properties = [];
   bookings = [];
 });
@@ -698,8 +698,8 @@ serviceRadios.forEach(radio => {
   });
 });
 
-kitCountInput.addEventListener('input', () => {
-  kitCount = Math.max(0, Math.floor(Number(kitCountInput.value) || 0));
+bedroomsInput.addEventListener('input', () => {
+  bedrooms = Math.max(0, Math.floor(Number(bedroomsInput.value) || 0));
   updateBookingBar();
 });
 
@@ -771,7 +771,7 @@ bookBtn.addEventListener('click', async () => {
   const property = properties.find(p => p.id === selectedPropertyId);
   if (!property) return;
   const bookedDate = selectedDate;
-  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, kitCount, zone: property.zone });
+  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, bedrooms, zone: property.zone });
   if (!quote) {
     setAppStatus('Renseignez la surface de ce bien avant de réserver.', 'error');
     return;
@@ -781,7 +781,7 @@ bookBtn.addEventListener('click', async () => {
   // de devis à l'équipe qui reviendra vers le client avec un prix.
   if (quote.custom) {
     const address = `${property.street}, ${property.city}`;
-    const devisText = `Demande de devis (sur-mesure, > 250 m²) — ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${kitCount} kit(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
+    const devisText = `Demande de devis (sur-mesure, > 250 m²) — ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${bedrooms} chambre(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
     try {
       // Trace la demande côté équipe (onglet Messages de l'admin) en plus de l'email.
       await withButtonLoading(bookBtn, () =>
@@ -818,8 +818,10 @@ bookBtn.addEventListener('click', async () => {
         serviceType: quote.serviceType,
         surface: Number(property.surface),
         zone: property.zone || '',
+        bedrooms: quote.bedrooms,
         kitCount: quote.kitCount,
         prestationPrice: quote.prestation,
+        amenitiesPrice: quote.amenitiesTotal,
         travelFee: quote.travel,
         price: quote.total,
         scheduledDate: selectedDate,
@@ -830,13 +832,13 @@ bookBtn.addEventListener('click', async () => {
     queueEmail({
       to: TEAM_EMAIL,
       subject: `CleanFlow — nouvelle réservation · ${property.street}, ${property.city}`,
-      text: `${formatShortDate(bookedDate)} · ${quote.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² · ${quote.kitCount} kit(s) · total ${quote.total}€ · zone ${zoneLabel(property.zone)} · client : ${currentUser.email}`,
+      text: `${formatShortDate(bookedDate)} · ${quote.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² · ${quote.kitCount} chambre(s)/kit(s) · total ${quote.total}€ · zone ${zoneLabel(property.zone)} · client : ${currentUser.email}`,
     });
     setAppStatus('Réservation enregistrée. Vous serez notifié par email une fois le ménage vérifié par l’équipe CleanFlow.', 'success');
     selectedDate = null;
     selectedDateLabel.value = 'Aucune date';
-    kitCount = 0;
-    if (kitCountInput) kitCountInput.value = '0';
+    bedrooms = 0;
+    if (bedroomsInput) bedroomsInput.value = '0';
     renderCalendar();
     updateBookingBar();
   } catch (err) {
