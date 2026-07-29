@@ -117,6 +117,10 @@ function renderTabBadges() {
 let adminCalMonthDate = startOfMonth(new Date());
 let selectedCalDay = null;
 
+// Période de la compta : semaine / mois / année en cours, tout, ou plage libre.
+let comptaRange = 'month';
+let comptaCustom = { from: '', to: '' };
+
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -744,12 +748,83 @@ function comptaLine(booking) {
   return { price, prestation, travel, kits, base, adj, payout, margin: price - payout };
 }
 
+function isoOf(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// Bornes ISO (incluses) de la période sélectionnée, ou null pour « tout ».
+function comptaBounds() {
+  const now = new Date();
+  if (comptaRange === 'all') return null;
+  if (comptaRange === 'custom') {
+    return { from: comptaCustom.from || '0000-01-01', to: comptaCustom.to || '9999-12-31' };
+  }
+  if (comptaRange === 'week') {
+    const diffToMon = (now.getDay() + 6) % 7; // lundi = début de semaine
+    const mon = new Date(now); mon.setDate(now.getDate() - diffToMon);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { from: isoOf(mon), to: isoOf(sun) };
+  }
+  if (comptaRange === 'year') {
+    return { from: `${now.getFullYear()}-01-01`, to: `${now.getFullYear()}-12-31` };
+  }
+  // mois en cours (défaut)
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { from: isoOf(first), to: isoOf(last) };
+}
+
+function renderComptaFilter(bounds) {
+  const host = document.getElementById('comptaFilter');
+  if (!host) return;
+  host.innerHTML = '';
+  host.className = 'compta-range';
+
+  const seg = document.createElement('div');
+  seg.className = 'seg';
+  [['week', 'Semaine'], ['month', 'Mois'], ['year', 'Année'], ['all', 'Tout'], ['custom', 'Personnalisé']]
+    .forEach(([value, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seg-btn' + (comptaRange === value ? ' active' : '');
+      b.textContent = label;
+      b.onclick = () => { comptaRange = value; renderCompta(); };
+      seg.appendChild(b);
+    });
+  host.appendChild(seg);
+
+  if (comptaRange === 'custom') {
+    const wrap = document.createElement('div');
+    wrap.className = 'seg-custom';
+    const from = document.createElement('input');
+    from.type = 'date'; from.value = comptaCustom.from;
+    from.setAttribute('aria-label', 'Du');
+    const to = document.createElement('input');
+    to.type = 'date'; to.value = comptaCustom.to;
+    to.setAttribute('aria-label', 'Au');
+    from.onchange = () => { comptaCustom.from = from.value; renderCompta(); };
+    to.onchange = () => { comptaCustom.to = to.value; renderCompta(); };
+    const dash = document.createElement('span');
+    dash.textContent = '→';
+    wrap.appendChild(from); wrap.appendChild(dash); wrap.appendChild(to);
+    host.appendChild(wrap);
+  } else if (bounds) {
+    const lbl = document.createElement('div');
+    lbl.className = 'seg-period';
+    lbl.textContent = `${formatShortDate(bounds.from)} — ${formatShortDate(bounds.to)}`;
+    host.appendChild(lbl);
+  }
+}
+
 function renderCompta() {
   const totals = document.getElementById('comptaTotals');
   const list = document.getElementById('comptaList');
   if (!totals || !list) return;
+  const bounds = comptaBounds();
+  renderComptaFilter(bounds);
   const rows = latestBookings
     .filter(b => b.status !== 'cancelled')
+    .filter(b => !bounds || (b.scheduledDate && b.scheduledDate >= bounds.from && b.scheduledDate <= bounds.to))
     .sort((a, b) => (b.scheduledDate || '').localeCompare(a.scheduledDate || ''));
   const agg = rows.reduce((acc, b) => {
     const l = comptaLine(b);
@@ -778,7 +853,7 @@ function renderCompta() {
 
   list.innerHTML = '';
   if (rows.length === 0) {
-    list.innerHTML = '<div class="empty-state">Aucune mission à comptabiliser.</div>';
+    list.innerHTML = `<div class="empty-state">Aucune mission ${comptaRange === 'all' ? 'à comptabiliser' : 'sur cette période'}.</div>`;
     return;
   }
   rows.forEach(booking => list.appendChild(buildComptaRow(booking)));
