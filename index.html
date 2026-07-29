@@ -61,7 +61,7 @@
   .nav-cta{ background: var(--pink); color:#fff; font-weight:700; font-size:14px; padding: 11px 20px; text-decoration:none; border-radius:9px; transition: transform .15s ease-out, background .15s ease-out; }
   .nav-cta:hover{ transform: translateY(-1px); background: var(--pink-deep); }
   @media (max-width:760px){
-    .nav-inner{ flex-wrap:wrap; height:auto; padding-top:12px; }
+    .nav-inner{ flex-wrap:wrap; height:auto; padding:16px 22px 12px; row-gap:8px; }
     .nav-links{ order:3; width:100%; min-width:0; flex-basis:100%; overflow-x:auto; white-space:nowrap; gap:20px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
     .nav-links a{ padding:8px 0 14px; }
     .nav-links::-webkit-scrollbar{ display:none; }
@@ -77,10 +77,13 @@
     .hero p{ font-size:16px; margin-bottom:26px; }
     .hero-stats{ gap:22px 32px; margin-top:30px; }
     .wrap{ padding:0 22px; }
-    /* Nav épurée sur mobile : le bouton CTA est déjà dans le hero juste dessous */
-    .nav-inner{ padding:0 22px; }
-    .nav-cta{ display:none; }
+    /* Nav plus aérée : on éloigne la marque de la barre d'état (heure/notch) */
+    .nav-inner{ padding:18px 22px 12px; padding-top: calc(18px + env(safe-area-inset-top, 0px)); row-gap:8px; }
+    /* CTA d'accès rapide gardé en haut à droite, en version compacte */
+    .nav-cta{ padding:9px 15px; font-size:13px; }
   }
+  /* Sur les petits écrans, on raccourcit le libellé pour éviter tout débordement */
+  @media (max-width:560px){ .cta-more{ display:none; } }
 
   :focus-visible{ outline:3px solid var(--pink); outline-offset:3px; }
 
@@ -251,7 +254,7 @@
       <a href="#linge">Services</a>
       <a href="#faq">FAQ</a>
     </div>
-    <a href="/app/" class="nav-cta">Réserver un ménage</a>
+    <a href="/app/" class="nav-cta">Réserver<span class="cta-more"> un ménage</span></a>
   </div>
 </nav>
 
