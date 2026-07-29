@@ -69,6 +69,7 @@ const cancelEditWrap = document.getElementById('cancelEditWrap');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const propertyFormCard = document.getElementById('propertyFormCard');
 const bedroomsInput = document.getElementById('bedrooms');
+const bedsInput = document.getElementById('beds');
 const priceBreakdown = document.getElementById('priceBreakdown');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
@@ -85,6 +86,7 @@ let currentUser = null;
 let selectedPropertyId = null;
 let selectedDate = null;
 let selectedServiceType = 'normal';
+let beds = 1;
 let bedrooms = 0;
 let properties = [];
 let bookings = [];
@@ -168,7 +170,7 @@ function updateBookingBar() {
   const property = properties.find(p => p.id === selectedPropertyId);
   bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
   currentQuote = property
-    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, bedrooms, zone: property.zone })
+    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bedrooms, zone: property.zone })
     : null;
 
   // Bien sans surface renseignée (ancien bien) : inviter à compléter.
@@ -202,8 +204,9 @@ function updateBookingBar() {
 
 function renderPriceBreakdown(quote) {
   if (!quote || quote.custom) { priceBreakdown.classList.add('hidden'); return; }
+  const h = String(quote.hours).replace('.', ',');
   const rows = [
-    [`Prestation · ${quote.band.label} · ${quote.serviceType === 'deep' ? 'en profondeur' : 'normal'}`, `${quote.prestation}€`],
+    [`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${h} h × ${quote.hourlyRate}€/h`, `${quote.prestation}€`],
   ];
   if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''} × 20€`, `${quote.kitsTotal}€`]);
   rows.push(['Frais de déplacement', `${quote.travel}€`]);
@@ -703,6 +706,11 @@ bedroomsInput.addEventListener('input', () => {
   updateBookingBar();
 });
 
+bedsInput.addEventListener('input', () => {
+  beds = Math.max(1, Math.floor(Number(bedsInput.value) || 1));
+  updateBookingBar();
+});
+
 propertyForm.addEventListener('submit', async event => {
   event.preventDefault();
   if (!currentUser) return;
@@ -771,7 +779,7 @@ bookBtn.addEventListener('click', async () => {
   const property = properties.find(p => p.id === selectedPropertyId);
   if (!property) return;
   const bookedDate = selectedDate;
-  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, bedrooms, zone: property.zone });
+  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bedrooms, zone: property.zone });
   if (!quote) {
     setAppStatus('Renseignez la surface de ce bien avant de réserver.', 'error');
     return;
@@ -781,7 +789,7 @@ bookBtn.addEventListener('click', async () => {
   // de devis à l'équipe qui reviendra vers le client avec un prix.
   if (quote.custom) {
     const address = `${property.street}, ${property.city}`;
-    const devisText = `Demande de devis (sur-mesure, > 250 m²) — ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${bedrooms} chambre(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
+    const devisText = `Demande de devis (sur-mesure, > 250 m²) — ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${beds} lit(s) · ${bedrooms} chambre(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
     try {
       // Trace la demande côté équipe (onglet Messages de l'admin) en plus de l'email.
       await withButtonLoading(bookBtn, () =>
@@ -818,6 +826,8 @@ bookBtn.addEventListener('click', async () => {
         serviceType: quote.serviceType,
         surface: Number(property.surface),
         zone: property.zone || '',
+        beds: quote.beds,
+        hours: quote.hours,
         bedrooms: quote.bedrooms,
         kitCount: quote.kitCount,
         prestationPrice: quote.prestation,
@@ -839,6 +849,8 @@ bookBtn.addEventListener('click', async () => {
     selectedDateLabel.value = 'Aucune date';
     bedrooms = 0;
     if (bedroomsInput) bedroomsInput.value = '0';
+    beds = 1;
+    if (bedsInput) bedsInput.value = '1';
     renderCalendar();
     updateBookingBar();
   } catch (err) {

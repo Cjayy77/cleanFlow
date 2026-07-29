@@ -22,31 +22,35 @@ export const ROLE_PRESTATAIRE = 'prestataire';
 export const ROLE_LIVREUR = 'livreur';
 export const ROLE_ADMIN = 'admin';
 
-// Grille tarifaire (barème de William). Le prix de la prestation dépend de la
-// surface du logement (m²) et du type de ménage. Source unique de vérité :
-// modifier ici met à jour le portail client et l'affichage admin.
-export const PRICE_BANDS = [
-  { max: 30, label: '0–30 m²', normal: 42, deep: 67 },
-  { max: 40, label: '31–40 m²', normal: 49, deep: 74 },
-  { max: 55, label: '41–55 m²', normal: 63, deep: 88 },
-  { max: 75, label: '56–75 m²', normal: 74, deep: 99 },
-  { max: 120, label: '76–120 m²', normal: 83, deep: 108 },
-  { max: 150, label: '121–150 m²', normal: 97, deep: 132 },
-  { max: 250, label: '151–250 m²', normal: 115, deep: 160 },
-];
-// Au-delà de 250 m² : tarif sur-mesure (devis), pas de prix automatique.
+// Tarification HORAIRE (cahier des charges William). Le prix de la prestation =
+// tarif horaire × durée estimée. La durée dépend de la surface et du nombre de
+// lits. Toute cette configuration est regroupée ici (source unique de vérité) et
+// structurée pour être, à terme, pilotée depuis le back-office sans développeur.
+export const PRICING = {
+  // Tarifs horaires (€ HT / h).
+  hourlyRates: { normal: 30, deep: 50 },
+  // Durée de base par tranche de surface (colonne « 1 lit » de la grille).
+  timeGrid: [
+    { max: 25, baseHours: 1 },
+    { max: 45, baseHours: 2 },
+    { max: 65, baseHours: 3 },
+    { max: 90, baseHours: 4 },
+  ],
+  hoursPerExtraBed: 0.5,      // +0,5 h par lit au-delà du premier
+  hoursPer25sqmAbove90: 1,    // au-delà de 90 m² : +1 h par tranche de 25 m²
+  maxAutoSurface: 250,        // au-delà : devis sur-mesure (pas de prix automatique)
+  kitPrice: 20,               // kit de bienvenue (linge, consommables) — 1 / chambre
+  travelFee: 10,              // frais de déplacement (forfait provisoire)
+};
 
-export const KIT_PRICE = 20; // par kit de bienvenue (linge, consommables) — 1 kit / chambre.
+// Alias rétro-compatibles.
+export const KIT_PRICE = PRICING.kitPrice;
+export const TRAVEL_FEE = PRICING.travelFee;
 
 // Amenities (consommables d'accueil), DISTINCTS des kits. Tarification à définir
 // par William : provisoirement 0 €. Le champ existe déjà côté réservation et
 // dans la compta admin pour que l'ajout ultérieur ne demande aucune migration.
 export const AMENITIES_PRICE = 0;
-
-// Frais de déplacement. Provisoire : forfait unique. William fournira une
-// grille par zone (plus la zone est éloignée, plus les frais sont élevés) ;
-// il suffira alors de faire dépendre travelFeeForZone() de la zone.
-export const TRAVEL_FEE = 10;
 
 // Zones = classification / assignation (et, plus tard, frais de déplacement).
 // N'influencent PAS le prix de la prestation. Liste provisoire, ajustable.
@@ -62,35 +66,47 @@ export function zoneLabel(value) {
 
 export function travelFeeForZone(/* zone */) {
   // Provisoire : forfait unique quelle que soit la zone.
-  return TRAVEL_FEE;
+  return PRICING.travelFee;
 }
 
-// Trouve la tranche de surface. Renvoie { custom:true } au-delà de 250 m².
-export function bandForSurface(surface) {
+// Durée estimée d'un ménage (h) selon la surface et le nombre de lits.
+// Renvoie null si surface invalide, { custom:true } au-delà de la limite auto.
+export function estimateCleaningHours(surface, beds) {
   const s = Number(surface);
   if (!Number.isFinite(s) || s <= 0) return null;
-  if (s > 250) return { custom: true, label: '+250 m²' };
-  return PRICE_BANDS.find(band => s <= band.max) || null;
+  if (s > PRICING.maxAutoSurface) return { custom: true };
+  const bedsEff = Math.max(1, Math.floor(Number(beds) || 1));
+  const band = PRICING.timeGrid.find(b => s <= b.max);
+  const base = band
+    ? band.baseHours
+    // Au-delà de la dernière tranche (90 m²) : +1 h par tranche de 25 m² entamée.
+    : PRICING.timeGrid[PRICING.timeGrid.length - 1].baseHours
+      + Math.ceil((s - 90) / 25) * PRICING.hoursPer25sqmAbove90;
+  const hours = base + (bedsEff - 1) * PRICING.hoursPerExtraBed;
+  return { custom: false, hours, beds: bedsEff };
 }
 
-// Calcule le détail de prix d'une réservation. Renvoie null si la surface est
+// Détail de prix d'une réservation (modèle horaire). Renvoie null si surface
 // invalide, ou { custom:true } si elle relève du devis sur-mesure.
-export function computeBookingPrice({ surface, serviceType, bedrooms, kitCount = 0, zone, amenitiesPrice = AMENITIES_PRICE }) {
-  const band = bandForSurface(surface);
-  if (!band) return null;
-  if (band.custom) return { custom: true, band };
+export function computeBookingPrice({ surface, serviceType, beds, bedrooms, kitCount = 0, zone, amenitiesPrice = AMENITIES_PRICE }) {
+  const est = estimateCleaningHours(surface, beds);
+  if (!est) return null;
+  if (est.custom) return { custom: true };
   const service = serviceType === 'deep' ? 'deep' : 'normal';
+  const hourlyRate = PRICING.hourlyRates[service];
+  const prestation = Math.round(hourlyRate * est.hours);
   // 1 kit de bienvenue par chambre : le nombre de chambres pilote le nombre de kits.
   const rooms = bedrooms != null ? bedrooms : kitCount;
   const kits = Math.max(0, Math.floor(Number(rooms) || 0));
-  const prestation = band[service];
-  const kitsTotal = kits * KIT_PRICE;
+  const kitsTotal = kits * PRICING.kitPrice;
   const amenitiesTotal = Math.max(0, Number(amenitiesPrice) || 0);
   const travel = travelFeeForZone(zone);
   return {
     custom: false,
-    band,
     serviceType: service,
+    beds: est.beds,
+    hours: est.hours,
+    hourlyRate,
     prestation,
     bedrooms: kits,
     kitCount: kits,

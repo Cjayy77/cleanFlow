@@ -758,7 +758,8 @@ function comptaLine(booking) {
 function comptaBreakdownText(booking) {
   const l = comptaLine(booking);
   const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
-  const parts = [`prestation ${l.prestation}€`];
+  const hrs = booking.hours ? ` (${String(booking.hours).replace('.', ',')} h)` : '';
+  const parts = [`prestation ${l.prestation}€${hrs}`];
   if (l.kits) parts.push(`kits ${l.kits}€${rooms ? ` (${rooms} chambre${rooms > 1 ? 's' : ''})` : ''}`);
   parts.push(`amenities ${l.amenities}€`);
   if (l.travel) parts.push(`déplacement ${l.travel}€`);
@@ -1316,7 +1317,8 @@ function renderBookingCost(booking) {
   if (!bookingCost) return;
   const l = comptaLine(booking);
   const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
-  const rows = [[`Prestation${booking.surface ? ` · ${booking.surface} m²` : ''}`, l.prestation]];
+  const hstr = booking.hours ? `${String(booking.hours).replace('.', ',')} h · ` : '';
+  const rows = [[`Prestation · ${hstr}${booking.surface ? `${booking.surface} m²` : ''}`.replace(/· $/, ''), l.prestation]];
   if (l.kits) rows.push([`Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, l.kits]);
   rows.push(['Amenities (consommables)', l.amenities]);
   if (l.travel) rows.push(['Frais de déplacement', l.travel]);

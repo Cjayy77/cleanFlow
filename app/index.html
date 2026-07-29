@@ -97,10 +97,17 @@
           <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal</label>
           <label class="service-option"><input type="radio" name="serviceType" value="deep"> Nettoyage en profondeur</label>
         </div>
-        <div class="form-row">
-          <label for="bedrooms">Nombre de chambres</label>
-          <input id="bedrooms" type="number" min="0" step="1" value="0" inputmode="numeric">
-          <div class="note-box">Un kit de bienvenue (linge, consommables) par chambre — 20&nbsp;€ le kit.</div>
+        <div class="form-cols">
+          <div class="form-row">
+            <label for="beds">Nombre de lits</label>
+            <input id="beds" type="number" min="1" step="1" value="1" inputmode="numeric">
+            <div class="note-box">Détermine la durée estimée (et donc le tarif horaire).</div>
+          </div>
+          <div class="form-row">
+            <label for="bedrooms">Nombre de chambres</label>
+            <input id="bedrooms" type="number" min="0" step="1" value="0" inputmode="numeric">
+            <div class="note-box">Un kit de bienvenue par chambre — 20&nbsp;€ le kit.</div>
+          </div>
         </div>
         <div class="form-row"><label>Date sélectionnée</label><input id="selectedDateLabel" type="text" readonly value="Aucune date"></div>
         <div class="cal-header">
