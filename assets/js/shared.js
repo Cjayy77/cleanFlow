@@ -26,7 +26,9 @@ export const ROLE_ADMIN = 'admin';
 // tarif horaire × durée estimée. La durée dépend de la surface et du nombre de
 // lits. Toute cette configuration est regroupée ici (source unique de vérité) et
 // structurée pour être, à terme, pilotée depuis le back-office sans développeur.
-export const PRICING = {
+// Valeurs par défaut (barème initial de William). Servent de secours si aucune
+// configuration n'a été enregistrée depuis le back-office.
+export const DEFAULT_PRICING = {
   // Tarifs horaires (€ HT / h).
   hourlyRates: { normal: 30, deep: 50 },
   // Durée de base par tranche de surface (colonne « 1 lit » de la grille).
@@ -41,11 +43,52 @@ export const PRICING = {
   maxAutoSurface: 250,        // au-delà : devis sur-mesure (pas de prix automatique)
   kitPrice: 20,               // kit de bienvenue (linge, consommables) — 1 / chambre
   travelFee: 10,              // frais de déplacement (forfait provisoire)
+  // Paramètres du cahier des charges, éditables dès maintenant côté back-office
+  // (pas encore intégrés au calcul du prix client — étapes suivantes).
+  subscriptionMonthly: 10,    // abonnement application (€ HT / mois / logement)
+  commissionMin: 4,           // commission CleanFlow min (€ HT / intervention)
+  commissionMax: 12,          // commission CleanFlow max (€ HT / intervention)
+  vatRate: 0.20,              // taux de TVA
 };
 
-// Alias rétro-compatibles.
-export const KIT_PRICE = PRICING.kitPrice;
-export const TRAVEL_FEE = PRICING.travelFee;
+// Champs numériques attendus dans la config (hors hourlyRates/timeGrid).
+export const PRICING_SCALARS = [
+  'hoursPerExtraBed', 'hoursPer25sqmAbove90', 'maxAutoSurface',
+  'kitPrice', 'travelFee', 'subscriptionMonthly', 'commissionMin', 'commissionMax', 'vatRate',
+];
+
+function toNum(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
+
+// Nettoie/complète une config venue de Firestore : tout champ manquant ou
+// invalide retombe sur la valeur par défaut. Impossible de casser le calcul.
+export function normalizePricing(cfg) {
+  cfg = cfg || {};
+  const d = DEFAULT_PRICING;
+  const hr = cfg.hourlyRates || {};
+  let grid = Array.isArray(cfg.timeGrid)
+    ? cfg.timeGrid
+        .map(b => ({ max: toNum(b && b.max, 0), baseHours: toNum(b && b.baseHours, 0) }))
+        .filter(b => b.max > 0 && b.baseHours > 0)
+        .sort((a, b) => a.max - b.max)
+    : [];
+  if (!grid.length) grid = d.timeGrid.map(b => ({ ...b }));
+  const out = {
+    hourlyRates: { normal: toNum(hr.normal, d.hourlyRates.normal), deep: toNum(hr.deep, d.hourlyRates.deep) },
+    timeGrid: grid,
+  };
+  PRICING_SCALARS.forEach(k => { out[k] = toNum(cfg[k], d[k]); });
+  return out;
+}
+
+// Configuration active. Par défaut = DEFAULT_PRICING ; remplacée au chargement
+// par la config du back-office via setPricing().
+let activePricing = normalizePricing(DEFAULT_PRICING);
+export function getPricing() { return activePricing; }
+export function setPricing(cfg) { activePricing = normalizePricing(cfg); return activePricing; }
+
+// Alias rétro-compatibles (valeurs par défaut, usage historique).
+export const KIT_PRICE = DEFAULT_PRICING.kitPrice;
+export const TRAVEL_FEE = DEFAULT_PRICING.travelFee;
 
 // Amenities (consommables d'accueil), DISTINCTS des kits. Tarification à définir
 // par William : provisoirement 0 €. Le champ existe déjà côté réservation et
@@ -66,23 +109,24 @@ export function zoneLabel(value) {
 
 export function travelFeeForZone(/* zone */) {
   // Provisoire : forfait unique quelle que soit la zone.
-  return PRICING.travelFee;
+  return getPricing().travelFee;
 }
 
 // Durée estimée d'un ménage (h) selon la surface et le nombre de lits.
 // Renvoie null si surface invalide, { custom:true } au-delà de la limite auto.
 export function estimateCleaningHours(surface, beds) {
+  const P = getPricing();
   const s = Number(surface);
   if (!Number.isFinite(s) || s <= 0) return null;
-  if (s > PRICING.maxAutoSurface) return { custom: true };
+  if (s > P.maxAutoSurface) return { custom: true };
   const bedsEff = Math.max(1, Math.floor(Number(beds) || 1));
-  const band = PRICING.timeGrid.find(b => s <= b.max);
+  const lastBand = P.timeGrid[P.timeGrid.length - 1];
+  const band = P.timeGrid.find(b => s <= b.max);
   const base = band
     ? band.baseHours
-    // Au-delà de la dernière tranche (90 m²) : +1 h par tranche de 25 m² entamée.
-    : PRICING.timeGrid[PRICING.timeGrid.length - 1].baseHours
-      + Math.ceil((s - 90) / 25) * PRICING.hoursPer25sqmAbove90;
-  const hours = base + (bedsEff - 1) * PRICING.hoursPerExtraBed;
+    // Au-delà de la dernière tranche : +1 (paramétrable) par tranche de 25 m².
+    : lastBand.baseHours + Math.ceil((s - lastBand.max) / 25) * P.hoursPer25sqmAbove90;
+  const hours = base + (bedsEff - 1) * P.hoursPerExtraBed;
   return { custom: false, hours, beds: bedsEff };
 }
 
@@ -92,13 +136,14 @@ export function computeBookingPrice({ surface, serviceType, beds, bedrooms, kitC
   const est = estimateCleaningHours(surface, beds);
   if (!est) return null;
   if (est.custom) return { custom: true };
+  const P = getPricing();
   const service = serviceType === 'deep' ? 'deep' : 'normal';
-  const hourlyRate = PRICING.hourlyRates[service];
+  const hourlyRate = P.hourlyRates[service];
   const prestation = Math.round(hourlyRate * est.hours);
   // 1 kit de bienvenue par chambre : le nombre de chambres pilote le nombre de kits.
   const rooms = bedrooms != null ? bedrooms : kitCount;
   const kits = Math.max(0, Math.floor(Number(rooms) || 0));
-  const kitsTotal = kits * PRICING.kitPrice;
+  const kitsTotal = kits * P.kitPrice;
   const amenitiesTotal = Math.max(0, Number(amenitiesPrice) || 0);
   const travel = travelFeeForZone(zone);
   return {

@@ -66,6 +66,7 @@
       <button type="button" class="tab" data-tab="inbox">Messages<span class="tab-badge hidden" id="badgeInbox"></span></button>
       <button type="button" class="tab" data-tab="team">Équipe<span class="tab-badge hidden" id="badgeTeam"></span></button>
       <button type="button" class="tab" data-tab="compta">Compta</button>
+      <button type="button" class="tab" data-tab="tarifs">Tarifs</button>
     </div>
 
     <div id="adminStatus" class="status-banner info hidden" role="status"></div>
@@ -185,6 +186,16 @@
         <div id="comptaFilter"></div>
         <div class="stat-grid" id="comptaTotals"></div>
         <div id="comptaList"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="tarifs">
+      <div class="card">
+        <div class="eyebrow">Back-office</div>
+        <h2>Tarifs &amp; paramètres</h2>
+        <p>Modifiez la tarification sans développeur. Toute réservation créée après enregistrement utilise ces valeurs (les réservations existantes gardent leur prix). Les modifications sont appliquées en direct côté client.</p>
+        <div id="pricingStatus" class="status-banner hidden" role="status"></div>
+        <form id="pricingForm"></form>
       </div>
     </section>
   </div>

@@ -6,6 +6,7 @@ import {
   loadUserDoc,
   registerClient,
   computeBookingPrice,
+  setPricing,
   ZONES,
   zoneLabel,
   formatShortDate,
@@ -92,6 +93,7 @@ let properties = [];
 let bookings = [];
 let propertiesUnsub = null;
 let bookingsUnsub = null;
+let pricingUnsub = null;
 let authNotice = null;
 let editingPropertyId = null;
 let calendarMonth = startOfMonth(new Date());
@@ -567,6 +569,17 @@ function buildContactTeam(booking, address) {
   return wrap;
 }
 
+// Charge la grille tarifaire définie par l'admin (back-office). En cas d'absence
+// ou d'erreur, le calcul retombe sur les valeurs par défaut (setPricing est
+// défensif). Live : une modification admin recalcule le prix affiché.
+function subscribePricing() {
+  if (pricingUnsub) pricingUnsub();
+  pricingUnsub = onSnapshot(doc(db, 'settings', 'pricing'), snap => {
+    if (snap.exists()) setPricing(snap.data());
+    updateBookingBar();
+  }, () => { /* défauts déjà en place */ });
+}
+
 function subscribeData() {
   if (propertiesUnsub) propertiesUnsub();
   if (bookingsUnsub) bookingsUnsub();
@@ -603,6 +616,7 @@ onAuthStateChanged(auth, async user => {
     currentUser = null;
     if (propertiesUnsub) propertiesUnsub();
     if (bookingsUnsub) bookingsUnsub();
+    if (pricingUnsub) pricingUnsub();
     if (authNotice) {
       showAuth(authNotice.mode, authNotice.message);
       authNotice = null;
@@ -625,6 +639,7 @@ onAuthStateChanged(auth, async user => {
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
+    subscribePricing();
     subscribeData();
   } catch (error) {
     authNotice = { mode: 'signin', message: authErrorMessage(error) };

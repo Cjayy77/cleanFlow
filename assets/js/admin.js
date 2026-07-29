@@ -17,6 +17,10 @@ import {
   resetPassword,
   requestTeamAccess,
   queueEmail,
+  getPricing,
+  setPricing,
+  DEFAULT_PRICING,
+  PRICING_SCALARS,
 } from './shared.js';
 import {
   collection,
@@ -24,6 +28,7 @@ import {
   where,
   onSnapshot,
   updateDoc,
+  setDoc,
   doc,
   getDoc,
   writeBatch,
@@ -80,6 +85,7 @@ let selectedBooking = null;
 let bookingQueueData = [];
 let bookingQueueUnsub = null;
 let statsUnsub = null;
+let pricingUnsub = null;
 let incidentsUnsub = null;
 let messagesUnsub = null;
 let latestBookings = [];
@@ -170,6 +176,163 @@ function subscribeStats() {
     statVerified.textContent = counts.verified;
     renderAssignments();
   }, error => setAdminStatus(`Impossible de charger la vue d’ensemble : ${authErrorMessage(error)}`, 'error'));
+}
+
+// ---- Back-office tarifs : charge, édite et enregistre la config de prix ----
+function subscribePricing() {
+  if (pricingUnsub) pricingUnsub();
+  pricingUnsub = onSnapshot(doc(db, 'settings', 'pricing'), snap => {
+    if (snap.exists()) setPricing(snap.data());
+    renderPricingForm();
+  }, error => setPricingStatus(`Impossible de charger les tarifs : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setPricingStatus(message, type) {
+  const el = document.getElementById('pricingStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+// Petit générateur de champ « label + input numérique ».
+function priceField(label, value, opts) {
+  opts = opts || {};
+  const row = document.createElement('label');
+  row.className = 'price-field';
+  const span = document.createElement('span');
+  span.textContent = label;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = opts.step || '1';
+  if (opts.min != null) input.min = opts.min;
+  input.value = value;
+  input.dataset.key = opts.key || '';
+  row.appendChild(span);
+  row.appendChild(input);
+  if (opts.suffix) { const s = document.createElement('em'); s.textContent = opts.suffix; row.appendChild(s); }
+  return row;
+}
+
+function renderPricingForm() {
+  const form = document.getElementById('pricingForm');
+  if (!form) return;
+  const P = getPricing();
+  form.innerHTML = '';
+
+  const group = (title) => {
+    const g = document.createElement('div');
+    g.className = 'price-group';
+    const h = document.createElement('div');
+    h.className = 'roster-subhead';
+    h.textContent = title;
+    g.appendChild(h);
+    form.appendChild(g);
+    return g;
+  };
+
+  // Tarifs horaires
+  const g1 = group('Tarifs horaires (€ HT / h)');
+  g1.appendChild(priceField('Ménage standard', P.hourlyRates.normal, { key: 'rate_normal', suffix: '€/h' }));
+  g1.appendChild(priceField('Nettoyage approfondi', P.hourlyRates.deep, { key: 'rate_deep', suffix: '€/h' }));
+
+  // Grille de durée (bandes de surface)
+  const g2 = group('Durée de base par surface (colonne « 1 lit »)');
+  const bandsWrap = document.createElement('div');
+  bandsWrap.id = 'pricingBands';
+  g2.appendChild(bandsWrap);
+  P.timeGrid.forEach(b => bandsWrap.appendChild(bandRow(b.max, b.baseHours)));
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'mini-btn';
+  addBtn.textContent = '+ Ajouter une tranche';
+  addBtn.onclick = () => bandsWrap.appendChild(bandRow('', ''));
+  g2.appendChild(addBtn);
+
+  // Règles de durée
+  const g3 = group('Règles de durée');
+  g3.appendChild(priceField('Heures par lit supplémentaire', P.hoursPerExtraBed, { key: 'hoursPerExtraBed', step: '0.25', suffix: 'h' }));
+  g3.appendChild(priceField('Heures par 25 m² au-delà de la grille', P.hoursPer25sqmAbove90, { key: 'hoursPer25sqmAbove90', step: '0.25', suffix: 'h' }));
+  g3.appendChild(priceField('Surface max. calcul auto (au-delà : devis)', P.maxAutoSurface, { key: 'maxAutoSurface', suffix: 'm²' }));
+
+  // Suppléments & abonnement
+  const g4 = group('Suppléments, abonnement & commission');
+  g4.appendChild(priceField('Kit de bienvenue (par chambre)', P.kitPrice, { key: 'kitPrice', suffix: '€' }));
+  g4.appendChild(priceField('Frais de déplacement', P.travelFee, { key: 'travelFee', suffix: '€' }));
+  g4.appendChild(priceField('Abonnement application', P.subscriptionMonthly, { key: 'subscriptionMonthly', suffix: '€/mois' }));
+  g4.appendChild(priceField('Commission CleanFlow — min', P.commissionMin, { key: 'commissionMin', suffix: '€' }));
+  g4.appendChild(priceField('Commission CleanFlow — max', P.commissionMax, { key: 'commissionMax', suffix: '€' }));
+  g4.appendChild(priceField('TVA', Math.round(P.vatRate * 100), { key: 'vatPct', suffix: '%' }));
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.className = 'btn primary';
+  save.textContent = 'Enregistrer les tarifs';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'btn ghost';
+  reset.textContent = 'Réinitialiser (barème par défaut)';
+  armInlineConfirm(reset, 'Confirmer la réinitialisation', () => savePricing(DEFAULT_PRICING));
+  actions.appendChild(save);
+  actions.appendChild(reset);
+  form.appendChild(actions);
+}
+
+function bandRow(max, baseHours) {
+  const row = document.createElement('div');
+  row.className = 'band-row';
+  const m = document.createElement('input');
+  m.type = 'number'; m.min = '1'; m.placeholder = 'm² max'; m.value = max; m.dataset.role = 'max';
+  const arrow = document.createElement('span'); arrow.textContent = '→';
+  const h = document.createElement('input');
+  h.type = 'number'; h.min = '0'; h.step = '0.25'; h.placeholder = 'heures'; h.value = baseHours; h.dataset.role = 'hours';
+  const hLabel = document.createElement('em'); hLabel.textContent = 'h';
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = '✕';
+  del.onclick = () => row.remove();
+  row.append(m, arrow, h, hLabel, del);
+  return row;
+}
+
+// Lit le formulaire, construit une config propre et l'enregistre.
+function collectPricingFromForm() {
+  const form = document.getElementById('pricingForm');
+  const val = (key) => {
+    const el = form.querySelector(`input[data-key="${key}"]`);
+    return el ? Number(el.value) : NaN;
+  };
+  const bands = Array.from(form.querySelectorAll('#pricingBands .band-row')).map(r => ({
+    max: Number(r.querySelector('input[data-role="max"]').value),
+    baseHours: Number(r.querySelector('input[data-role="hours"]').value),
+  }));
+  return {
+    hourlyRates: { normal: val('rate_normal'), deep: val('rate_deep') },
+    timeGrid: bands,
+    hoursPerExtraBed: val('hoursPerExtraBed'),
+    hoursPer25sqmAbove90: val('hoursPer25sqmAbove90'),
+    maxAutoSurface: val('maxAutoSurface'),
+    kitPrice: val('kitPrice'),
+    travelFee: val('travelFee'),
+    subscriptionMonthly: val('subscriptionMonthly'),
+    commissionMin: val('commissionMin'),
+    commissionMax: val('commissionMax'),
+    vatRate: val('vatPct') / 100,
+  };
+}
+
+async function savePricing(config) {
+  const clean = {};
+  // On enregistre une config déjà normalisée par le moteur (mêmes défauts de secours).
+  const normalized = setPricing(config); // met aussi à jour l'aperçu local
+  Object.assign(clean, normalized);
+  try {
+    await withTimeout(setDoc(doc(db, 'settings', 'pricing'), { ...clean, updatedAt: serverTimestamp() }), 15000);
+    setPricingStatus('Tarifs enregistrés. Les nouvelles réservations utilisent ce barème.', 'success');
+  } catch (error) {
+    setPricingStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
 }
 
 // Prestataires et livreurs approuvés, pour les listes déroulantes d'assignation.
@@ -1516,6 +1679,7 @@ onAuthStateChanged(auth, async user => {
     if (bookingQueueUnsub) bookingQueueUnsub();
     if (accessUnsub) accessUnsub();
     if (statsUnsub) statsUnsub();
+    if (pricingUnsub) pricingUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();
     membersUnsubs.forEach(unsub => unsub());
@@ -1559,6 +1723,7 @@ onAuthStateChanged(auth, async user => {
     subscribeTeamMembers();
     subscribeOpenIncidents();
     subscribeClientMessages();
+    subscribePricing();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
@@ -1593,6 +1758,14 @@ if (adminTabs) {
     if (!btn) return;
     activateTab(btn.dataset.tab);
     adminTabs.scrollIntoView({ block: 'start' });
+  });
+}
+
+const pricingFormEl = document.getElementById('pricingForm');
+if (pricingFormEl) {
+  pricingFormEl.addEventListener('submit', event => {
+    event.preventDefault();
+    savePricing(collectPricingFromForm());
   });
 }
 

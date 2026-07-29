@@ -34,6 +34,14 @@ service cloud.firestore {
       return hasRole('admin');
     }
 
+    // Configuration tarifaire éditable depuis le back-office admin.
+    // Lecture par tout utilisateur connecté (le client en a besoin pour calculer
+    // son prix) ; écriture réservée à l'équipe CleanFlow.
+    match /settings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
