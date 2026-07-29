@@ -42,6 +42,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Catalogue (kits d'accueil, consommables, location de linge). Lecture par
+    // tout utilisateur connecté (le client les sélectionne) ; écriture admin.
+    match /catalog/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();

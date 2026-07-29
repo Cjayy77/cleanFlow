@@ -205,6 +205,18 @@ textarea{ min-height:110px; resize:vertical; }
 .band-row span{ color:var(--muted); }
 .band-row .mini-btn{ min-height:auto; padding:6px 8px; }
 
+/* Back-office catalogue */
+.catalog-group{ margin-bottom:28px; }
+.catalog-group .roster-subhead{ margin-bottom:10px; }
+.catalog-item{ display:flex; align-items:center; gap:14px; border-top:1px solid var(--line); padding:14px 2px; }
+.catalog-thumb{ width:48px; height:48px; border-radius:10px; background:var(--tint); flex-shrink:0; overflow:hidden; }
+.catalog-thumb img{ width:100%; height:100%; object-fit:cover; }
+.catalog-info{ flex:1; min-width:0; }
+.catalog-name{ font-weight:700; font-size:15px; }
+.catalog-actions{ display:flex; gap:2px; flex-shrink:0; }
+.catalog-form{ border:1px solid var(--line); border-radius:12px; background:var(--soft); padding:16px 16px 6px; margin:10px 0; }
+.catalog-form .modal-actions{ margin-top:14px; padding-top:14px; }
+
 /* Roster équipe (admin) */
 .roster-group{ margin-bottom:10px; }
 .roster-group + .roster-group{ margin-top:22px; }

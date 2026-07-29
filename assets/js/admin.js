@@ -29,6 +29,8 @@ import {
   onSnapshot,
   updateDoc,
   setDoc,
+  addDoc,
+  deleteDoc,
   doc,
   getDoc,
   writeBatch,
@@ -86,6 +88,8 @@ let bookingQueueData = [];
 let bookingQueueUnsub = null;
 let statsUnsub = null;
 let pricingUnsub = null;
+let catalogUnsub = null;
+let latestCatalog = [];
 let incidentsUnsub = null;
 let messagesUnsub = null;
 let latestBookings = [];
@@ -332,6 +336,211 @@ async function savePricing(config) {
     setPricingStatus('Tarifs enregistrés. Les nouvelles réservations utilisent ce barème.', 'success');
   } catch (error) {
     setPricingStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- Back-office catalogue : kits, consommables, location de linge ----
+const CATALOG_TYPES = [
+  { key: 'kit', label: "Kits d'accueil", singular: 'un kit', hasStock: false, hasCategory: false },
+  { key: 'consumable', label: 'Consommables', singular: 'un consommable', hasStock: true, hasCategory: true },
+  { key: 'linen', label: 'Location de linge', singular: 'un article de linge', hasStock: false, hasCategory: false },
+];
+
+function subscribeCatalog() {
+  if (catalogUnsub) catalogUnsub();
+  catalogUnsub = onSnapshot(collection(db, 'catalog'), snap => {
+    latestCatalog = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderCatalog();
+  }, error => setCatalogStatus(`Impossible de charger le catalogue : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setCatalogStatus(message, type) {
+  const el = document.getElementById('catalogStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function renderCatalog() {
+  const root = document.getElementById('catalogRoot');
+  if (!root) return;
+  root.innerHTML = '';
+  CATALOG_TYPES.forEach(type => {
+    const group = document.createElement('div');
+    group.className = 'catalog-group';
+    const head = document.createElement('div');
+    head.className = 'roster-subhead';
+    head.textContent = type.label;
+    group.appendChild(head);
+
+    const items = latestCatalog
+      .filter(i => i.type === type.key)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Aucun article pour le moment.';
+      group.appendChild(empty);
+    } else {
+      items.forEach(item => group.appendChild(buildCatalogCard(item, type)));
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn ghost';
+    addBtn.style.marginTop = '12px';
+    addBtn.textContent = `+ Ajouter ${type.singular}`;
+    addBtn.onclick = () => {
+      if (group.querySelector('.catalog-form')) return; // un seul formulaire à la fois
+      addBtn.before(catalogItemForm(type, null));
+    };
+    group.appendChild(addBtn);
+    root.appendChild(group);
+  });
+}
+
+function buildCatalogCard(item, type) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item';
+
+  const thumb = document.createElement('div');
+  thumb.className = 'catalog-thumb';
+  if (item.photoUrl) {
+    const img = document.createElement('img');
+    img.src = item.photoUrl; img.alt = ''; img.loading = 'lazy';
+    thumb.appendChild(img);
+  }
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = item.name || '(sans nom)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [`${item.priceHT || 0}€ HT`, `${item.priceTTC || 0}€ TTC`];
+  if (type.hasCategory && item.category) bits.unshift(item.category);
+  if (type.hasStock && item.stock != null) bits.push(`stock ${item.stock}`);
+  meta.textContent = bits.join(' · ');
+  info.append(name, meta);
+  if (item.description) {
+    const d = document.createElement('div');
+    d.className = 'task-meta';
+    d.textContent = item.description;
+    info.appendChild(d);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'catalog-actions';
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+      card.nextElementSibling.remove(); return;
+    }
+    card.after(catalogItemForm(type, item));
+  };
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+  armInlineConfirm(del, 'Confirmer la suppression', () => deleteCatalogItem(item.id));
+  actions.append(edit, del);
+
+  card.append(thumb, info, actions);
+  return card;
+}
+
+function catalogField(label, name, value, inputType) {
+  const wrap = document.createElement('label');
+  wrap.className = 'form-row';
+  const span = document.createElement('span');
+  span.textContent = label;
+  span.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const input = document.createElement('input');
+  input.type = inputType || 'text';
+  if (inputType === 'number') { input.min = '0'; input.step = '0.01'; }
+  input.name = name;
+  input.value = value == null ? '' : value;
+  wrap.append(span, input);
+  return wrap;
+}
+
+function catalogItemForm(type, existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const vat = getPricing().vatRate;
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fName = catalogField('Nom', 'name', existing ? existing.name : '');
+  const fDesc = catalogField('Description', 'description', existing ? existing.description : '');
+  const fCat = type.hasCategory ? catalogField('Catégorie', 'category', existing ? existing.category : '') : null;
+  const fHT = catalogField('Prix HT (€)', 'priceHT', existing ? existing.priceHT : '', 'number');
+  const fTTC = catalogField('Prix TTC (€)', 'priceTTC', existing ? existing.priceTTC : '', 'number');
+  const fStock = type.hasStock ? catalogField('Stock', 'stock', existing ? existing.stock : '', 'number') : null;
+  const fPhoto = catalogField('Photo (URL, optionnel)', 'photoUrl', existing ? existing.photoUrl : '');
+
+  form.append(fName, fDesc);
+  if (fCat) form.append(fCat);
+  const cols = document.createElement('div');
+  cols.className = 'form-cols';
+  cols.append(fHT, fTTC);
+  form.append(cols);
+  if (fStock) form.append(fStock);
+  form.append(fPhoto);
+
+  // TTC auto-calculé depuis le HT (modifiable ensuite).
+  fHT.querySelector('input').addEventListener('input', e => {
+    const v = Number(e.target.value);
+    if (Number.isFinite(v)) get('priceTTC').value = Math.round(v * (1 + vat));
+  });
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      type: type.key,
+      name: get('name').value.trim(),
+      description: get('description').value.trim(),
+      priceHT: Math.max(0, Number(get('priceHT').value) || 0),
+      priceTTC: Math.max(0, Number(get('priceTTC').value) || 0),
+      photoUrl: get('photoUrl').value.trim(),
+      active: true,
+    };
+    if (type.hasCategory) data.category = get('category').value.trim();
+    if (type.hasStock) data.stock = Math.max(0, Math.floor(Number(get('stock').value) || 0));
+    if (!data.name) { setCatalogStatus('Le nom est obligatoire.', 'error'); return; }
+    saveCatalogItem(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveCatalogItem(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'catalog', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'catalog'), { ...data, createdAt: serverTimestamp() }), 15000));
+    setCatalogStatus(id ? 'Article mis à jour.' : 'Article ajouté.', 'success');
+    // onSnapshot reconstruit le catalogue (et retire le formulaire ouvert).
+  } catch (error) {
+    setCatalogStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteCatalogItem(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'catalog', id)), 15000);
+    setCatalogStatus('Article supprimé.', 'success');
+  } catch (error) {
+    setCatalogStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
   }
 }
 
@@ -1685,6 +1894,7 @@ onAuthStateChanged(auth, async user => {
     if (accessUnsub) accessUnsub();
     if (statsUnsub) statsUnsub();
     if (pricingUnsub) pricingUnsub();
+    if (catalogUnsub) catalogUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();
     membersUnsubs.forEach(unsub => unsub());
@@ -1729,6 +1939,7 @@ onAuthStateChanged(auth, async user => {
     subscribeOpenIncidents();
     subscribeClientMessages();
     subscribePricing();
+    subscribeCatalog();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
