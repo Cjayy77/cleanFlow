@@ -169,10 +169,13 @@ service cloud.firestore {
         && request.resource.data.welcomerFee >= 0
         && request.resource.data.scheduledDate is string
         && request.resource.data.linenRequested is bool
+        // Emplacement des clés / accès, recopié du bien pour que le prestataire
+        // et le welcomer (qui ne lisent pas le bien) sachent comment entrer.
+        && request.resource.data.keyAccess is string
         // Liste blanche des champs : empêche le client d'injecter des champs
         // réservés à l'admin (adjustment, rating, verifiedBy, adminNote…) qui
         // fausseraient la vérification ou la compta.
-        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'prestataireId', 'livreurId', 'welcomerId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'welcomerService', 'welcomerFee', 'price', 'scheduledDate', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'keyAccess', 'prestataireId', 'livreurId', 'welcomerId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'welcomerService', 'welcomerFee', 'price', 'scheduledDate', 'status', 'createdAt'])
         && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;
 
       allow update: if isSignedIn() && (
@@ -182,12 +185,14 @@ service cloud.firestore {
           && resource.data.status == 'pending'
           && request.resource.data.status == 'cancelled'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
-        // Client : mettre à jour l'adresse recopiée sur sa réservation quand
-        // il modifie le bien, pour que prestataire et livreur voient la bonne.
+        // Client : mettre à jour l'adresse (et les consignes d'accès aux clés)
+        // recopiées sur sa réservation quand il modifie le bien, pour que
+        // prestataire et welcomer voient toujours les bonnes informations.
         || (isClient()
           && resource.data.clientId == request.auth.uid
           && request.resource.data.propertyAddress is string
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['propertyAddress']))
+          && request.resource.data.keyAccess is string
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['propertyAddress', 'keyAccess']))
         // Client : noter (1 à 5 étoiles) sa prestation une fois vérifiée.
         || (isClient()
           && resource.data.clientId == request.auth.uid

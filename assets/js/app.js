@@ -67,6 +67,7 @@ const propertyPostal = document.getElementById('propertyPostal');
 const propertySurface = document.getElementById('propertySurface');
 const propertyZone = document.getElementById('propertyZone');
 const propertyNotes = document.getElementById('propertyNotes');
+const propertyKeyAccess = document.getElementById('propertyKeyAccess');
 const propertyFormTitle = document.getElementById('propertyFormTitle');
 const propertySubmitBtn = document.getElementById('propertySubmitBtn');
 const cancelEditWrap = document.getElementById('cancelEditWrap');
@@ -145,6 +146,7 @@ function setPropertyFormMode(property = null) {
   propertySurface.value = property && property.surface ? property.surface : '';
   propertyZone.value = property && property.zone ? property.zone : (ZONES[0] ? ZONES[0].value : '');
   propertyNotes.value = property ? (property.notes || '') : '';
+  if (propertyKeyAccess) propertyKeyAccess.value = property ? (property.keyAccess || '') : '';
   if (property) {
     propertyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
     propertyStreet.focus();
@@ -912,6 +914,7 @@ propertyForm.addEventListener('submit', async event => {
   const surface = Math.floor(Number(propertySurface.value) || 0);
   const zone = propertyZone.value;
   const notes = propertyNotes.value.trim();
+  const keyAccess = propertyKeyAccess ? propertyKeyAccess.value.trim() : '';
   if (!street || !city || !postalCode) {
     setAppStatus('Veuillez renseigner l’adresse complète du bien.', 'error');
     return;
@@ -932,9 +935,9 @@ propertyForm.addEventListener('submit', async event => {
       // pour que prestataire et livreur ne voient jamais l'ancienne.
       const affected = bookings.filter(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
       await withButtonLoading(propertySubmitBtn, () => withTimeout((async () => {
-        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, surface, zone, notes });
+        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, surface, zone, notes, keyAccess });
         await Promise.all(affected.map(b =>
-          updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress })));
+          updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress, keyAccess })));
       })(), 20000));
       setPropertyFormMode(null);
       setAppStatus(affected.length
@@ -950,6 +953,7 @@ propertyForm.addEventListener('submit', async event => {
           surface,
           zone,
           notes,
+          keyAccess,
           createdAt: serverTimestamp(),
         }), 15000));
       propertyForm.reset();
@@ -1021,6 +1025,7 @@ bookBtn.addEventListener('click', async () => {
         clientId: currentUser.uid,
         propertyId: selectedPropertyId,
         propertyAddress: `${property.street}, ${property.city}`,
+        keyAccess: property.keyAccess || '',
         prestataireId: null,
         livreurId: null,
         serviceType: quote.serviceType,

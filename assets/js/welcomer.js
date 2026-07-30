@@ -110,6 +110,15 @@ function renderTasks(bookings) {
     top.append(left, pill);
     card.appendChild(top);
 
+    if (booking.keyAccess) {
+      const keyBox = document.createElement('div');
+      keyBox.className = 'key-access';
+      const kh = document.createElement('div'); kh.className = 'key-access-head'; kh.textContent = '🔑 Accès & clés';
+      const kt = document.createElement('div'); kt.className = 'key-access-body'; kt.textContent = booking.keyAccess;
+      keyBox.append(kh, kt);
+      card.appendChild(keyBox);
+    }
+
     let openForm = null;
     if (done) {
       const summary = document.createElement('div');
