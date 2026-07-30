@@ -662,24 +662,56 @@ function supplementRow(item) {
   const name = document.createElement('div');
   name.className = 'supp-name';
   name.textContent = item.name || '(sans nom)';
+  const auto = item.unit === 'bed' || item.unit === 'guest';
+  const per = item.unit === 'bed' ? 'lit' : 'voyageur';
+  const basis = item.unit === 'bed' ? beds : guests;
   const meta = document.createElement('div');
   meta.className = 'p-meta';
-  meta.textContent = `${Number(item.priceTTC) || 0}€ TTC / unité`;
+  meta.textContent = `${Number(item.priceTTC) || 0}€ TTC / ${auto ? per : 'unité'}`;
   info.append(name, meta);
-  const qty = document.createElement('input');
-  qty.type = 'number';
-  qty.min = '0';
-  qty.step = '1';
-  qty.className = 'supp-qty';
-  qty.value = selectedExtras[item.id] || 0;
-  qty.setAttribute('aria-label', `Quantité — ${item.name || ''}`);
-  qty.addEventListener('input', () => {
-    const n = Math.max(0, Math.floor(Number(qty.value) || 0));
-    if (n > 0) selectedExtras[item.id] = n; else delete selectedExtras[item.id];
-    updateBookingBar();
-  });
-  row.append(info, qty);
+
+  if (auto) {
+    // Quantité calculée automatiquement selon le nombre de lits / voyageurs.
+    const wrap = document.createElement('label');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.style.cssText = 'width:auto;';
+    cb.checked = (selectedExtras[item.id] || 0) > 0;
+    const hint = document.createElement('span');
+    hint.textContent = `× ${basis} ${per}${basis > 1 ? 's' : ''}`;
+    cb.addEventListener('change', () => {
+      if (cb.checked && basis > 0) selectedExtras[item.id] = basis; else delete selectedExtras[item.id];
+      updateBookingBar();
+    });
+    wrap.append(cb, hint);
+    row.append(info, wrap);
+  } else {
+    const qty = document.createElement('input');
+    qty.type = 'number';
+    qty.min = '0';
+    qty.step = '1';
+    qty.className = 'supp-qty';
+    qty.value = selectedExtras[item.id] || 0;
+    qty.setAttribute('aria-label', `Quantité — ${item.name || ''}`);
+    qty.addEventListener('input', () => {
+      const n = Math.max(0, Math.floor(Number(qty.value) || 0));
+      if (n > 0) selectedExtras[item.id] = n; else delete selectedExtras[item.id];
+      updateBookingBar();
+    });
+    row.append(info, qty);
+  }
   return row;
+}
+
+// Recalcule la quantité des suppléments « par lit / par voyageur » cochés.
+function resyncAutoExtras() {
+  catalog.forEach(i => {
+    if ((i.unit === 'bed' || i.unit === 'guest') && (selectedExtras[i.id] || 0) > 0) {
+      const basis = i.unit === 'bed' ? beds : guests;
+      if (basis > 0) selectedExtras[i.id] = basis; else delete selectedExtras[i.id];
+    }
+  });
 }
 
 function subscribeData() {
@@ -827,6 +859,8 @@ bedroomsInput.addEventListener('input', () => {
 
 bedsInput.addEventListener('input', () => {
   beds = Math.max(1, Math.floor(Number(bedsInput.value) || 1));
+  resyncAutoExtras();
+  renderSupplements();
   updateBookingBar();
 });
 
@@ -837,6 +871,9 @@ bathroomsInput.addEventListener('input', () => {
 
 guestsInput.addEventListener('input', () => {
   guests = Math.max(0, Math.floor(Number(guestsInput.value) || 0));
+  resyncAutoExtras();
+  renderSupplements();
+  updateBookingBar();
 });
 
 propertyTypeInput.addEventListener('change', () => {

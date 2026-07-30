@@ -22,6 +22,7 @@ import {
   DEFAULT_PRICING,
   PRICING_SCALARS,
   openDevisDocument,
+  uploadCatalogImage,
 } from './shared.js';
 import {
   collection,
@@ -458,6 +459,8 @@ function buildCatalogCard(item, type) {
   const bits = [`${item.priceHT || 0}€ HT`, `${item.priceTTC || 0}€ TTC`];
   if (type.hasCategory && item.category) bits.unshift(item.category);
   if (type.hasStock && item.stock != null) bits.push(`stock ${item.stock}`);
+  if (item.unit === 'bed') bits.push('par lit');
+  else if (item.unit === 'guest') bits.push('par voyageur');
   meta.textContent = bits.join(' · ');
   info.append(name, meta);
   if (item.description) {
@@ -515,6 +518,21 @@ function catalogItemForm(type, existing) {
   const fStock = type.hasStock ? catalogField('Stock', 'stock', existing ? existing.stock : '', 'number') : null;
   const fPhoto = catalogField('Photo (URL, optionnel)', 'photoUrl', existing ? existing.photoUrl : '');
 
+  // Base de facturation : à l'unité, par lit, ou par voyageur (surtout pour le linge).
+  const fUnit = document.createElement('label');
+  fUnit.className = 'form-row';
+  const uSpan = document.createElement('span');
+  uSpan.textContent = 'Facturation';
+  uSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const uSel = document.createElement('select');
+  uSel.name = 'unit';
+  [['unit', "À l'unité (quantité choisie)"], ['bed', 'Par lit'], ['guest', 'Par voyageur']].forEach(([v, l]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = l;
+    if ((existing && existing.unit) === v) o.selected = true;
+    uSel.appendChild(o);
+  });
+  fUnit.append(uSpan, uSel);
+
   form.append(fName, fDesc);
   if (fCat) form.append(fCat);
   const cols = document.createElement('div');
@@ -522,13 +540,38 @@ function catalogItemForm(type, existing) {
   cols.append(fHT, fTTC);
   form.append(cols);
   if (fStock) form.append(fStock);
-  form.append(fPhoto);
+  form.append(fUnit, fPhoto);
 
   // TTC auto-calculé depuis le HT (modifiable ensuite).
   fHT.querySelector('input').addEventListener('input', e => {
     const v = Number(e.target.value);
     if (Number.isFinite(v)) get('priceTTC').value = Math.round(v * (1 + vat));
   });
+
+  // Upload d'image (remplit le champ URL). Nécessite Firebase Storage (Blaze).
+  const upWrap = document.createElement('label');
+  upWrap.className = 'form-row';
+  const upSpan = document.createElement('span');
+  upSpan.textContent = 'Téléverser une photo';
+  upSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const upInput = document.createElement('input');
+  upInput.type = 'file';
+  upInput.accept = 'image/*';
+  upInput.addEventListener('change', async () => {
+    const file = upInput.files && upInput.files[0];
+    if (!file) return;
+    upSpan.textContent = 'Téléversement…';
+    try {
+      const url = await withTimeout(uploadCatalogImage(file), 30000);
+      get('photoUrl').value = url;
+      upSpan.textContent = 'Photo téléversée ✓';
+    } catch (err) {
+      upSpan.textContent = 'Téléverser une photo';
+      setCatalogStatus(`Upload impossible : ${authErrorMessage(err)}`, 'error');
+    }
+  });
+  upWrap.append(upSpan, upInput);
+  form.append(upWrap);
 
   const actions = document.createElement('div');
   actions.className = 'modal-actions';
@@ -549,6 +592,7 @@ function catalogItemForm(type, existing) {
       priceHT: Math.max(0, Number(get('priceHT').value) || 0),
       priceTTC: Math.max(0, Number(get('priceTTC').value) || 0),
       photoUrl: get('photoUrl').value.trim(),
+      unit: get('unit') ? get('unit').value : 'unit',
       active: true,
     };
     if (type.hasCategory) data.category = get('category').value.trim();

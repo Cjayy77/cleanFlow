@@ -400,6 +400,14 @@ export async function uploadBookingImage({ bookingId, slot, file, uploadedBy }) 
   return photoDoc;
 }
 
+// Upload d'une image d'article de catalogue (admin) → renvoie l'URL publique.
+export async function uploadCatalogImage(file) {
+  const safe = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storageRef = ref(storage, `catalog/${Date.now()}-${safe}`);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+  return getDownloadURL(storageRef);
+}
+
 export function formatShortDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
