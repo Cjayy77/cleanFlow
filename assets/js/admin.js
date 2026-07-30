@@ -263,6 +263,7 @@ function renderPricingForm() {
   // Règles de durée
   const g3 = group('Règles de durée');
   g3.appendChild(priceField('Heures par lit supplémentaire', P.hoursPerExtraBed, { key: 'hoursPerExtraBed', step: '0.25', suffix: 'h' }));
+  g3.appendChild(priceField('Heures par salle de bain supplémentaire', P.hoursPerExtraBathroom, { key: 'hoursPerExtraBathroom', step: '0.25', suffix: 'h' }));
   g3.appendChild(priceField('Heures par 25 m² au-delà de la grille', P.hoursPer25sqmAbove90, { key: 'hoursPer25sqmAbove90', step: '0.25', suffix: 'h' }));
   g3.appendChild(priceField('Surface max. calcul auto (au-delà : devis)', P.maxAutoSurface, { key: 'maxAutoSurface', suffix: 'm²' }));
 
@@ -271,9 +272,30 @@ function renderPricingForm() {
   g4.appendChild(priceField('Kit de bienvenue (par chambre)', P.kitPrice, { key: 'kitPrice', suffix: '€' }));
   g4.appendChild(priceField('Frais de déplacement', P.travelFee, { key: 'travelFee', suffix: '€' }));
   g4.appendChild(priceField('Abonnement application', P.subscriptionMonthly, { key: 'subscriptionMonthly', suffix: '€/mois' }));
-  g4.appendChild(priceField('Commission CleanFlow — min', P.commissionMin, { key: 'commissionMin', suffix: '€' }));
-  g4.appendChild(priceField('Commission CleanFlow — max', P.commissionMax, { key: 'commissionMax', suffix: '€' }));
+  g4.appendChild(priceField('Commission CleanFlow (appliquée / intervention)', P.commission, { key: 'commission', suffix: '€' }));
+  g4.appendChild(priceField('Commission — borne min (indicatif)', P.commissionMin, { key: 'commissionMin', suffix: '€' }));
+  g4.appendChild(priceField('Commission — borne max (indicatif)', P.commissionMax, { key: 'commissionMax', suffix: '€' }));
   g4.appendChild(priceField('TVA', Math.round(P.vatRate * 100), { key: 'vatPct', suffix: '%' }));
+
+  // Textes & zones desservies
+  const g5 = group('Textes du devis & villes desservies');
+  const txtWrap = document.createElement('label');
+  txtWrap.className = 'price-field';
+  txtWrap.style.alignItems = 'flex-start';
+  const txtSpan = document.createElement('span'); txtSpan.textContent = 'Bas de page du devis';
+  const txt = document.createElement('textarea');
+  txt.id = 'pricingDevisText'; txt.style.cssText = 'flex:1;min-width:240px;min-height:80px;';
+  txt.value = P.devisText || '';
+  txtWrap.append(txtSpan, txt);
+  g5.appendChild(txtWrap);
+  const cityWrap = document.createElement('label');
+  cityWrap.className = 'price-field';
+  const citySpan = document.createElement('span'); citySpan.textContent = 'Villes desservies (séparées par des virgules)';
+  const cityIn = document.createElement('input');
+  cityIn.type = 'text'; cityIn.id = 'pricingCities'; cityIn.style.cssText = 'flex:1;min-width:200px;';
+  cityIn.value = (P.cities || []).join(', ');
+  cityWrap.append(citySpan, cityIn);
+  g5.appendChild(cityWrap);
 
   const actions = document.createElement('div');
   actions.className = 'modal-actions';
@@ -318,18 +340,24 @@ function collectPricingFromForm() {
     max: Number(r.querySelector('input[data-role="max"]').value),
     baseHours: Number(r.querySelector('input[data-role="hours"]').value),
   }));
+  const textEl = form.querySelector('#pricingDevisText');
+  const cityEl = form.querySelector('#pricingCities');
   return {
     hourlyRates: { normal: val('rate_normal'), deep: val('rate_deep') },
     timeGrid: bands,
     hoursPerExtraBed: val('hoursPerExtraBed'),
+    hoursPerExtraBathroom: val('hoursPerExtraBathroom'),
     hoursPer25sqmAbove90: val('hoursPer25sqmAbove90'),
     maxAutoSurface: val('maxAutoSurface'),
     kitPrice: val('kitPrice'),
     travelFee: val('travelFee'),
     subscriptionMonthly: val('subscriptionMonthly'),
+    commission: val('commission'),
     commissionMin: val('commissionMin'),
     commissionMax: val('commissionMax'),
     vatRate: val('vatPct') / 100,
+    devisText: textEl ? textEl.value : undefined,
+    cities: cityEl ? cityEl.value.split(',').map(s => s.trim()).filter(Boolean) : [],
   };
 }
 
@@ -348,6 +376,7 @@ async function savePricing(config) {
 
 // ---- Back-office catalogue : kits, consommables, location de linge ----
 const CATALOG_TYPES = [
+  { key: 'service', label: 'Prestations (check-in, check-out, clés, urgence…)', singular: 'une prestation', hasStock: false, hasCategory: false },
   { key: 'kit', label: "Kits d'accueil", singular: 'un kit', hasStock: false, hasCategory: false },
   { key: 'consumable', label: 'Consommables', singular: 'un consommable', hasStock: true, hasCategory: true },
   { key: 'linen', label: 'Location de linge', singular: 'un article de linge', hasStock: false, hasCategory: false },
@@ -1320,12 +1349,13 @@ function comptaLine(booking) {
   const travel = Number(booking.travelFee) || 0;
   const amenities = Number(booking.amenitiesPrice) || 0;
   const extras = Number(booking.extrasHT) || 0;
-  // Les kits de bienvenue sont le reliquat (prix − prestation − amenities − suppléments − déplacement).
-  const kits = Math.max(0, price - prestation - amenities - extras - travel);
+  const commission = Number(booking.commission) || 0;
+  // Kits de bienvenue = reliquat (prix − prestation − amenities − suppléments − commission − déplacement).
+  const kits = Math.max(0, price - prestation - amenities - extras - commission - travel);
   const base = Number(booking.prestatairePay) || 0;
   const adj = Number(booking.adjustment) || 0;
   const payout = base + adj;
-  return { price, prestation, travel, kits, amenities, extras, base, adj, payout, margin: price - payout };
+  return { price, prestation, travel, kits, amenities, extras, commission, base, adj, payout, margin: price - payout };
 }
 
 // Décomposition « ce que coûte quoi » d'une mission, pour que l'admin sache
@@ -1338,6 +1368,7 @@ function comptaBreakdownText(booking) {
   if (l.kits) parts.push(`kits ${l.kits}€${rooms ? ` (${rooms} chambre${rooms > 1 ? 's' : ''})` : ''}`);
   parts.push(`amenities ${l.amenities}€`);
   if (l.extras) parts.push(`suppléments ${l.extras}€`);
+  if (l.commission) parts.push(`commission ${l.commission}€`);
   if (l.travel) parts.push(`déplacement ${l.travel}€`);
   return parts.join(' · ');
 }
@@ -1900,6 +1931,7 @@ function renderBookingCost(booking) {
   (booking.extras || []).forEach(e => {
     rows.push([`${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, (Number(e.priceHT) || 0) * (Number(e.qty) || 0), '']);
   });
+  if (l.commission) rows.push(['Commission CleanFlow', l.commission, '']);
   if (l.travel) rows.push(['Frais de déplacement', l.travel, '']);
   // HT → TVA → TTC (TVA = pass-through, hors marge).
   const rate = getPricing().vatRate;

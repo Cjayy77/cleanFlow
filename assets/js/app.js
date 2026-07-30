@@ -72,10 +72,13 @@ const cancelEditBtn = document.getElementById('cancelEditBtn');
 const propertyFormCard = document.getElementById('propertyFormCard');
 const bedroomsInput = document.getElementById('bedrooms');
 const bedsInput = document.getElementById('beds');
+const bathroomsInput = document.getElementById('bathrooms');
+const guestsInput = document.getElementById('guests');
+const propertyTypeInput = document.getElementById('propertyType');
 const supplementsCard = document.getElementById('supplementsCard');
 const supplementsList = document.getElementById('supplementsList');
 
-const CATALOG_LABELS = { kit: "Kits d'accueil", consumable: 'Consommables', linen: 'Location de linge' };
+const CATALOG_LABELS = { service: 'Prestations', kit: "Kits d'accueil", consumable: 'Consommables', linen: 'Location de linge' };
 const priceBreakdown = document.getElementById('priceBreakdown');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
@@ -93,6 +96,9 @@ let selectedPropertyId = null;
 let selectedDate = null;
 let selectedServiceType = 'normal';
 let beds = 1;
+let bathrooms = 1;
+let guests = 0;
+let propertyType = 'appartement';
 let bedrooms = 0;
 let properties = [];
 let bookings = [];
@@ -180,7 +186,7 @@ function updateBookingBar() {
   const property = properties.find(p => p.id === selectedPropertyId);
   bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
   currentQuote = property
-    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bedrooms, zone: property.zone })
+    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bathrooms, bedrooms, zone: property.zone })
     : null;
 
   // Bien sans surface renseignée (ancien bien) : inviter à compléter.
@@ -229,8 +235,9 @@ function renderPriceBreakdown(quote, extras) {
     [`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${h} h × ${quote.hourlyRate}€/h`, `${quote.prestation}€`, ''],
   ];
   if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''}`, `${quote.kitsTotal}€`, '']);
-  rows.push(['Frais de déplacement', `${quote.travel}€`, '']);
   extras.forEach(e => rows.push([`${e.name}${e.qty > 1 ? ` × ${e.qty}` : ''}`, `${e.lineHT}€`, '']));
+  if (quote.commission) rows.push(['Commission CleanFlow', `${quote.commission}€`, '']);
+  rows.push(['Frais de déplacement', `${quote.travel}€`, '']);
   rows.push(['Total HT', `${finalHT}€`, 'pb-total']);
   rows.push([`TVA (${Math.round(quote.vatRate * 100)} %)`, `${vat}€`, '']);
   priceBreakdown.classList.remove('hidden');
@@ -636,7 +643,7 @@ function renderSupplements() {
   if (!catalog.length) { supplementsCard.classList.add('hidden'); return; }
   supplementsCard.classList.remove('hidden');
   supplementsList.innerHTML = '';
-  ['kit', 'consumable', 'linen'].forEach(type => {
+  ['service', 'kit', 'consumable', 'linen'].forEach(type => {
     const items = catalog.filter(i => i.type === type).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (!items.length) return;
     const head = document.createElement('div');
@@ -823,6 +830,19 @@ bedsInput.addEventListener('input', () => {
   updateBookingBar();
 });
 
+bathroomsInput.addEventListener('input', () => {
+  bathrooms = Math.max(1, Math.floor(Number(bathroomsInput.value) || 1));
+  updateBookingBar();
+});
+
+guestsInput.addEventListener('input', () => {
+  guests = Math.max(0, Math.floor(Number(guestsInput.value) || 0));
+});
+
+propertyTypeInput.addEventListener('change', () => {
+  propertyType = propertyTypeInput.value;
+});
+
 propertyForm.addEventListener('submit', async event => {
   event.preventDefault();
   if (!currentUser) return;
@@ -891,7 +911,7 @@ bookBtn.addEventListener('click', async () => {
   const property = properties.find(p => p.id === selectedPropertyId);
   if (!property) return;
   const bookedDate = selectedDate;
-  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bedrooms, zone: property.zone });
+  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bathrooms, bedrooms, zone: property.zone });
   if (!quote) {
     setAppStatus('Renseignez la surface de ce bien avant de réserver.', 'error');
     return;
@@ -945,13 +965,17 @@ bookBtn.addEventListener('click', async () => {
         serviceType: quote.serviceType,
         surface: Number(property.surface),
         zone: property.zone || '',
+        propertyType,
         beds: quote.beds,
+        bathrooms: quote.bathrooms,
+        guests,
         hours: quote.hours,
         bedrooms: quote.bedrooms,
         kitCount: quote.kitCount,
         prestationPrice: quote.prestation,
         amenitiesPrice: quote.amenitiesTotal,
         travelFee: quote.travel,
+        commission: quote.commission,
         extras,
         extrasHT,
         price: finalHT,
@@ -972,6 +996,10 @@ bookBtn.addEventListener('click', async () => {
     if (bedroomsInput) bedroomsInput.value = '0';
     beds = 1;
     if (bedsInput) bedsInput.value = '1';
+    bathrooms = 1;
+    if (bathroomsInput) bathroomsInput.value = '1';
+    guests = 0;
+    if (guestsInput) guestsInput.value = '0';
     selectedExtras = {};
     renderSupplements();
     renderCalendar();

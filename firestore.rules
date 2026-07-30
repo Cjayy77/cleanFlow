@@ -128,6 +128,13 @@ service cloud.firestore {
         && request.resource.data.bedrooms >= 0
         && request.resource.data.beds is int
         && request.resource.data.beds >= 0
+        && request.resource.data.bathrooms is int
+        && request.resource.data.bathrooms >= 0
+        && request.resource.data.guests is int
+        && request.resource.data.guests >= 0
+        && request.resource.data.propertyType is string
+        && request.resource.data.commission is number
+        && request.resource.data.commission >= 0
         && request.resource.data.hours is number
         && request.resource.data.hours >= 0
         && request.resource.data.amenitiesPrice is number
@@ -140,7 +147,7 @@ service cloud.firestore {
         // Liste blanche des champs : empêche le client d'injecter des champs
         // réservés à l'admin (adjustment, rating, verifiedBy, adminNote…) qui
         // fausseraient la vérification ou la compta.
-        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'prestataireId', 'livreurId', 'serviceType', 'surface', 'zone', 'beds', 'hours', 'bedrooms', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'extras', 'extrasHT', 'price', 'scheduledDate', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'prestataireId', 'livreurId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'price', 'scheduledDate', 'status', 'createdAt'])
         && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;
 
       allow update: if isSignedIn() && (

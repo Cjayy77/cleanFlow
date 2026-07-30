@@ -97,16 +97,34 @@
           <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal</label>
           <label class="service-option"><input type="radio" name="serviceType" value="deep"> Nettoyage en profondeur</label>
         </div>
+        <div class="form-row">
+          <label for="propertyType">Type de logement</label>
+          <select id="propertyType">
+            <option value="studio">Studio</option>
+            <option value="appartement" selected>Appartement</option>
+            <option value="maison">Maison</option>
+          </select>
+        </div>
         <div class="form-cols">
           <div class="form-row">
             <label for="beds">Nombre de lits</label>
             <input id="beds" type="number" min="1" step="1" value="1" inputmode="numeric">
-            <div class="note-box">Détermine la durée estimée (et donc le tarif horaire).</div>
+            <div class="note-box">Avec la surface et les salles de bain, détermine la durée (et le tarif).</div>
           </div>
+          <div class="form-row">
+            <label for="bathrooms">Nombre de salles de bain</label>
+            <input id="bathrooms" type="number" min="1" step="1" value="1" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-cols">
           <div class="form-row">
             <label for="bedrooms">Nombre de chambres</label>
             <input id="bedrooms" type="number" min="0" step="1" value="0" inputmode="numeric">
-            <div class="note-box">Un kit de bienvenue par chambre — 20&nbsp;€ le kit.</div>
+            <div class="note-box">Un kit de bienvenue par chambre.</div>
+          </div>
+          <div class="form-row">
+            <label for="guests">Nombre de voyageurs (max.)</label>
+            <input id="guests" type="number" min="0" step="1" value="0" inputmode="numeric">
           </div>
         </div>
         <details id="supplementsCard" class="hidden" style="margin:4px 0 16px;">

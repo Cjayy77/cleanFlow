@@ -39,22 +39,26 @@ export const DEFAULT_PRICING = {
     { max: 90, baseHours: 4 },
   ],
   hoursPerExtraBed: 0.5,      // +0,5 h par lit au-delà du premier
+  hoursPerExtraBathroom: 0.5, // +0,5 h par salle de bain au-delà de la première
   hoursPer25sqmAbove90: 1,    // au-delà de 90 m² : +1 h par tranche de 25 m²
   maxAutoSurface: 250,        // au-delà : devis sur-mesure (pas de prix automatique)
   kitPrice: 20,               // kit de bienvenue (linge, consommables) — 1 / chambre
   travelFee: 10,              // frais de déplacement (forfait provisoire)
-  // Paramètres du cahier des charges, éditables dès maintenant côté back-office
-  // (pas encore intégrés au calcul du prix client — étapes suivantes).
+  commission: 8,              // commission CleanFlow appliquée (€ HT / intervention)
+  commissionMin: 4,           // borne basse indicative (€ HT)
+  commissionMax: 12,          // borne haute indicative (€ HT)
   subscriptionMonthly: 10,    // abonnement application (€ HT / mois / logement)
-  commissionMin: 4,           // commission CleanFlow min (€ HT / intervention)
-  commissionMax: 12,          // commission CleanFlow max (€ HT / intervention)
   vatRate: 0.20,              // taux de TVA
+  // Texte libre du bas de devis (éditable back-office).
+  devisText: "Devis émis par CleanFlow. Prix en euros. Le ménage est réalisé par un prestataire vérifié ; chaque intervention fait l'objet d'un contrôle photo par l'équipe CleanFlow avant confirmation. Devis valable 30 jours.",
+  // Villes desservies (éditable back-office).
+  cities: [],
 };
 
-// Champs numériques attendus dans la config (hors hourlyRates/timeGrid).
+// Champs numériques attendus dans la config (hors hourlyRates/timeGrid/textes).
 export const PRICING_SCALARS = [
-  'hoursPerExtraBed', 'hoursPer25sqmAbove90', 'maxAutoSurface',
-  'kitPrice', 'travelFee', 'subscriptionMonthly', 'commissionMin', 'commissionMax', 'vatRate',
+  'hoursPerExtraBed', 'hoursPerExtraBathroom', 'hoursPer25sqmAbove90', 'maxAutoSurface',
+  'kitPrice', 'travelFee', 'commission', 'commissionMin', 'commissionMax', 'subscriptionMonthly', 'vatRate',
 ];
 
 function toNum(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
@@ -75,6 +79,8 @@ export function normalizePricing(cfg) {
   const out = {
     hourlyRates: { normal: toNum(hr.normal, d.hourlyRates.normal), deep: toNum(hr.deep, d.hourlyRates.deep) },
     timeGrid: grid,
+    devisText: typeof cfg.devisText === 'string' && cfg.devisText.trim() ? cfg.devisText : d.devisText,
+    cities: Array.isArray(cfg.cities) ? cfg.cities.map(c => String(c)).filter(Boolean) : [],
   };
   PRICING_SCALARS.forEach(k => { out[k] = toNum(cfg[k], d[k]); });
   return out;
@@ -112,28 +118,31 @@ export function travelFeeForZone(/* zone */) {
   return getPricing().travelFee;
 }
 
-// Durée estimée d'un ménage (h) selon la surface et le nombre de lits.
+// Durée estimée d'un ménage (h) selon surface, nombre de lits et salles de bain.
 // Renvoie null si surface invalide, { custom:true } au-delà de la limite auto.
-export function estimateCleaningHours(surface, beds) {
+export function estimateCleaningHours(surface, beds, bathrooms) {
   const P = getPricing();
   const s = Number(surface);
   if (!Number.isFinite(s) || s <= 0) return null;
   if (s > P.maxAutoSurface) return { custom: true };
   const bedsEff = Math.max(1, Math.floor(Number(beds) || 1));
+  const bathEff = Math.max(1, Math.floor(Number(bathrooms) || 1));
   const lastBand = P.timeGrid[P.timeGrid.length - 1];
   const band = P.timeGrid.find(b => s <= b.max);
   const base = band
     ? band.baseHours
     // Au-delà de la dernière tranche : +1 (paramétrable) par tranche de 25 m².
     : lastBand.baseHours + Math.ceil((s - lastBand.max) / 25) * P.hoursPer25sqmAbove90;
-  const hours = base + (bedsEff - 1) * P.hoursPerExtraBed;
-  return { custom: false, hours, beds: bedsEff };
+  const hours = base
+    + (bedsEff - 1) * P.hoursPerExtraBed
+    + (bathEff - 1) * P.hoursPerExtraBathroom;
+  return { custom: false, hours, beds: bedsEff, bathrooms: bathEff };
 }
 
 // Détail de prix d'une réservation (modèle horaire). Renvoie null si surface
 // invalide, ou { custom:true } si elle relève du devis sur-mesure.
-export function computeBookingPrice({ surface, serviceType, beds, bedrooms, kitCount = 0, zone, amenitiesPrice = AMENITIES_PRICE }) {
-  const est = estimateCleaningHours(surface, beds);
+export function computeBookingPrice({ surface, serviceType, beds, bathrooms, bedrooms, kitCount = 0, zone, amenitiesPrice = AMENITIES_PRICE }) {
+  const est = estimateCleaningHours(surface, beds, bathrooms);
   if (!est) return null;
   if (est.custom) return { custom: true };
   const P = getPricing();
@@ -146,14 +155,16 @@ export function computeBookingPrice({ surface, serviceType, beds, bedrooms, kitC
   const kitsTotal = kits * P.kitPrice;
   const amenitiesTotal = Math.max(0, Number(amenitiesPrice) || 0);
   const travel = travelFeeForZone(zone);
+  const commission = Math.max(0, Number(P.commission) || 0); // commission CleanFlow / intervention
   // Les tarifs sont HT ; la TVA est un pass-through (n'entre pas dans la marge).
-  const total = prestation + kitsTotal + amenitiesTotal + travel; // total HT
+  const total = prestation + kitsTotal + amenitiesTotal + travel + commission; // total HT
   const vatRate = P.vatRate;
   const vat = Math.round(total * vatRate);
   return {
     custom: false,
     serviceType: service,
     beds: est.beds,
+    bathrooms: est.bathrooms,
     hours: est.hours,
     hourlyRate,
     prestation,
@@ -162,6 +173,8 @@ export function computeBookingPrice({ surface, serviceType, beds, bedrooms, kitC
     kitsTotal,
     amenitiesTotal,
     travel,
+    commission,
+    subscriptionMonthly: Math.max(0, Number(P.subscriptionMonthly) || 0),
     total,
     vatRate,
     vat,
@@ -188,8 +201,9 @@ function bookingLineItems(b) {
   const prestation = Number(b.prestationPrice) || 0;
   const amenities = Number(b.amenitiesPrice) || 0;
   const travel = Number(b.travelFee) || 0;
+  const commission = Number(b.commission) || 0;
   const extrasHT = Number(b.extrasHT) || 0;
-  const kits = Math.max(0, price - prestation - amenities - extrasHT - travel);
+  const kits = Math.max(0, price - prestation - amenities - extrasHT - travel - commission);
   const rooms = Number(b.bedrooms != null ? b.bedrooms : b.kitCount) || 0;
   const rate = b.hours ? Math.round(prestation / b.hours) : (b.serviceType === 'deep' ? 50 : 30);
   const items = [
@@ -198,6 +212,7 @@ function bookingLineItems(b) {
   if (kits) items.push({ label: `Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, amount: kits });
   if (amenities) items.push({ label: 'Amenities (consommables)', amount: amenities });
   (b.extras || []).forEach(e => items.push({ label: `${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, amount: (Number(e.priceHT) || 0) * (Number(e.qty) || 0) }));
+  if (commission) items.push({ label: 'Commission CleanFlow', amount: commission });
   if (travel) items.push({ label: 'Frais de déplacement', amount: travel });
   return { items, totalHT: price };
 }
@@ -205,10 +220,13 @@ function bookingLineItems(b) {
 // Ouvre un devis / reçu imprimable (→ « Enregistrer au format PDF » du navigateur).
 // Entièrement côté client : aucun backend requis.
 export function openDevisDocument(booking, client) {
+  const P = getPricing();
   const { items, totalHT } = bookingLineItems(booking);
-  const rate = getPricing().vatRate;
+  const rate = P.vatRate;
   const vat = Math.round(totalHT * rate);
   const ttc = totalHT + vat;
+  const devisText = escapeHtml(P.devisText || '');
+  const subscription = Math.max(0, Number(P.subscriptionMonthly) || 0);
   const ref = `CF-${String(booking.id || '').slice(0, 6).toUpperCase()}`;
   const today = new Date();
   const fmt = d => d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -272,8 +290,9 @@ export function openDevisDocument(booking, client) {
     <div class="row"><span>TVA (${Math.round(rate * 100)} %)</span><b>${vat}&nbsp;€</b></div>
     <div class="row ttc"><span>Total TTC</span><span>${ttc}&nbsp;€</span></div>
   </div>
+  ${subscription ? `<div style="margin-top:10px;font-size:11px;color:#888;text-align:right;">+ Abonnement application : ${subscription}&nbsp;€ HT / mois / logement (facturé séparément)</div>` : ''}
   <div class="foot">
-    Devis émis par CleanFlow. Prix en euros. Le ménage est réalisé par un prestataire vérifié ; chaque intervention fait l'objet d'un contrôle photo par l'équipe CleanFlow avant confirmation. Devis valable 30 jours. Conditions générales disponibles sur le site.
+    ${devisText} Conditions générales disponibles sur le site.
   </div>
   <div class="noprint"><button onclick="window.print()">Imprimer / enregistrer en PDF</button></div>
   <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>
