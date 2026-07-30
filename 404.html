@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Page introuvable — CleanFlow</title>
+<link rel="icon" href="/assets/fan-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#E6007E; --pink-deep:#B80068; --ink:#12123A; --muted:#6A6B85;
+    --white:#FFFFFF; --soft:#FAF6FB; --line:#ECEAF3; --plum:#221541;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Poppins', system-ui, sans-serif; color:var(--ink); background:var(--white);
+    min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:32px; line-height:1.6; }
+  .card{ max-width:520px; text-align:center; }
+  .brand{ display:inline-flex; align-items:center; gap:10px; font-size:22px; font-weight:800; letter-spacing:-0.01em; margin-bottom:40px; }
+  .brand img{ width:30px; height:30px; }
+  .brand span{ color:var(--pink); }
+  .code{ font-size:96px; font-weight:800; line-height:1; letter-spacing:-0.03em;
+    background:linear-gradient(120deg,#E6007E 0%,#8A1DA6 100%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  h1{ font-size:26px; font-weight:700; letter-spacing:-0.02em; margin:18px 0 10px; }
+  p{ color:var(--muted); font-size:16px; margin-bottom:32px; }
+  .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn{ text-decoration:none; font-weight:700; font-size:15px; padding:12px 22px; border-radius:11px; transition:transform .15s ease-out, background .15s ease-out; display:inline-block; }
+  .btn.primary{ background:var(--pink); color:#fff; }
+  .btn.primary:hover{ transform:translateY(-1px); background:var(--pink-deep); }
+  .btn.ghost{ background:var(--soft); color:var(--ink); border:1px solid var(--line); }
+  .btn.ghost:hover{ transform:translateY(-1px); }
+  .links{ margin-top:34px; font-size:13px; color:var(--muted); }
+  .links a{ color:var(--pink-deep); text-decoration:none; font-weight:600; }
+  .links a:hover{ text-decoration:underline; }
+  @media (prefers-color-scheme: dark){
+    body{ background:var(--plum); color:#fff; }
+    h1{ color:#fff; }
+    .btn.ghost{ background:rgba(255,255,255,.06); color:#fff; border-color:rgba(255,255,255,.14); }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><img src="/assets/fan-mark.svg" alt="" aria-hidden="true"><div><span>Clean</span>Flow</div></div>
+    <div class="code">404</div>
+    <h1>Cette page a fait le ménage</h1>
+    <p>La page que vous cherchez n’existe pas ou a été déplacée. Vérifiez l’adresse, ou revenez à l’accueil.</p>
+    <div class="actions">
+      <a class="btn primary" href="/">Retour à l’accueil</a>
+      <a class="btn ghost" href="/devis/">Obtenir un devis gratuit</a>
+    </div>
+    <div class="links">
+      Espaces : <a href="/app/">Client</a> · <a href="/prestataire/">Prestataire</a> · <a href="/livreur/">Livreur</a> · <a href="/welcomer/">Welcomer</a>
+    </div>
+  </div>
+</body>
+</html>
