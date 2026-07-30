@@ -23,6 +23,7 @@ import {
   PRICING_SCALARS,
   openDevisDocument,
   uploadCatalogImage,
+  welcomerTier,
 } from './shared.js';
 import {
   collection,
@@ -73,6 +74,7 @@ const openIncidents = document.getElementById('openIncidents');
 const clientMessages = document.getElementById('clientMessages');
 const missionsToAssign = document.getElementById('missionsToAssign');
 const kitsToAssign = document.getElementById('kitsToAssign');
+const welcomersToAssign = document.getElementById('welcomersToAssign');
 const adminCalendar = document.getElementById('adminCalendar');
 const adminCalMonth = document.getElementById('adminCalMonth');
 const adminCalPrev = document.getElementById('adminCalPrev');
@@ -102,7 +104,8 @@ let messagesUnsub = null;
 let latestBookings = [];
 let prestataires = [];
 let livreurs = [];
-let suspended = { prestataire: [], livreur: [] };
+let welcomers = [];
+let suspended = { prestataire: [], livreur: [], welcomer: [] };
 let membersUnsubs = [];
 let openMessagesCount = 0;
 let openIncidentsCount = 0;
@@ -837,7 +840,7 @@ function renderDashboard() {
 function subscribeTeamMembers() {
   membersUnsubs.forEach(unsub => unsub());
   membersUnsubs = [];
-  ['prestataire', 'livreur'].forEach(role => {
+  ['prestataire', 'livreur', 'welcomer'].forEach(role => {
     const unsub = onSnapshot(query(collection(db, 'users'), where('role', '==', role)), snapshot => {
       const all = snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
@@ -847,7 +850,8 @@ function subscribeTeamMembers() {
       const approved = all.filter(m => (m.accountStatus ?? 'approved') === 'approved');
       const suspendedList = all.filter(m => m.accountStatus === 'suspended');
       if (role === 'prestataire') { prestataires = approved; suspended.prestataire = suspendedList; }
-      else { livreurs = approved; suspended.livreur = suspendedList; }
+      else if (role === 'livreur') { livreurs = approved; suspended.livreur = suspendedList; }
+      else { welcomers = approved; suspended.welcomer = suspendedList; }
       renderAssignments();
     }, error => setAdminStatus(`Impossible de charger l’équipe : ${authErrorMessage(error)}`, 'error'));
     membersUnsubs.push(unsub);
@@ -906,6 +910,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
 function renderAssignments() {
   renderMissionsToAssign();
   renderKitsToAssign();
+  renderWelcomersToAssign();
   renderAdminCalendar();
   renderRoster();
   renderCompta();
@@ -915,8 +920,9 @@ function renderAssignments() {
 function renderRoster() {
   if (!roster) return;
   roster.innerHTML = '';
-  roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire'));
+  roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire', suspended.prestataire));
   roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur', suspended.livreur));
+  roster.appendChild(buildRosterGroup('Welcomers', welcomers, 'welcomer', suspended.welcomer));
 }
 
 function buildRosterGroup(title, members, role, suspendedMembers = []) {
@@ -950,6 +956,10 @@ function prestataireStats(memberId) {
   let done = 0;
   let ratingSum = 0;
   let ratingCount = 0;
+  // Contrôles Welcomer : niveau 1 = conforme, niveaux 2/3 = non-conforme.
+  // Le taux de validation nourrit le badge « Prestataire Premium ».
+  let wcTotal = 0;
+  let wcConforme = 0;
   latestBookings.forEach(booking => {
     if (booking.prestataireId !== memberId) return;
     if (['accepted', 'submitted', 'rejected'].includes(booking.status)) {
@@ -958,8 +968,19 @@ function prestataireStats(memberId) {
       done += 1;
       if (typeof booking.rating === 'number') { ratingSum += booking.rating; ratingCount += 1; }
     }
+    if (booking.welcomerLevel) {
+      wcTotal += 1;
+      if (Number(booking.welcomerLevel) === 1) wcConforme += 1;
+    }
   });
-  return { active, done, ratingCount, average: ratingCount ? ratingSum / ratingCount : null };
+  const wcRate = wcTotal ? wcConforme / wcTotal : null;
+  // Premium : au moins 3 contrôles Welcomer, ≥ 90 % conformes, et une note
+  // client d'au moins 4,5/5 si des avis existent.
+  const premium = wcTotal >= 3 && wcRate >= 0.9 && (ratingCount === 0 || ratingSum / ratingCount >= 4.5);
+  return {
+    active, done, ratingCount, average: ratingCount ? ratingSum / ratingCount : null,
+    wcTotal, wcConforme, wcRate, premium,
+  };
 }
 
 function livreurStats(memberId) {
@@ -968,6 +989,18 @@ function livreurStats(memberId) {
   latestBookings.forEach(booking => {
     if (booking.livreurId !== memberId || booking.status === 'cancelled') return;
     if (booking.linenDone) done += 1;
+    else active += 1;
+  });
+  return { active, done };
+}
+
+function welcomerStats(memberId) {
+  let active = 0;
+  let done = 0;
+  latestBookings.forEach(booking => {
+    if (booking.welcomerId !== memberId || booking.status === 'cancelled') return;
+    // Contrôle réalisé une fois la mission validée ou rejetée par le Welcomer.
+    if (['verified', 'rejected'].includes(booking.status) && booking.welcomerLevel) done += 1;
     else active += 1;
   });
   return { active, done };
@@ -988,6 +1021,12 @@ function buildStaticStars(value) {
   return stars;
 }
 
+function memberStats(memberId, role) {
+  if (role === 'prestataire') return prestataireStats(memberId);
+  if (role === 'welcomer') return welcomerStats(memberId);
+  return livreurStats(memberId);
+}
+
 function buildRosterCard(member, role, isSuspended) {
   const card = document.createElement('div');
   card.className = 'task-card' + (isSuspended ? ' roster-suspended' : '');
@@ -1000,12 +1039,14 @@ function buildRosterCard(member, role, isSuspended) {
   name.onclick = () => openMemberModal(member, role);
   card.appendChild(name);
 
-  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
+  const stats = memberStats(member.id, role);
   const load = document.createElement('div');
   load.className = 'task-meta roster-load';
   load.textContent = role === 'prestataire'
     ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
-    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
+    : role === 'welcomer'
+      ? `${stats.active} contrôle(s) à faire · ${stats.done} validé(s)`
+      : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
   card.appendChild(load);
 
   if (role === 'prestataire') {
@@ -1020,6 +1061,18 @@ function buildRosterCard(member, role, isSuspended) {
       ratingLine.appendChild(text);
     }
     card.appendChild(ratingLine);
+    if (stats.wcTotal) {
+      const wcLine = document.createElement('div');
+      wcLine.className = 'task-meta roster-quality';
+      wcLine.textContent = `Contrôles Welcomer : ${Math.round(stats.wcRate * 100)}% conformes (${stats.wcConforme}/${stats.wcTotal})`;
+      card.appendChild(wcLine);
+    }
+    if (stats.premium) {
+      const badge = document.createElement('span');
+      badge.className = 'premium-badge';
+      badge.textContent = '★ Prestataire Premium';
+      card.appendChild(badge);
+    }
   }
   return card;
 }
@@ -1029,6 +1082,11 @@ function memberActiveJobs(member, role) {
   if (role === 'prestataire') {
     return latestBookings
       .filter(b => b.prestataireId === member.id && ['accepted', 'submitted', 'rejected'].includes(b.status))
+      .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  }
+  if (role === 'welcomer') {
+    return latestBookings
+      .filter(b => b.welcomerId === member.id && !b.welcomerLevel && b.status !== 'cancelled')
       .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   }
   return latestBookings
@@ -1049,7 +1107,7 @@ function closeMemberModal() {
 function openMemberModal(member, role) {
   closeMemberModal();
   const isSuspended = member.accountStatus === 'suspended';
-  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
+  const stats = memberStats(member.id, role);
   const jobs = memberActiveJobs(member, role);
 
   const overlay = document.createElement('div');
@@ -1072,7 +1130,7 @@ function openMemberModal(member, role) {
 
   const eyebrow = document.createElement('div');
   eyebrow.className = 'eyebrow';
-  eyebrow.textContent = (role === 'prestataire' ? 'Prestataire' : 'Livreur') + (isSuspended ? ' · suspendu' : '');
+  eyebrow.textContent = (role === 'prestataire' ? 'Prestataire' : role === 'welcomer' ? 'Welcomer' : 'Livreur') + (isSuspended ? ' · suspendu' : '');
   modal.appendChild(eyebrow);
   const h = document.createElement('h2');
   h.textContent = member.name || member.email;
@@ -1100,7 +1158,9 @@ function openMemberModal(member, role) {
   summary.className = 'modal-summary';
   summary.textContent = role === 'prestataire'
     ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
-    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
+    : role === 'welcomer'
+      ? `${stats.active} contrôle(s) à faire · ${stats.done} validé(s)`
+      : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
   modal.appendChild(summary);
   if (role === 'prestataire') {
     const ratingLine = document.createElement('div');
@@ -1120,7 +1180,7 @@ function openMemberModal(member, role) {
   const jobsHead = document.createElement('div');
   jobsHead.className = 'eyebrow';
   jobsHead.style.marginTop = '20px';
-  jobsHead.textContent = role === 'prestataire' ? 'Missions en cours' : 'Tournées en cours';
+  jobsHead.textContent = role === 'prestataire' ? 'Missions en cours' : role === 'welcomer' ? 'Contrôles en cours' : 'Tournées en cours';
   modal.appendChild(jobsHead);
   if (jobs.length === 0) {
     const none = document.createElement('div');
@@ -1721,6 +1781,8 @@ function renderMissionsToAssign() {
   const rankedPrestataires = prestataires.slice().sort((a, b) => {
     const sa = prestataireStats(a.id);
     const sb = prestataireStats(b.id);
+    // Les Premium passent devant, puis meilleure note, puis moins chargés.
+    if (sa.premium !== sb.premium) return sa.premium ? -1 : 1;
     const ra = sa.average ?? -1;
     const rb = sb.average ?? -1;
     if (rb !== ra) return rb - ra;
@@ -1730,7 +1792,8 @@ function renderMissionsToAssign() {
   const prestataireAnnotate = member => {
     const s = prestataireStats(member.id);
     const ratingPart = s.average != null ? `★${s.average.toFixed(1)} (${s.ratingCount})` : 'non noté';
-    return `${ratingPart} · ${s.active} en cours`;
+    const premiumPart = s.premium ? 'Premium · ' : '';
+    return `${premiumPart}${ratingPart} · ${s.active} en cours`;
   };
 
   pending.forEach(booking => {
@@ -1798,6 +1861,53 @@ function renderKitsToAssign() {
           setAdminStatus(`Impossible d’assigner la tournée : ${authErrorMessage(e)}`, 'error');
         }
       }, livreurAnnotate);
+  });
+}
+
+function renderWelcomersToAssign() {
+  if (!welcomersToAssign) return;
+  welcomersToAssign.innerHTML = '';
+  // Réservations où le client a demandé un contrôle Welcomer mais aucun
+  // Welcomer n'est encore affecté. Le contrôle a lieu après le ménage.
+  const needing = latestBookings
+    .filter(booking => booking.welcomerService && !booking.welcomerId && booking.status !== 'cancelled')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  if (needing.length === 0) {
+    welcomersToAssign.innerHTML = '<div class="empty-state">Aucun contrôle Welcomer en attente d’assignation.</div>';
+    return;
+  }
+  const rankedWelcomers = welcomers.slice().sort((a, b) => {
+    const sa = welcomerStats(a.id);
+    const sb = welcomerStats(b.id);
+    if (sa.active !== sb.active) return sa.active - sb.active;
+    return (a.name || a.email).localeCompare(b.name || b.email);
+  });
+  const welcomerAnnotate = member => `${welcomerStats(member.id).active} à contrôler`;
+
+  needing.forEach(booking => {
+    const tier = welcomerTier(booking.welcomerService);
+    const tierLabel = tier ? tier.label : 'Contrôle sur place';
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${tierLabel}${booking.welcomerFee ? ` · ${booking.welcomerFee}€` : ''}`;
+    appendAssignCard(welcomersToAssign, booking, rankedWelcomers, 'Choisir un welcomer…',
+      'Aucun welcomer approuvé. Approuvez d’abord une demande d’accès.', metaText,
+      async (welcomerId, assignBtn) => {
+        if (!welcomerId) { setAdminStatus('Choisissez un welcomer avant d’assigner.', 'error'); return; }
+        const member = welcomers.find(w => w.id === welcomerId);
+        try {
+          await withButtonLoading(assignBtn, () =>
+            withTimeout(updateDoc(doc(db, 'bookings', booking.id), { welcomerId }), 15000));
+          if (member?.email) {
+            queueEmail({
+              to: member.email,
+              subject: `CleanFlow — nouveau contrôle assigné · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              text: `${booking.propertyAddress || 'Contrôle'} · ${formatShortDate(booking.scheduledDate)} · ${tierLabel}. Retrouvez-le dans votre interface welcomer.`,
+            });
+          }
+          setAdminStatus(`Contrôle assigné à ${member?.name || member?.email || 'ce welcomer'}.`, 'success');
+        } catch (e) {
+          setAdminStatus(`Impossible d’assigner le contrôle : ${authErrorMessage(e)}`, 'error');
+        }
+      }, welcomerAnnotate);
   });
 }
 
