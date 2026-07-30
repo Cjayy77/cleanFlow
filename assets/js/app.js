@@ -306,12 +306,9 @@ function renderPropertyButtons() {
     meta.className = 'p-meta';
     meta.textContent = [prop.postalCode, prop.surface ? `${prop.surface} m²` : null, zoneLabel(prop.zone)]
       .filter(Boolean).join(' · ');
-    const thumb = document.createElement('div');
-    thumb.className = 'p-thumb';
     const text = document.createElement('div');
     text.appendChild(name);
     text.appendChild(meta);
-    selectBtn.appendChild(thumb);
     selectBtn.appendChild(text);
     selectBtn.setAttribute('aria-label', `Sélectionner ${prop.street}, ${prop.city}`);
     selectBtn.onclick = () => {
