@@ -312,6 +312,21 @@ textarea{ min-height:110px; resize:vertical; }
 @media (max-width:720px){ .stat{ flex-basis:45%; } .stat:nth-child(odd){ border-left:none; padding-left:2px; } }
 .stat b{ display:block; font-size:27px; font-weight:700; line-height:1.1; color:var(--ink); letter-spacing:-0.02em; }
 .stat span{ font-size:12px; font-weight:500; color:var(--muted); display:block; margin-top:5px; }
+/* Delta mois-sur-mois (▲ vert / ▼ rouge) sur les indicateurs mensuels. */
+.stat-delta{ display:inline-block; margin-top:6px; font-size:12px; font-weight:700; }
+.stat-delta.up{ color:var(--ok-ink); }
+.stat-delta.down{ color:var(--danger-ink); }
+.stat-delta.flat{ color:var(--muted); }
+/* Graphique CA mensuel — barres inline, une seule série (magnitude). */
+.dash-chart-wrap{ margin-top:26px; }
+.dchart{ display:flex; gap:8px; height:170px; }
+.dchart-col{ flex:1; display:flex; flex-direction:column; }
+.dchart-plot{ flex:1; display:flex; align-items:flex-end; justify-content:center; }
+.dchart-bar{ width:62%; max-width:40px; background:var(--pink); border-radius:5px 5px 0 0; min-height:3px; position:relative; }
+.dchart-bar:hover{ filter:brightness(1.08); }
+.dchart-val{ position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:11px; font-weight:700; color:var(--ink); white-space:nowrap; }
+.dchart-xlabel{ text-align:center; padding-top:8px; font-size:11px; color:var(--muted); }
+.dchart-empty{ color:var(--muted); font-size:13px; padding:18px 0; }
 .task-card.done{ opacity:.55; }
 
 .incident-item{ border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; font-size:14px; }
