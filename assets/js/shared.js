@@ -20,7 +20,20 @@ import { firebaseConfig } from '../../firebase-config.js';
 export const ROLE_CLIENT = 'client';
 export const ROLE_PRESTATAIRE = 'prestataire';
 export const ROLE_LIVREUR = 'livreur';
+export const ROLE_WELCOMER = 'welcomer';
 export const ROLE_ADMIN = 'admin';
+
+// Formules Welcomer (contrôle qualité sur place). Facturables ; l'admin peut
+// ajuster les tarifs plus tard via le back-office (mêmes valeurs par défaut).
+export const WELCOMER_TIERS = [
+  { key: 'validation', label: 'Validation du ménage', fee: 15 },
+  { key: 'validation_photos', label: 'Validation + photos', fee: 20 },
+  { key: 'validation_accueil', label: 'Validation + accueil voyageur', fee: 35 },
+  { key: 'validation_edl', label: 'Validation + état des lieux', fee: 45 },
+];
+export function welcomerTier(key) {
+  return WELCOMER_TIERS.find(t => t.key === key) || null;
+}
 
 // Tarification HORAIRE (cahier des charges William). Le prix de la prestation =
 // tarif horaire × durée estimée. La durée dépend de la surface et du nombre de

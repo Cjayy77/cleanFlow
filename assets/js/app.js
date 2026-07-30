@@ -8,6 +8,8 @@ import {
   computeBookingPrice,
   setPricing,
   openDevisDocument,
+  WELCOMER_TIERS,
+  welcomerTier,
   ZONES,
   zoneLabel,
   formatShortDate,
@@ -77,6 +79,11 @@ const guestsInput = document.getElementById('guests');
 const propertyTypeInput = document.getElementById('propertyType');
 const supplementsCard = document.getElementById('supplementsCard');
 const supplementsList = document.getElementById('supplementsList');
+const welcomerSelect = document.getElementById('welcomerService');
+if (welcomerSelect) {
+  welcomerSelect.innerHTML = '<option value="">Sans Welcomer</option>'
+    + WELCOMER_TIERS.map(t => `<option value="${t.key}">${t.label} — ${t.fee}€ HT</option>`).join('');
+}
 
 const CATALOG_LABELS = { service: 'Prestations', kit: "Kits d'accueil", consumable: 'Consommables', linen: 'Location de linge' };
 const priceBreakdown = document.getElementById('priceBreakdown');
@@ -95,6 +102,7 @@ let currentUser = null;
 let selectedPropertyId = null;
 let selectedDate = null;
 let selectedServiceType = 'normal';
+let welcomerService = '';
 let beds = 1;
 let bathrooms = 1;
 let guests = 0;
@@ -211,10 +219,11 @@ function updateBookingBar() {
 
   const extras = currentQuote ? selectedExtrasList() : [];
   const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
-  renderPriceBreakdown(currentQuote, extras);
+  const wf = welcomerFeeValue();
+  renderPriceBreakdown(currentQuote, extras, wf);
   let ttc = null;
   if (currentQuote) {
-    const finalHT = currentQuote.total + extrasHT;
+    const finalHT = currentQuote.total + extrasHT + wf;
     ttc = finalHT + Math.round(finalHT * currentQuote.vatRate);
   }
   priceValue.textContent = ttc != null ? `${ttc}€` : '—';
@@ -224,11 +233,17 @@ function updateBookingBar() {
   bookBtn.disabled = !selectedPropertyId || !selectedDate || ttc == null;
 }
 
-function renderPriceBreakdown(quote, extras) {
+function welcomerFeeValue() {
+  const t = welcomerTier(welcomerService);
+  return t ? t.fee : 0;
+}
+
+function renderPriceBreakdown(quote, extras, welcomerFee) {
   if (!quote || quote.custom) { priceBreakdown.classList.add('hidden'); return; }
   extras = extras || [];
+  welcomerFee = welcomerFee || 0;
   const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
-  const finalHT = quote.total + extrasHT;
+  const finalHT = quote.total + extrasHT + welcomerFee;
   const vat = Math.round(finalHT * quote.vatRate);
   const h = String(quote.hours).replace('.', ',');
   const rows = [
@@ -236,6 +251,7 @@ function renderPriceBreakdown(quote, extras) {
   ];
   if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''}`, `${quote.kitsTotal}€`, '']);
   extras.forEach(e => rows.push([`${e.name}${e.qty > 1 ? ` × ${e.qty}` : ''}`, `${e.lineHT}€`, '']));
+  if (welcomerFee) { const t = welcomerTier(welcomerService); rows.push([`Welcomer · ${t ? t.label : 'validation'}`, `${welcomerFee}€`, '']); }
   if (quote.commission) rows.push(['Commission CleanFlow', `${quote.commission}€`, '']);
   rows.push(['Frais de déplacement', `${quote.travel}€`, '']);
   rows.push(['Total HT', `${finalHT}€`, 'pb-total']);
@@ -857,6 +873,13 @@ bedroomsInput.addEventListener('input', () => {
   updateBookingBar();
 });
 
+if (welcomerSelect) {
+  welcomerSelect.addEventListener('change', () => {
+    welcomerService = welcomerSelect.value;
+    updateBookingBar();
+  });
+}
+
 bedsInput.addEventListener('input', () => {
   beds = Math.max(1, Math.floor(Number(bedsInput.value) || 1));
   resyncAutoExtras();
@@ -989,7 +1012,8 @@ bookBtn.addEventListener('click', async () => {
     id: e.id, name: e.name, type: e.type, priceHT: e.priceHT, priceTTC: e.priceTTC, qty: e.qty,
   }));
   const extrasHT = extras.reduce((s, e) => s + e.priceHT * e.qty, 0);
-  const finalHT = quote.total + extrasHT;
+  const wFee = welcomerFeeValue();
+  const finalHT = quote.total + extrasHT + wFee;
 
   try {
     await withButtonLoading(bookBtn, () =>
@@ -1015,6 +1039,9 @@ bookBtn.addEventListener('click', async () => {
         commission: quote.commission,
         extras,
         extrasHT,
+        welcomerService: welcomerService || '',
+        welcomerFee: wFee,
+        welcomerId: null,
         price: finalHT,
         scheduledDate: selectedDate,
         status: 'pending',
@@ -1037,6 +1064,8 @@ bookBtn.addEventListener('click', async () => {
     if (bathroomsInput) bathroomsInput.value = '1';
     guests = 0;
     if (guestsInput) guestsInput.value = '0';
+    welcomerService = '';
+    if (welcomerSelect) welcomerSelect.value = '';
     selectedExtras = {};
     renderSupplements();
     renderCalendar();

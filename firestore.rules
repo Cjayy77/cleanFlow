@@ -30,6 +30,10 @@ service cloud.firestore {
       return hasRole('livreur');
     }
 
+    function isWelcomer() {
+      return hasRole('welcomer');
+    }
+
     function isAdmin() {
       return hasRole('admin');
     }
@@ -77,7 +81,7 @@ service cloud.firestore {
         && (
           (request.resource.data.role == 'client'
             && request.resource.data.accountStatus == 'approved')
-          || (request.resource.data.role in ['prestataire', 'livreur', 'admin']
+          || (request.resource.data.role in ['prestataire', 'livreur', 'welcomer', 'admin']
             && request.resource.data.accountStatus == 'pending')
         );
       allow update: if isSignedIn() && (
@@ -116,6 +120,7 @@ service cloud.firestore {
         || (isClient() && resource.data.clientId == request.auth.uid)
         || (isPrestataire() && resource.data.prestataireId == request.auth.uid)
         || (isLivreur() && resource.data.get('livreurId', '') == request.auth.uid)
+        || (isWelcomer() && resource.data.get('welcomerId', '') == request.auth.uid)
       );
 
       // Le prix (prestation selon la surface + kits + frais) est calculé côté
@@ -150,12 +155,16 @@ service cloud.firestore {
         && request.resource.data.extras is list
         && request.resource.data.extrasHT is number
         && request.resource.data.extrasHT >= 0
+        && request.resource.data.welcomerId == null
+        && request.resource.data.welcomerService is string
+        && request.resource.data.welcomerFee is number
+        && request.resource.data.welcomerFee >= 0
         && request.resource.data.scheduledDate is string
         && request.resource.data.linenRequested is bool
         // Liste blanche des champs : empêche le client d'injecter des champs
         // réservés à l'admin (adjustment, rating, verifiedBy, adminNote…) qui
         // fausseraient la vérification ou la compta.
-        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'prestataireId', 'livreurId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'price', 'scheduledDate', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'prestataireId', 'livreurId', 'welcomerId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'welcomerService', 'welcomerFee', 'price', 'scheduledDate', 'status', 'createdAt'])
         && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;
 
       allow update: if isSignedIn() && (
@@ -208,6 +217,19 @@ service cloud.firestore {
         // Admin : assigner / retirer un livreur pour la livraison des kits.
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['livreurId']))
+        // Admin : assigner / retirer un Welcomer (contrôle qualité sur place).
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['welcomerId']))
+        // Welcomer : validation sur place de SA mission. Niveau 1 → conforme
+        // (verified) ; niveau 2/3 → renvoi/non-conformité (rejected). Écrit la
+        // checklist, les photos, la signature et l'horodatage.
+        || (isWelcomer()
+          && resource.data.get('welcomerId', '') == request.auth.uid
+          && request.resource.data.status in ['verified', 'rejected']
+          && request.resource.data.welcomerLevel is int
+          && request.resource.data.welcomerLevel >= 1
+          && request.resource.data.welcomerLevel <= 3
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'welcomerLevel', 'welcomerNote', 'welcomerChecklist', 'welcomerPhotos', 'welcomerSignature', 'validatedAt']))
         // Admin : verdict de vérification uniquement.
         || (isAdmin()
           && request.resource.data.status in ['verified', 'rejected']
