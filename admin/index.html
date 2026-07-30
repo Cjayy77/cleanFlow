@@ -65,7 +65,9 @@
       <button type="button" class="tab" data-tab="verify">Vérification<span class="tab-badge hidden" id="badgeVerify"></span></button>
       <button type="button" class="tab" data-tab="inbox">Messages<span class="tab-badge hidden" id="badgeInbox"></span></button>
       <button type="button" class="tab" data-tab="team">Équipe<span class="tab-badge hidden" id="badgeTeam"></span></button>
+      <button type="button" class="tab" data-tab="dashboard">Tableau de bord</button>
       <button type="button" class="tab" data-tab="compta">Compta</button>
+      <button type="button" class="tab" data-tab="prospects">Prospects</button>
       <button type="button" class="tab" data-tab="catalog">Catalogue</button>
       <button type="button" class="tab" data-tab="tarifs">Tarifs</button>
     </div>
@@ -141,6 +143,7 @@
           <div style="display:flex; gap:12px; flex-wrap:wrap;">
             <button class="btn primary" id="verifyBtn" type="button" disabled>Valider le dossier</button>
             <button class="btn ghost" id="rejectBtn" type="button" disabled>Renvoyer au prestataire</button>
+            <button class="btn ghost" id="devisBtn" type="button" disabled>Devis (PDF)</button>
           </div>
           <div class="eyebrow" style="margin-top:26px;">Incidents signalés</div>
           <div id="incidentList"></div>
@@ -187,6 +190,26 @@
         <div id="comptaFilter"></div>
         <div class="stat-grid" id="comptaTotals"></div>
         <div id="comptaList"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="dashboard">
+      <div class="card">
+        <div class="eyebrow">Vue d'ensemble</div>
+        <h2>Tableau de bord</h2>
+        <p>Indicateurs calculés en temps réel à partir des réservations et des prospects.</p>
+        <div class="stat-grid" id="dashKpis"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="prospects">
+      <div class="card">
+        <div class="eyebrow">CRM</div>
+        <h2>Prospects</h2>
+        <p>Fiches prospects et suivi commercial. Ajoutez un lead (appel, email, salon…) et faites-le avancer dans le pipeline. Les demandes de devis créées depuis le site alimenteront aussi cette liste.</p>
+        <div id="prospectStatus" class="status-banner hidden" role="status"></div>
+        <button class="btn ghost" id="addProspectBtn" type="button" style="margin-bottom:12px;">+ Ajouter un prospect</button>
+        <div id="prospectList"></div>
       </div>
     </section>
 

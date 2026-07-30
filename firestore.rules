@@ -49,6 +49,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // CRM : fiches prospects. Réservé à l'équipe CleanFlow. (Les fiches créées
+    // automatiquement depuis une demande de devis passent par une Cloud Function
+    // avec le SDK admin, qui n'est pas soumise à ces règles.)
+    match /prospects/{prospectId} {
+      allow read, write: if isAdmin();
+    }
+
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();

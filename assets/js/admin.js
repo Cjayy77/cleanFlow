@@ -92,6 +92,10 @@ let statsUnsub = null;
 let pricingUnsub = null;
 let catalogUnsub = null;
 let latestCatalog = [];
+let prospectsUnsub = null;
+let latestProspects = [];
+
+const PROSPECT_STATUSES = ['Nouveau', 'À rappeler', 'En attente', 'Client', 'Perdu'];
 let incidentsUnsub = null;
 let messagesUnsub = null;
 let latestBookings = [];
@@ -181,6 +185,7 @@ function subscribeStats() {
     statSubmitted.textContent = counts.submitted;
     statVerified.textContent = counts.verified;
     renderAssignments();
+    renderDashboard();
   }, error => setAdminStatus(`Impossible de charger la vue d’ensemble : ${authErrorMessage(error)}`, 'error'));
 }
 
@@ -544,6 +549,201 @@ async function deleteCatalogItem(id) {
   } catch (error) {
     setCatalogStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
   }
+}
+
+// ---- CRM : prospects ----
+function subscribeProspects() {
+  if (prospectsUnsub) prospectsUnsub();
+  prospectsUnsub = onSnapshot(collection(db, 'prospects'), snap => {
+    latestProspects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderProspects();
+    renderDashboard();
+  }, error => setProspectStatus(`Impossible de charger les prospects : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setProspectStatus(message, type) {
+  const el = document.getElementById('prospectStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function renderProspects() {
+  const list = document.getElementById('prospectList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!latestProspects.length) {
+    list.innerHTML = '<div class="empty-state">Aucun prospect pour le moment.</div>';
+    return;
+  }
+  const order = { 'Nouveau': 0, 'À rappeler': 1, 'En attente': 2, 'Client': 3, 'Perdu': 4 };
+  latestProspects
+    .slice()
+    .sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    .forEach(p => list.appendChild(buildProspectCard(p)));
+}
+
+function buildProspectCard(p) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  const top = document.createElement('div');
+  top.className = 'task-top';
+  const left = document.createElement('div');
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = p.name || '(sans nom)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [p.email, p.phone, p.address].filter(Boolean);
+  if (p.montant) bits.push(`${p.montant}€`);
+  if (p.source) bits.push(`source : ${p.source}`);
+  meta.textContent = bits.join(' · ');
+  left.append(title, meta);
+  if (p.note) { const n = document.createElement('div'); n.className = 'task-meta'; n.textContent = p.note; left.appendChild(n); }
+
+  const sel = document.createElement('select');
+  sel.style.cssText = 'width:auto;min-width:130px;padding:8px 10px;font-size:13px;';
+  PROSPECT_STATUSES.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    if ((p.status || 'Nouveau') === s) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => setProspectStatusValue(p.id, sel.value);
+  top.append(left, sel);
+  card.appendChild(top);
+
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:2px;margin-top:8px;';
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) { card.nextElementSibling.remove(); return; }
+    card.after(prospectForm(p));
+  };
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+  armInlineConfirm(del, 'Confirmer la suppression', () => deleteProspect(p.id));
+  actions.append(edit, del);
+  card.appendChild(actions);
+  return card;
+}
+
+function prospectForm(existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+  form.append(
+    catalogField('Nom', 'name', existing ? existing.name : ''),
+    catalogField('Email', 'email', existing ? existing.email : ''),
+    catalogField('Téléphone', 'phone', existing ? existing.phone : ''),
+    catalogField('Logement / adresse', 'address', existing ? existing.address : ''),
+  );
+  const cols = document.createElement('div');
+  cols.className = 'form-cols';
+  cols.append(
+    catalogField('Montant estimé (€)', 'montant', existing ? existing.montant : '', 'number'),
+    catalogField("Source d'acquisition", 'source', existing ? existing.source : ''),
+  );
+  form.append(cols, catalogField('Note', 'note', existing ? existing.note : ''));
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      name: get('name').value.trim(),
+      email: get('email').value.trim(),
+      phone: get('phone').value.trim(),
+      address: get('address').value.trim(),
+      montant: Math.max(0, Number(get('montant').value) || 0),
+      source: get('source').value.trim(),
+      note: get('note').value.trim(),
+    };
+    if (!existing) { data.status = 'Nouveau'; data.createdAt = serverTimestamp(); }
+    if (!data.name && !data.email && !data.phone) { setProspectStatus('Renseignez au moins un nom, un email ou un téléphone.', 'error'); return; }
+    saveProspect(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveProspect(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'prospects', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'prospects'), data), 15000));
+    setProspectStatus(id ? 'Prospect mis à jour.' : 'Prospect ajouté.', 'success');
+  } catch (error) {
+    setProspectStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function setProspectStatusValue(id, status) {
+  try {
+    await withTimeout(updateDoc(doc(db, 'prospects', id), { status }), 15000);
+  } catch (error) {
+    setProspectStatus(`Changement de statut impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteProspect(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'prospects', id)), 15000);
+    setProspectStatus('Prospect supprimé.', 'success');
+  } catch (error) {
+    setProspectStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- Tableau de bord : indicateurs calculés depuis réservations + prospects ----
+function renderDashboard() {
+  const host = document.getElementById('dashKpis');
+  if (!host) return;
+  const active = latestBookings.filter(b => b.status !== 'cancelled');
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const y = `${now.getFullYear()}`;
+  const sum = arr => arr.reduce((s, b) => s + (Number(b.price) || 0), 0);
+  const caPotentiel = sum(active);
+  const caSigne = sum(active.filter(b => b.status === 'verified'));
+  const nb = active.length;
+  const panier = nb ? Math.round(caPotentiel / nb) : 0;
+  const clients = new Set(active.map(b => b.clientId)).size;
+  const caMois = sum(active.filter(b => (b.scheduledDate || '').startsWith(ym)));
+  const caAn = sum(active.filter(b => (b.scheduledDate || '').startsWith(y)));
+  const prospects = latestProspects.length;
+  const gagnes = latestProspects.filter(p => p.status === 'Client').length;
+  const taux = prospects ? Math.round(gagnes / prospects * 100) : 0;
+
+  const kpis = [
+    [`${nb}`, 'Réservations'],
+    [`${caPotentiel}€`, 'CA potentiel (HT)'],
+    [`${caSigne}€`, 'CA confirmé (HT)'],
+    [`${panier}€`, 'Panier moyen'],
+    [`${clients}`, 'Clients actifs'],
+    [`${caMois}€`, 'CA ce mois'],
+    [`${caAn}€`, 'CA cette année'],
+    [`${prospects}`, 'Prospects'],
+    [`${taux}%`, 'Taux de transformation'],
+  ];
+  host.innerHTML = '';
+  kpis.forEach(([value, label]) => {
+    const d = document.createElement('div');
+    d.className = 'stat';
+    const b = document.createElement('b'); b.textContent = value;
+    const s = document.createElement('span'); s.textContent = label;
+    d.append(b, s);
+    host.appendChild(d);
+  });
 }
 
 // Prestataires et livreurs approuvés, pour les listes déroulantes d'assignation.
@@ -1907,6 +2107,7 @@ onAuthStateChanged(auth, async user => {
     if (statsUnsub) statsUnsub();
     if (pricingUnsub) pricingUnsub();
     if (catalogUnsub) catalogUnsub();
+    if (prospectsUnsub) prospectsUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();
     membersUnsubs.forEach(unsub => unsub());
@@ -1952,6 +2153,7 @@ onAuthStateChanged(auth, async user => {
     subscribeClientMessages();
     subscribePricing();
     subscribeCatalog();
+    subscribeProspects();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
@@ -1994,6 +2196,16 @@ if (pricingFormEl) {
   pricingFormEl.addEventListener('submit', event => {
     event.preventDefault();
     savePricing(collectPricingFromForm());
+  });
+}
+
+const addProspectBtn = document.getElementById('addProspectBtn');
+if (addProspectBtn) {
+  addProspectBtn.addEventListener('click', () => {
+    if (addProspectBtn.nextElementSibling && addProspectBtn.nextElementSibling.classList.contains('catalog-form')) {
+      addProspectBtn.nextElementSibling.remove(); return;
+    }
+    addProspectBtn.after(prospectForm(null));
   });
 }
 
