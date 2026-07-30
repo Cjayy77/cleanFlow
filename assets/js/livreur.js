@@ -92,6 +92,14 @@ function renderTasks(bookings) {
       <div class="task-meta">Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
     `;
     card.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
+    if (booking.keyAccess) {
+      const keyBox = document.createElement('div');
+      keyBox.className = 'key-access';
+      const kh = document.createElement('div'); kh.className = 'key-access-head'; kh.textContent = '🔑 Accès & clés';
+      const kt = document.createElement('div'); kt.className = 'key-access-body'; kt.textContent = booking.keyAccess;
+      keyBox.append(kh, kt);
+      card.appendChild(keyBox);
+    }
     const toggleBtn = document.createElement('button');
     toggleBtn.className = booking.linenDone ? 'btn ghost' : 'btn primary';
     toggleBtn.type = 'button';
