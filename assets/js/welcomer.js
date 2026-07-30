@@ -46,6 +46,17 @@ let currentUser = null;
 let authNotice = null;
 let taskUnsub = null;
 
+// Carte des missions rendues (bookingId → { booking, card, done, open }).
+// Le scan QR / la saisie manuelle s'en servent pour ouvrir le bon contrôle.
+const taskCards = new Map();
+// Lien profond : /welcomer/?m=<bookingId> (scan avec l'appareil photo natif).
+const initialQrCode = new URLSearchParams(location.search).get('m');
+let deeplinkHandled = false;
+// Scanner intégré (BarcodeDetector) — état de la caméra.
+let scanStream = null;
+let scanTimer = null;
+let barcodeDetector = null;
+
 function setWorkStatus(message, type = 'error') {
   workStatus.textContent = message;
   workStatus.className = `status-banner ${type}` + (message ? '' : ' hidden');
@@ -55,6 +66,7 @@ function setAuthMessage(message, type = '') {
   authError.className = 'status-banner' + (type ? ` ${type}` : '') + (message ? '' : ' hidden');
 }
 function showAuth(message = '', type = '') {
+  stopScan();
   loadingScreen.classList.add('hidden');
   signOutBtn.classList.add('hidden');
   authScreen.classList.remove('hidden');
@@ -74,6 +86,7 @@ function showApp() {
 
 function renderTasks(bookings) {
   taskList.innerHTML = '';
+  taskCards.clear();
   if (!bookings.length) {
     taskList.innerHTML = '<div class="empty-state">Aucune mission de contrôle assignée pour le moment.</div>';
     return;
@@ -82,6 +95,7 @@ function renderTasks(bookings) {
     const done = ['verified', 'rejected'].includes(booking.status) && booking.welcomerLevel;
     const card = document.createElement('div');
     card.className = 'task-card' + (done ? ' done' : '');
+    card.dataset.bookingId = booking.id;
     const tier = welcomerTier(booking.welcomerService);
     const top = document.createElement('div');
     top.className = 'task-top';
@@ -96,6 +110,7 @@ function renderTasks(bookings) {
     top.append(left, pill);
     card.appendChild(top);
 
+    let openForm = null;
     if (done) {
       const summary = document.createElement('div');
       summary.className = 'task-meta';
@@ -105,14 +120,107 @@ function renderTasks(bookings) {
       const btn = document.createElement('button');
       btn.className = 'btn primary'; btn.type = 'button'; btn.textContent = 'Contrôler sur place';
       btn.style.marginTop = '12px';
+      // Ouvre (ou révèle) le formulaire de contrôle. viaQr ajoute le bandeau
+      // « confirmé par QR » et n'referme jamais un formulaire déjà ouvert.
+      openForm = viaQr => {
+        let form = card.querySelector('.wc-form');
+        if (!form) { form = buildValidationForm(booking); card.appendChild(form); }
+        if (viaQr && !form.querySelector('.wc-qr-badge')) {
+          const badge = document.createElement('div');
+          badge.className = 'wc-qr-badge';
+          badge.textContent = '✓ Logement confirmé par QR';
+          form.prepend(badge);
+        }
+        return form;
+      };
       btn.onclick = () => {
-        if (card.querySelector('.wc-form')) { card.querySelector('.wc-form').remove(); return; }
-        card.appendChild(buildValidationForm(booking));
+        const existing = card.querySelector('.wc-form');
+        if (existing) { existing.remove(); return; }
+        openForm(false);
       };
       card.appendChild(btn);
     }
+    taskCards.set(booking.id, { booking, card, done, open: openForm });
     taskList.appendChild(card);
   });
+}
+
+// Normalise une valeur scannée / saisie : accepte un lien profond (?m=…),
+// un ID complet, ou la réf courte à 6 caractères affichée sur la carte.
+function normalizeScanned(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  const m = s.match(/[?&]m=([^&\s]+)/);
+  if (m) { try { return decodeURIComponent(m[1]); } catch (_) { return m[1]; } }
+  return s;
+}
+
+// Ouvre le contrôle correspondant au code, ou explique pourquoi c'est impossible.
+function focusMissionByCode(raw, { viaQr = false } = {}) {
+  const code = normalizeScanned(raw);
+  if (!code) { setWorkStatus('Code du logement non reconnu.'); return; }
+  const entry = [...taskCards.values()].find(e =>
+    e.booking.id === code || e.booking.id.slice(0, 6).toUpperCase() === code.toUpperCase());
+  if (!entry) { setWorkStatus('Ce QR ne correspond à aucune de vos missions assignées.'); return; }
+  entry.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (entry.done || !entry.open) { setWorkStatus('Ce logement a déjà été contrôlé.', 'info'); return; }
+  entry.open(viaQr);
+  setWorkStatus(viaQr ? 'Logement confirmé par QR — complétez le contrôle.' : 'Contrôle ouvert.', 'success');
+}
+
+// ---- Scanner QR intégré (BarcodeDetector, sans dépendance) -------------------
+function scanSupported() {
+  return typeof window !== 'undefined' && 'BarcodeDetector' in window;
+}
+
+async function startScan() {
+  const scanArea = document.getElementById('scanArea');
+  const scanVideo = document.getElementById('scanVideo');
+  if (!scanSupported()) {
+    setWorkStatus('Le scan intégré n’est pas disponible sur ce navigateur. Visez le QR avec l’appareil photo de votre téléphone, ou saisissez la réf ci-dessous.', 'info');
+    return;
+  }
+  try {
+    if (!barcodeDetector) barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    scanVideo.srcObject = scanStream;
+    await scanVideo.play();
+    scanArea.classList.remove('hidden');
+    setWorkStatus('Visez le QR du logement…', 'info');
+    scanTimer = setInterval(scanTick, 400);
+  } catch (e) {
+    stopScan();
+    setWorkStatus(`Caméra indisponible : ${authErrorMessage(e)}. Saisissez la réf du logement ci-dessous.`);
+  }
+}
+
+async function scanTick() {
+  const scanVideo = document.getElementById('scanVideo');
+  if (!barcodeDetector || !scanVideo || !scanVideo.videoWidth) return;
+  try {
+    const codes = await barcodeDetector.detect(scanVideo);
+    if (codes && codes.length) {
+      const value = codes[0].rawValue || '';
+      stopScan();
+      focusMissionByCode(value, { viaQr: true });
+    }
+  } catch (_) { /* image transitoire, on réessaie au tick suivant */ }
+}
+
+function stopScan() {
+  if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  const scanArea = document.getElementById('scanArea');
+  const scanVideo = document.getElementById('scanVideo');
+  if (scanVideo) scanVideo.srcObject = null;
+  if (scanArea) scanArea.classList.add('hidden');
+}
+
+// Lien profond : ouvre automatiquement le bon contrôle après le 1er chargement.
+function handleDeeplink() {
+  if (deeplinkHandled || !initialQrCode) return;
+  deeplinkHandled = true;
+  focusMissionByCode(initialQrCode, { viaQr: true });
 }
 
 function buildValidationForm(booking) {
@@ -229,6 +337,7 @@ function loadMissions() {
       .filter(b => ['accepted', 'submitted', 'verified', 'rejected'].includes(b.status))
       .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
     renderTasks(bookings);
+    handleDeeplink();
   }, error => setWorkStatus(`Impossible de charger vos missions : ${authErrorMessage(error)}`));
 }
 
@@ -278,6 +387,19 @@ signInForm.addEventListener('submit', async event => {
 });
 
 signOutBtn.addEventListener('click', async () => { await signOut(auth); });
+
+// Scanner QR : bouton principal, arrêt caméra, et saisie manuelle de secours.
+const scanBtn = document.getElementById('scanBtn');
+const scanStop = document.getElementById('scanStop');
+const manualGo = document.getElementById('manualGo');
+const manualCode = document.getElementById('manualCode');
+if (scanBtn) {
+  if (!scanSupported()) scanBtn.textContent = 'Comment scanner le logement';
+  scanBtn.addEventListener('click', startScan);
+}
+if (scanStop) scanStop.addEventListener('click', stopScan);
+if (manualGo) manualGo.addEventListener('click', () => focusMissionByCode(manualCode ? manualCode.value : '', { viaQr: false }));
+if (manualCode) manualCode.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); focusMissionByCode(manualCode.value, { viaQr: false }); } });
 
 switchToRequest.addEventListener('click', event => { event.preventDefault(); signInForm.classList.add('hidden'); requestForm.classList.remove('hidden'); setAuthMessage(''); });
 switchToSignIn.addEventListener('click', event => { event.preventDefault(); requestForm.classList.add('hidden'); signInForm.classList.remove('hidden'); setAuthMessage(''); });

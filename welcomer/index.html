@@ -17,6 +17,13 @@
   .wc-level input{ width:auto; margin-top:3px; }
   .wc-photos{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
   .wc-photos img{ width:64px; height:64px; object-fit:cover; border-radius:8px; }
+  .wc-scan-actions{ margin-top:12px; }
+  .wc-scan{ margin-top:14px; }
+  .wc-scan video{ width:100%; max-width:360px; border-radius:12px; background:#000; display:block; margin-bottom:10px; }
+  .wc-manual{ margin-top:16px; border-top:1px solid var(--line); padding-top:12px; }
+  .wc-manual summary{ cursor:pointer; font-size:14px; font-weight:600; color:var(--pink-deep); }
+  .wc-manual .form-row{ margin-top:12px; }
+  .wc-qr-badge{ display:inline-block; margin-bottom:12px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; color:#fff; background:linear-gradient(120deg, var(--pink-deep), var(--plum)); }
 </style>
 </head>
 <body>
@@ -68,6 +75,23 @@
       <p>Contrôlez la qualité sur place après le passage du prestataire et avant l’arrivée du voyageur. Checklist, photos, signature — la validation part automatiquement au propriétaire.</p>
     </div>
     <div id="workStatus" class="status-banner hidden" role="alert"></div>
+    <div class="card">
+      <div class="eyebrow">Sur place</div>
+      <h2>Scanner le logement</h2>
+      <p>Scannez le QR affiché dans le logement pour ouvrir directement le bon contrôle. Vous pouvez aussi viser le QR avec l’appareil photo de votre téléphone.</p>
+      <div class="wc-scan-actions">
+        <button class="btn primary" id="scanBtn" type="button">Scanner le QR</button>
+      </div>
+      <div id="scanArea" class="wc-scan hidden">
+        <video id="scanVideo" playsinline muted></video>
+        <button class="btn ghost" id="scanStop" type="button">Arrêter la caméra</button>
+      </div>
+      <details class="wc-manual">
+        <summary>Saisir la réf du logement manuellement</summary>
+        <div class="form-row"><label for="manualCode">Réf du logement (6 caractères)</label><input id="manualCode" type="text" autocapitalize="characters" autocomplete="off" placeholder="Ex. A1B2C3"></div>
+        <button class="btn ghost" id="manualGo" type="button">Ouvrir le contrôle</button>
+      </details>
+    </div>
     <div class="card">
       <div class="eyebrow">Mes validations</div>
       <h2>Missions à contrôler</h2>

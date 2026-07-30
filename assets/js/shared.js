@@ -16,6 +16,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 import { firebaseConfig } from '../../firebase-config.js';
+import qrcode from './vendor/qrcode.js';
 
 export const ROLE_CLIENT = 'client';
 export const ROLE_PRESTATAIRE = 'prestataire';
@@ -313,6 +314,67 @@ export function openDevisDocument(booking, client) {
   <div class="noprint"><button onclick="window.print()">Imprimer / enregistrer en PDF</button></div>
   <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>
 </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) return false;
+  w.document.write(html);
+  w.document.close();
+  return true;
+}
+
+// ---- QR code du logement (contrôle Welcomer) --------------------------------
+// Le Welcomer scanne ce QR sur place ; il ouvre l'interface Welcomer directement
+// sur le bon contrôle. Le QR encode un lien profond vers /welcomer/?m=<bookingId>.
+const QR_FALLBACK_ORIGIN = 'https://clean-flow-dun.vercel.app';
+
+export function logementQrUrl(bookingId) {
+  const origin = (typeof location !== 'undefined' && typeof location.origin === 'string' && location.origin.startsWith('http'))
+    ? location.origin
+    : QR_FALLBACK_ORIGIN;
+  return `${origin}/welcomer/?m=${encodeURIComponent(bookingId)}`;
+}
+
+// Renvoie une balise <svg> QR autonome (aucune dépendance réseau à l'affichage).
+export function qrSvg(text, { cellSize = 6, margin = 4 } = {}) {
+  const q = qrcode(0, 'M'); // type auto, correction M
+  q.addData(String(text));
+  q.make();
+  return q.createSvgTag({ cellSize, margin, scalable: false });
+}
+
+// Ouvre une fiche QR imprimable à afficher dans le logement (→ « Enregistrer en
+// PDF » du navigateur). Entièrement côté client.
+export function openLogementQr(booking) {
+  const url = logementQrUrl(booking.id);
+  const ref6 = String(booking.id).slice(0, 6).toUpperCase();
+  const svg = qrSvg(url, { cellSize: 9, margin: 4 });
+  const addr = escapeHtml(booking.propertyAddress || booking.propertyId || 'Logement');
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR logement · ${escapeHtml(ref6)}</title>
+  <style>
+    @page { margin: 20mm; }
+    body { font-family:'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; color:#221541; text-align:center; padding:32px 24px; }
+    .brand { font-size:26px; font-weight:800; letter-spacing:-0.01em; }
+    .brand span { color:#E6007E; }
+    .sub { color:#6B6480; margin-top:4px; font-size:14px; }
+    .qr { display:inline-block; margin:26px auto 14px; padding:18px; border:1px solid #eadff0; border-radius:16px; }
+    .qr svg { width:280px; height:280px; display:block; }
+    .ref { font-weight:700; font-size:18px; letter-spacing:0.04em; }
+    .addr { color:#6B6480; margin-top:6px; font-size:14px; }
+    .hint { max-width:340px; margin:22px auto 0; color:#221541; font-size:14px; line-height:1.5; }
+    .noprint button { margin-top:24px; padding:10px 16px; border:0; border-radius:10px; background:#E6007E; color:#fff; font-weight:700; cursor:pointer; }
+    @media print { .noprint { display:none; } }
+  </style></head>
+  <body>
+    <div class="brand"><span>Clean</span>Flow</div>
+    <div class="sub">Contrôle qualité — logement</div>
+    <div class="qr">${svg}</div>
+    <div class="ref">Réf ${escapeHtml(ref6)}</div>
+    <div class="addr">${addr}</div>
+    <p class="hint">À votre arrivée, scannez ce code avec l’appareil photo de votre téléphone (ou le bouton « Scanner le QR » de l’interface Welcomer) pour ouvrir directement le contrôle de ce logement.</p>
+    <div class="noprint"><button onclick="window.print()">Imprimer / enregistrer en PDF</button></div>
+    <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>
+  </body></html>`;
   const w = window.open('', '_blank');
   if (!w) return false;
   w.document.write(html);

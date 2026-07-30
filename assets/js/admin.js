@@ -24,6 +24,7 @@ import {
   openDevisDocument,
   uploadCatalogImage,
   welcomerTier,
+  openLogementQr,
 } from './shared.js';
 import {
   collection,
@@ -874,7 +875,7 @@ function buildMemberSelect(members, placeholder, annotate) {
   return select;
 }
 
-function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn, annotate) {
+function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn, annotate, extraActions) {
   const card = document.createElement('div');
   card.className = 'task-card';
   const title = document.createElement('div');
@@ -890,6 +891,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
     note.className = 'task-meta';
     note.textContent = noMembersNote;
     card.appendChild(note);
+    if (typeof extraActions === 'function') extraActions(card);
     container.appendChild(card);
     return;
   }
@@ -903,6 +905,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
   assignBtn.onclick = () => assignFn(select.value, assignBtn);
   row.appendChild(select);
   row.appendChild(assignBtn);
+  if (typeof extraActions === 'function') extraActions(row);
   card.appendChild(row);
   container.appendChild(card);
 }
@@ -1907,7 +1910,16 @@ function renderWelcomersToAssign() {
         } catch (e) {
           setAdminStatus(`Impossible d’assigner le contrôle : ${authErrorMessage(e)}`, 'error');
         }
-      }, welcomerAnnotate);
+      }, welcomerAnnotate,
+      // QR imprimable à placer dans le logement (scanné par le Welcomer sur place).
+      host => {
+        const qrBtn = document.createElement('button');
+        qrBtn.className = 'btn ghost';
+        qrBtn.type = 'button';
+        qrBtn.textContent = 'QR du logement';
+        qrBtn.onclick = () => { if (!openLogementQr(booking)) setAdminStatus('Autorisez les fenêtres pop-up pour imprimer le QR.', 'error'); };
+        host.appendChild(qrBtn);
+      });
   });
 }
 
