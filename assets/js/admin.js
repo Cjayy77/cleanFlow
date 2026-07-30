@@ -298,6 +298,18 @@ function renderPricingForm() {
   cityWrap.append(citySpan, cityIn);
   g5.appendChild(cityWrap);
 
+  // Crédit d'impôt (Services à la Personne)
+  const g6 = group("Crédit d'impôt (Services à la Personne)");
+  g6.appendChild(priceField("Taux du crédit d'impôt", Math.round((P.taxCreditRate || 0) * 100), { key: 'taxCreditPct', suffix: '%' }));
+  const tcWrap = document.createElement('label');
+  tcWrap.className = 'price-field';
+  const tcSpan = document.createElement('span'); tcSpan.textContent = "Proposer le crédit d'impôt dans le devis";
+  const tcCb = document.createElement('input');
+  tcCb.type = 'checkbox'; tcCb.id = 'pricingTaxCredit'; tcCb.style.width = 'auto';
+  tcCb.checked = P.taxCreditEnabled !== false;
+  tcWrap.append(tcSpan, tcCb);
+  g6.appendChild(tcWrap);
+
   const actions = document.createElement('div');
   actions.className = 'modal-actions';
   const save = document.createElement('button');
@@ -357,6 +369,8 @@ function collectPricingFromForm() {
     commissionMin: val('commissionMin'),
     commissionMax: val('commissionMax'),
     vatRate: val('vatPct') / 100,
+    taxCreditRate: (val('taxCreditPct') || 0) / 100,
+    taxCreditEnabled: form.querySelector('#pricingTaxCredit') ? form.querySelector('#pricingTaxCredit').checked : true,
     devisText: textEl ? textEl.value : undefined,
     cities: cityEl ? cityEl.value.split(',').map(s => s.trim()).filter(Boolean) : [],
   };

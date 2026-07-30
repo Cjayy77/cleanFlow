@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CleanFlow — Devis gratuit en 1 minute</title>
+<meta name="description" content="Obtenez votre devis de ménage CleanFlow en moins d'une minute : prix instantané selon votre logement, estimation d'économies et crédit d'impôt.">
+<link rel="icon" href="../assets/fan-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/ui.css">
+<style>
+  .steps-nav{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
+  .step-chip{ font-size:12px; font-weight:700; color:var(--muted); padding:6px 0; border-bottom:2px solid transparent; }
+  .step-chip.active{ color:var(--pink); border-bottom-color:var(--pink); }
+  .step-chip.done{ color:var(--ink); }
+  .wizard-step{ display:none; }
+  .wizard-step.active{ display:block; }
+  .chk-list{ display:grid; gap:2px; }
+  .chk-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+  .chk-row input{ width:auto; }
+  .wizard-actions{ display:flex; justify-content:space-between; gap:12px; margin-top:22px; }
+  .tc-box{ margin-top:16px; padding:16px; border-radius:12px; background:var(--tint); }
+  .tc-box .pb-line b{ color:var(--pink-deep); }
+</style>
+</head>
+<body>
+<div class="app-wrap">
+  <div class="top-row">
+    <div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;"><span class="k">Clean</span>Flow</a></div>
+      <div class="role-tag">Devis gratuit</div>
+    </div>
+    <a class="btn ghost" href="/">Accueil</a>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Devis instantané</div>
+    <h1>Votre devis en 1 minute</h1>
+    <p>Renseignez votre logement : le prix, vos économies et votre crédit d'impôt éventuel s'affichent immédiatement.</p>
+
+    <div class="steps-nav" id="stepsNav">
+      <span class="step-chip active" data-step="0">1 · Vous</span>
+      <span class="step-chip" data-step="1">2 · Logement</span>
+      <span class="step-chip" data-step="2">3 · Activité</span>
+      <span class="step-chip" data-step="3">4 · Prestations</span>
+      <span class="step-chip" data-step="4">Devis</span>
+    </div>
+
+    <div id="wizardStatus" class="status-banner hidden" role="status"></div>
+
+    <!-- Étape 1 : client -->
+    <div class="wizard-step active" data-step="0">
+      <div class="form-cols">
+        <div class="form-row"><label for="wPrenom">Prénom</label><input id="wPrenom" type="text"></div>
+        <div class="form-row"><label for="wNom">Nom</label><input id="wNom" type="text"></div>
+      </div>
+      <div class="form-cols">
+        <div class="form-row"><label for="wPhone">Téléphone</label><input id="wPhone" type="tel"></div>
+        <div class="form-row"><label for="wEmail">Email</label><input id="wEmail" type="email"></div>
+      </div>
+      <div class="form-row"><label for="wAddress">Adresse du logement</label><input id="wAddress" type="text"></div>
+      <div class="form-cols">
+        <div class="form-row"><label for="wCity">Ville</label><input id="wCity" type="text"></div>
+        <div class="form-row"><label for="wPostal">Code postal</label><input id="wPostal" type="text" inputmode="numeric"></div>
+      </div>
+    </div>
+
+    <!-- Étape 2 : logement -->
+    <div class="wizard-step" data-step="1">
+      <div class="form-row">
+        <label for="wType">Type de logement</label>
+        <select id="wType"><option value="studio">Studio</option><option value="appartement" selected>Appartement</option><option value="maison">Maison</option></select>
+      </div>
+      <div class="form-cols">
+        <div class="form-row"><label for="wSurface">Surface (m²)</label><input id="wSurface" type="number" min="1" inputmode="numeric" value="50"></div>
+        <div class="form-row"><label for="wBeds">Nombre de lits</label><input id="wBeds" type="number" min="1" inputmode="numeric" value="1"></div>
+      </div>
+      <div class="form-cols">
+        <div class="form-row"><label for="wBathrooms">Salles de bain</label><input id="wBathrooms" type="number" min="1" inputmode="numeric" value="1"></div>
+        <div class="form-row"><label for="wBedrooms">Chambres</label><input id="wBedrooms" type="number" min="0" inputmode="numeric" value="1"></div>
+      </div>
+      <div class="form-row"><label for="wGuests">Voyageurs (max.)</label><input id="wGuests" type="number" min="0" inputmode="numeric" value="2"></div>
+    </div>
+
+    <!-- Étape 3 : activité locative -->
+    <div class="wizard-step" data-step="2">
+      <p class="note-box">Ces informations servent uniquement à estimer vos économies (facultatif).</p>
+      <div class="form-cols">
+        <div class="form-row"><label for="wNight">Prix moyen de la nuit (€)</label><input id="wNight" type="number" min="0" inputmode="numeric" value="120"></div>
+        <div class="form-row"><label for="wOcc">Taux d'occupation (%)</label><input id="wOcc" type="number" min="0" max="100" inputmode="numeric" value="65"></div>
+      </div>
+      <div class="form-row"><label for="wMonthly">Réservations par mois</label><input id="wMonthly" type="number" min="0" inputmode="numeric" value="6"></div>
+    </div>
+
+    <!-- Étape 4 : prestations -->
+    <div class="wizard-step" data-step="3">
+      <div class="form-row">
+        <label>Type de ménage</label>
+        <label class="service-option"><input type="radio" name="wService" value="normal" checked> Ménage standard</label>
+        <label class="service-option"><input type="radio" name="wService" value="deep"> Deep Cleaning (approfondi)</label>
+      </div>
+      <div id="wSupplements"></div>
+      <label class="chk-row" style="margin-top:14px;" id="wTaxCreditWrap">
+        <input type="checkbox" id="wTaxCredit">
+        <span>Résidence principale ou secondaire — éligible au crédit d'impôt « Services à la Personne »</span>
+      </label>
+    </div>
+
+    <!-- Résultat -->
+    <div class="wizard-step" data-step="4">
+      <div class="eyebrow">Votre devis</div>
+      <h2 id="wDevisTitle">Estimation</h2>
+      <div id="wBreakdown" class="price-breakdown"></div>
+      <div id="wTaxCreditBox"></div>
+      <div class="form-footer">
+        <div><div class="price-label">Total à payer (TTC)</div><div class="price-value" id="wTotal">—</div></div>
+        <button class="btn ghost" id="wPdfBtn" type="button">Télécharger le devis (PDF)</button>
+      </div>
+      <div id="wSavings" style="margin-top:26px;"></div>
+      <button class="btn primary" id="wSubmitBtn" type="button" style="margin-top:22px;">Envoyer ma demande à CleanFlow</button>
+      <div class="note-box">En envoyant, vous acceptez d'être recontacté par l'équipe CleanFlow. Aucun engagement.</div>
+    </div>
+
+    <div class="wizard-actions">
+      <button class="btn ghost" id="wPrev" type="button">← Précédent</button>
+      <button class="btn primary" id="wNext" type="button">Suivant →</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="../assets/js/devis.js"></script>
+</body>
+</html>

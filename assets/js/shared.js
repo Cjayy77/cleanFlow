@@ -49,6 +49,8 @@ export const DEFAULT_PRICING = {
   commissionMax: 12,          // borne haute indicative (€ HT)
   subscriptionMonthly: 10,    // abonnement application (€ HT / mois / logement)
   vatRate: 0.20,              // taux de TVA
+  taxCreditRate: 0.5,         // crédit d'impôt Services à la Personne (50 %)
+  taxCreditEnabled: true,     // proposer le crédit d'impôt dans le devis
   // Texte libre du bas de devis (éditable back-office).
   devisText: "Devis émis par CleanFlow. Prix en euros. Le ménage est réalisé par un prestataire vérifié ; chaque intervention fait l'objet d'un contrôle photo par l'équipe CleanFlow avant confirmation. Devis valable 30 jours.",
   // Villes desservies (éditable back-office).
@@ -58,7 +60,7 @@ export const DEFAULT_PRICING = {
 // Champs numériques attendus dans la config (hors hourlyRates/timeGrid/textes).
 export const PRICING_SCALARS = [
   'hoursPerExtraBed', 'hoursPerExtraBathroom', 'hoursPer25sqmAbove90', 'maxAutoSurface',
-  'kitPrice', 'travelFee', 'commission', 'commissionMin', 'commissionMax', 'subscriptionMonthly', 'vatRate',
+  'kitPrice', 'travelFee', 'commission', 'commissionMin', 'commissionMax', 'subscriptionMonthly', 'vatRate', 'taxCreditRate',
 ];
 
 function toNum(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
@@ -81,6 +83,7 @@ export function normalizePricing(cfg) {
     timeGrid: grid,
     devisText: typeof cfg.devisText === 'string' && cfg.devisText.trim() ? cfg.devisText : d.devisText,
     cities: Array.isArray(cfg.cities) ? cfg.cities.map(c => String(c)).filter(Boolean) : [],
+    taxCreditEnabled: cfg.taxCreditEnabled !== false,
   };
   PRICING_SCALARS.forEach(k => { out[k] = toNum(cfg[k], d[k]); });
   return out;
