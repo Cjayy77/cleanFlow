@@ -815,26 +815,107 @@ function renderDashboard() {
   const gagnes = latestProspects.filter(p => p.status === 'Client').length;
   const taux = prospects ? Math.round(gagnes / prospects * 100) : 0;
 
+  // Série mensuelle (par date d'intervention) pour le graphique + les deltas.
+  const monthKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const byMonth = {};
+  active.forEach(b => {
+    const k = (b.scheduledDate || '').slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(k)) return;
+    byMonth[k] = byMonth[k] || { ca: 0, count: 0 };
+    byMonth[k].ca += Number(b.price) || 0;
+    byMonth[k].count += 1;
+  });
+  const months = [];
+  for (let i = 5; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ key: monthKey(d), label: d.toLocaleDateString('fr-FR', { month: 'short' }) });
+  }
+  const series = months.map(m => ({ ...m, ca: (byMonth[m.key] || {}).ca || 0, count: (byMonth[m.key] || {}).count || 0 }));
+  const lastMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const nbMois = (byMonth[ym] || {}).count || 0;
+  const nbPrev = (byMonth[lastMonthKey] || {}).count || 0;
+  const caPrev = (byMonth[lastMonthKey] || {}).ca || 0;
+
+  // Delta mois-sur-mois : ▲ vert / ▼ rouge, neutre s'il n'y a pas de base fiable.
+  const deltaInfo = (cur, prev) => {
+    if (prev <= 0) return cur > 0 ? { dir: 'up', text: '▲ nouveau' } : null;
+    const pct = Math.round((cur - prev) / prev * 100);
+    if (pct === 0) return { dir: 'flat', text: '– stable' };
+    return pct > 0 ? { dir: 'up', text: `▲ +${pct} %` } : { dir: 'down', text: `▼ ${pct} %` };
+  };
+
   const kpis = [
-    [`${nb}`, 'Réservations'],
-    [`${caPotentiel}€`, 'CA potentiel (HT)'],
-    [`${caSigne}€`, 'CA confirmé (HT)'],
-    [`${panier}€`, 'Panier moyen'],
-    [`${clients}`, 'Clients actifs'],
-    [`${caMois}€`, 'CA ce mois'],
-    [`${caAn}€`, 'CA cette année'],
-    [`${prospects}`, 'Prospects'],
-    [`${taux}%`, 'Taux de transformation'],
+    { value: `${nb}`, label: 'Réservations', delta: deltaInfo(nbMois, nbPrev) },
+    { value: `${caPotentiel}€`, label: 'CA potentiel (HT)' },
+    { value: `${caSigne}€`, label: 'CA confirmé (HT)' },
+    { value: `${panier}€`, label: 'Panier moyen' },
+    { value: `${clients}`, label: 'Clients actifs' },
+    { value: `${caMois}€`, label: 'CA ce mois', delta: deltaInfo(caMois, caPrev) },
+    { value: `${caAn}€`, label: 'CA cette année' },
+    { value: `${prospects}`, label: 'Prospects' },
+    { value: `${taux}%`, label: 'Taux de transformation' },
   ];
   host.innerHTML = '';
-  kpis.forEach(([value, label]) => {
+  kpis.forEach(kpi => {
     const d = document.createElement('div');
     d.className = 'stat';
-    const b = document.createElement('b'); b.textContent = value;
-    const s = document.createElement('span'); s.textContent = label;
+    const b = document.createElement('b'); b.textContent = kpi.value;
+    const s = document.createElement('span'); s.textContent = kpi.label;
     d.append(b, s);
+    if (kpi.delta) {
+      const dl = document.createElement('div');
+      dl.className = `stat-delta ${kpi.delta.dir}`;
+      dl.textContent = kpi.delta.text;
+      dl.title = 'vs mois dernier';
+      d.appendChild(dl);
+    }
     host.appendChild(d);
   });
+
+  renderDashChart(series);
+}
+
+// Graphique CA mensuel : barres inline (une seule série = magnitude), survol par
+// barre, dernier mois étiqueté. État vide tant qu'aucune réservation datée.
+function renderDashChart(series) {
+  const chartHost = document.getElementById('dashChart');
+  if (!chartHost) return;
+  chartHost.innerHTML = '';
+  const totalCa = series.reduce((s, m) => s + m.ca, 0);
+  if (totalCa <= 0) {
+    const e = document.createElement('div');
+    e.className = 'dchart-empty';
+    e.textContent = 'Le graphique se remplira dès les premières réservations datées.';
+    chartHost.appendChild(e);
+    return;
+  }
+  const maxCa = Math.max(1, ...series.map(s => s.ca));
+  const chart = document.createElement('div');
+  chart.className = 'dchart';
+  series.forEach((m, i) => {
+    const isLast = i === series.length - 1;
+    const col = document.createElement('div');
+    col.className = 'dchart-col' + (isLast ? ' current' : '');
+    const plot = document.createElement('div');
+    plot.className = 'dchart-plot';
+    const bar = document.createElement('div');
+    bar.className = 'dchart-bar';
+    bar.style.height = `${Math.max(3, Math.round(m.ca / maxCa * 100))}%`;
+    bar.title = `${m.label} · ${m.ca} €`;
+    if (isLast && m.ca > 0) {
+      const v = document.createElement('span');
+      v.className = 'dchart-val';
+      v.textContent = `${m.ca} €`;
+      bar.appendChild(v);
+    }
+    plot.appendChild(bar);
+    const x = document.createElement('div');
+    x.className = 'dchart-xlabel';
+    x.textContent = m.label;
+    col.append(plot, x);
+    chart.appendChild(col);
+  });
+  chartHost.appendChild(chart);
 }
 
 // Prestataires et livreurs approuvés, pour les listes déroulantes d'assignation.
