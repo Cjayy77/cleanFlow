@@ -382,8 +382,11 @@ export function openLogementQr(booking) {
   return true;
 }
 
-// Boîte de réception de l'équipe pour les notifications internes.
-// Doit rester identique à l'adresse autorisée dans firestore.rules (/mail).
+// ⇩⇩ ADRESSE DE L'ÉQUIPE — SOURCE UNIQUE POUR TOUT LE SITE ⇩⇩
+// Utilisée par les 4 portails + le devis public (tous importent TEAM_EMAIL).
+// Pour basculer sur la boîte OVH : changez CETTE ligne (une seule), puis
+// alignez teamInbox() dans firestore.rules (+ republier les règles) et le
+// FROM/SMTP de l'extension « Trigger Email ». Détails : SETUP.md.
 export const TEAM_EMAIL = 'w.wanecque@gmail.com';
 
 // TODO: confirm with team — liste exacte des photos exigées par mission.

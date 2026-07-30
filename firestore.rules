@@ -5,6 +5,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // ⇩⇩ ADRESSE DE L'ÉQUIPE — UN SEUL ENDROIT À CHANGER CÔTÉ RÈGLES ⇩⇩
+    // Doit rester identique à TEAM_EMAIL dans assets/js/shared.js.
+    // Quand la boîte OVH sera prête : remplacez la valeur ci-dessous,
+    // republiez les règles, et changez TEAM_EMAIL dans shared.js.
+    function teamInbox() {
+      return 'w.wanecque@gmail.com';
+    }
+
     function userData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
@@ -274,7 +282,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.message.subject is string
         && request.resource.data.message.text is string
-        && (isAdmin() || request.resource.data.to == 'w.wanecque@gmail.com');
+        && (isAdmin() || request.resource.data.to == teamInbox());
     }
 
     // Messages client → équipe, rattachés à une réservation. Le client écrit,

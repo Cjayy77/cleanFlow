@@ -25,6 +25,8 @@ admin.initializeApp();
 setGlobalOptions({ region: 'europe-west1', maxInstances: 10 });
 
 const db = admin.firestore();
+// Doit rester identique à TEAM_EMAIL (shared.js) et teamInbox() (firestore.rules).
+// Déploiement en attente (Blaze) — à aligner lors du basculement OVH.
 const TEAM_EMAIL = 'w.wanecque@gmail.com';
 const VAT_RATE_FALLBACK = 0.20;
 

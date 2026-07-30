@@ -110,12 +110,29 @@ navigateur :
    partir.
 
 Notifications envoyées : nouvelle réservation, annulation, dossier photos
-soumis et demande d'accès → **boîte de l'équipe** (`w.wanecque@gmail.com`,
-adresse codée dans `assets/js/shared.js` **et** dans `firestore.rules`,
-modifier les deux ensemble) ; ménage confirmé → **client** ; dossier à
-corriger → **prestataire**. La réinitialisation de mot de passe (« Mot de
-passe oublié ? ») passe par Firebase Auth directement, sans l'extension —
-personnalisez ce modèle dans Authentication → Templates.
+soumis et demande d'accès → **boîte de l'équipe** ; ménage confirmé →
+**client** ; dossier à corriger → **prestataire**. La réinitialisation de
+mot de passe (« Mot de passe oublié ? ») passe par Firebase Auth
+directement, sans l'extension — personnalisez ce modèle dans
+Authentication → Templates.
+
+### Basculer l'adresse de l'équipe (ex. nouvelle boîte OVH)
+
+L'adresse de notification est isolée à **une ligne par fichier**, toutes
+marquées d'un repère `⇩⇩`. Pour changer d'adresse :
+
+1. `assets/js/shared.js` → constante **`TEAM_EMAIL`** (couvre les 4 portails
+   + le devis public). Redéployer le site (statique).
+2. `firestore.rules` → fonction **`teamInbox()`**. Republier les règles
+   (Console → Firestore → Rules → Publier), sinon les notifications des
+   comptes non-admin seront refusées.
+3. Extension « Trigger Email » → *Default FROM address* + *SMTP* de la
+   nouvelle boîte (c'est ce qui fait **partir** les emails).
+4. (Optionnel, plus tard) `functions/index.js` → `TEAM_EMAIL` — seulement si
+   vous déployez les Cloud Functions.
+
+Les adresses de contact **public** (bas de page, pages légales `legal/`)
+sont distinctes et se changent à part si besoin.
 
 ## 8. Les quatre interfaces
 
