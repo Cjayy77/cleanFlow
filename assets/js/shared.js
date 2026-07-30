@@ -16,32 +16,107 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 import { firebaseConfig } from '../../firebase-config.js';
+import qrcode from './vendor/qrcode.js';
 
 export const ROLE_CLIENT = 'client';
 export const ROLE_PRESTATAIRE = 'prestataire';
 export const ROLE_LIVREUR = 'livreur';
+export const ROLE_WELCOMER = 'welcomer';
 export const ROLE_ADMIN = 'admin';
 
-// Grille tarifaire (barème de William). Le prix de la prestation dépend de la
-// surface du logement (m²) et du type de ménage. Source unique de vérité :
-// modifier ici met à jour le portail client et l'affichage admin.
-export const PRICE_BANDS = [
-  { max: 30, label: '0–30 m²', normal: 42, deep: 67 },
-  { max: 40, label: '31–40 m²', normal: 49, deep: 74 },
-  { max: 55, label: '41–55 m²', normal: 63, deep: 88 },
-  { max: 75, label: '56–75 m²', normal: 74, deep: 99 },
-  { max: 120, label: '76–120 m²', normal: 83, deep: 108 },
-  { max: 150, label: '121–150 m²', normal: 97, deep: 132 },
-  { max: 250, label: '151–250 m²', normal: 115, deep: 160 },
+// Formules Welcomer (contrôle qualité sur place). Facturables ; l'admin peut
+// ajuster les tarifs plus tard via le back-office (mêmes valeurs par défaut).
+export const WELCOMER_TIERS = [
+  { key: 'validation', label: 'Validation du ménage', fee: 15 },
+  { key: 'validation_photos', label: 'Validation + photos', fee: 20 },
+  { key: 'validation_accueil', label: 'Validation + accueil voyageur', fee: 35 },
+  { key: 'validation_edl', label: 'Validation + état des lieux', fee: 45 },
 ];
-// Au-delà de 250 m² : tarif sur-mesure (devis), pas de prix automatique.
+export function welcomerTier(key) {
+  return WELCOMER_TIERS.find(t => t.key === key) || null;
+}
 
-export const KIT_PRICE = 20; // par kit (linge, consommables), à l'unité.
+// Tarification HORAIRE (cahier des charges William). Le prix de la prestation =
+// tarif horaire × durée estimée. La durée dépend de la surface et du nombre de
+// lits. Toute cette configuration est regroupée ici (source unique de vérité) et
+// structurée pour être, à terme, pilotée depuis le back-office sans développeur.
+// Valeurs par défaut (barème initial de William). Servent de secours si aucune
+// configuration n'a été enregistrée depuis le back-office.
+export const DEFAULT_PRICING = {
+  // Tarifs horaires (€ HT / h).
+  hourlyRates: { normal: 30, deep: 50 },
+  // Durée de base par tranche de surface (colonne « 1 lit » de la grille).
+  timeGrid: [
+    { max: 25, baseHours: 1 },
+    { max: 45, baseHours: 2 },
+    { max: 65, baseHours: 3 },
+    { max: 90, baseHours: 4 },
+  ],
+  hoursPerExtraBed: 0.5,      // +0,5 h par lit au-delà du premier
+  hoursPerExtraBathroom: 0.5, // +0,5 h par salle de bain au-delà de la première
+  hoursPer25sqmAbove90: 1,    // au-delà de 90 m² : +1 h par tranche de 25 m²
+  maxAutoSurface: 250,        // au-delà : devis sur-mesure (pas de prix automatique)
+  kitPrice: 20,               // kit de bienvenue (linge, consommables) — 1 / chambre
+  travelFee: 10,              // frais de déplacement (forfait provisoire)
+  commission: 8,              // commission CleanFlow appliquée (€ HT / intervention)
+  commissionMin: 4,           // borne basse indicative (€ HT)
+  commissionMax: 12,          // borne haute indicative (€ HT)
+  subscriptionMonthly: 10,    // abonnement application (€ HT / mois / logement)
+  vatRate: 0.20,              // taux de TVA
+  taxCreditRate: 0.5,         // crédit d'impôt Services à la Personne (50 %)
+  taxCreditEnabled: true,     // proposer le crédit d'impôt dans le devis
+  // Texte libre du bas de devis (éditable back-office).
+  devisText: "Devis émis par CleanFlow. Prix en euros. Le ménage est réalisé par un prestataire vérifié ; chaque intervention fait l'objet d'un contrôle photo par l'équipe CleanFlow avant confirmation. Devis valable 30 jours.",
+  // Villes desservies (éditable back-office).
+  cities: [],
+};
 
-// Frais de déplacement. Provisoire : forfait unique. William fournira une
-// grille par zone (plus la zone est éloignée, plus les frais sont élevés) ;
-// il suffira alors de faire dépendre travelFeeForZone() de la zone.
-export const TRAVEL_FEE = 10;
+// Champs numériques attendus dans la config (hors hourlyRates/timeGrid/textes).
+export const PRICING_SCALARS = [
+  'hoursPerExtraBed', 'hoursPerExtraBathroom', 'hoursPer25sqmAbove90', 'maxAutoSurface',
+  'kitPrice', 'travelFee', 'commission', 'commissionMin', 'commissionMax', 'subscriptionMonthly', 'vatRate', 'taxCreditRate',
+];
+
+function toNum(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
+
+// Nettoie/complète une config venue de Firestore : tout champ manquant ou
+// invalide retombe sur la valeur par défaut. Impossible de casser le calcul.
+export function normalizePricing(cfg) {
+  cfg = cfg || {};
+  const d = DEFAULT_PRICING;
+  const hr = cfg.hourlyRates || {};
+  let grid = Array.isArray(cfg.timeGrid)
+    ? cfg.timeGrid
+        .map(b => ({ max: toNum(b && b.max, 0), baseHours: toNum(b && b.baseHours, 0) }))
+        .filter(b => b.max > 0 && b.baseHours > 0)
+        .sort((a, b) => a.max - b.max)
+    : [];
+  if (!grid.length) grid = d.timeGrid.map(b => ({ ...b }));
+  const out = {
+    hourlyRates: { normal: toNum(hr.normal, d.hourlyRates.normal), deep: toNum(hr.deep, d.hourlyRates.deep) },
+    timeGrid: grid,
+    devisText: typeof cfg.devisText === 'string' && cfg.devisText.trim() ? cfg.devisText : d.devisText,
+    cities: Array.isArray(cfg.cities) ? cfg.cities.map(c => String(c)).filter(Boolean) : [],
+    taxCreditEnabled: cfg.taxCreditEnabled !== false,
+  };
+  PRICING_SCALARS.forEach(k => { out[k] = toNum(cfg[k], d[k]); });
+  return out;
+}
+
+// Configuration active. Par défaut = DEFAULT_PRICING ; remplacée au chargement
+// par la config du back-office via setPricing().
+let activePricing = normalizePricing(DEFAULT_PRICING);
+export function getPricing() { return activePricing; }
+export function setPricing(cfg) { activePricing = normalizePricing(cfg); return activePricing; }
+
+// Alias rétro-compatibles (valeurs par défaut, usage historique).
+export const KIT_PRICE = DEFAULT_PRICING.kitPrice;
+export const TRAVEL_FEE = DEFAULT_PRICING.travelFee;
+
+// Amenities (consommables d'accueil), DISTINCTS des kits. Tarification à définir
+// par William : provisoirement 0 €. Le champ existe déjà côté réservation et
+// dans la compta admin pour que l'ajout ultérieur ne demande aucune migration.
+export const AMENITIES_PRICE = 0;
 
 // Zones = classification / assignation (et, plus tard, frais de déplacement).
 // N'influencent PAS le prix de la prestation. Liste provisoire, ajustable.
@@ -57,42 +132,261 @@ export function zoneLabel(value) {
 
 export function travelFeeForZone(/* zone */) {
   // Provisoire : forfait unique quelle que soit la zone.
-  return TRAVEL_FEE;
+  return getPricing().travelFee;
 }
 
-// Trouve la tranche de surface. Renvoie { custom:true } au-delà de 250 m².
-export function bandForSurface(surface) {
+// Durée estimée d'un ménage (h) selon surface, nombre de lits et salles de bain.
+// Renvoie null si surface invalide, { custom:true } au-delà de la limite auto.
+export function estimateCleaningHours(surface, beds, bathrooms) {
+  const P = getPricing();
   const s = Number(surface);
   if (!Number.isFinite(s) || s <= 0) return null;
-  if (s > 250) return { custom: true, label: '+250 m²' };
-  return PRICE_BANDS.find(band => s <= band.max) || null;
+  if (s > P.maxAutoSurface) return { custom: true };
+  const bedsEff = Math.max(1, Math.floor(Number(beds) || 1));
+  const bathEff = Math.max(1, Math.floor(Number(bathrooms) || 1));
+  const lastBand = P.timeGrid[P.timeGrid.length - 1];
+  const band = P.timeGrid.find(b => s <= b.max);
+  const base = band
+    ? band.baseHours
+    // Au-delà de la dernière tranche : +1 (paramétrable) par tranche de 25 m².
+    : lastBand.baseHours + Math.ceil((s - lastBand.max) / 25) * P.hoursPer25sqmAbove90;
+  const hours = base
+    + (bedsEff - 1) * P.hoursPerExtraBed
+    + (bathEff - 1) * P.hoursPerExtraBathroom;
+  return { custom: false, hours, beds: bedsEff, bathrooms: bathEff };
 }
 
-// Calcule le détail de prix d'une réservation. Renvoie null si la surface est
+// Détail de prix d'une réservation (modèle horaire). Renvoie null si surface
 // invalide, ou { custom:true } si elle relève du devis sur-mesure.
-export function computeBookingPrice({ surface, serviceType, kitCount = 0, zone }) {
-  const band = bandForSurface(surface);
-  if (!band) return null;
-  if (band.custom) return { custom: true, band };
+export function computeBookingPrice({ surface, serviceType, beds, bathrooms, bedrooms, kitCount = 0, zone, amenitiesPrice = AMENITIES_PRICE }) {
+  const est = estimateCleaningHours(surface, beds, bathrooms);
+  if (!est) return null;
+  if (est.custom) return { custom: true };
+  const P = getPricing();
   const service = serviceType === 'deep' ? 'deep' : 'normal';
-  const kits = Math.max(0, Math.floor(Number(kitCount) || 0));
-  const prestation = band[service];
-  const kitsTotal = kits * KIT_PRICE;
+  const hourlyRate = P.hourlyRates[service];
+  const prestation = Math.round(hourlyRate * est.hours);
+  // 1 kit de bienvenue par chambre : le nombre de chambres pilote le nombre de kits.
+  const rooms = bedrooms != null ? bedrooms : kitCount;
+  const kits = Math.max(0, Math.floor(Number(rooms) || 0));
+  const kitsTotal = kits * P.kitPrice;
+  const amenitiesTotal = Math.max(0, Number(amenitiesPrice) || 0);
   const travel = travelFeeForZone(zone);
+  const commission = Math.max(0, Number(P.commission) || 0); // commission CleanFlow / intervention
+  // Les tarifs sont HT ; la TVA est un pass-through (n'entre pas dans la marge).
+  const total = prestation + kitsTotal + amenitiesTotal + travel + commission; // total HT
+  const vatRate = P.vatRate;
+  const vat = Math.round(total * vatRate);
   return {
     custom: false,
-    band,
     serviceType: service,
+    beds: est.beds,
+    bathrooms: est.bathrooms,
+    hours: est.hours,
+    hourlyRate,
     prestation,
+    bedrooms: kits,
     kitCount: kits,
     kitsTotal,
+    amenitiesTotal,
     travel,
-    total: prestation + kitsTotal + travel,
+    commission,
+    subscriptionMonthly: Math.max(0, Number(P.subscriptionMonthly) || 0),
+    total,
+    vatRate,
+    vat,
+    totalTTC: total + vat,
   };
 }
 
-// Boîte de réception de l'équipe pour les notifications internes.
-// Doit rester identique à l'adresse autorisée dans firestore.rules (/mail).
+// TVA / TTC à partir d'un total HT et du taux courant (pour l'affichage admin).
+export function vatBreakdown(totalHT) {
+  const rate = getPricing().vatRate;
+  const vat = Math.round((Number(totalHT) || 0) * rate);
+  return { rate, vat, ttc: (Number(totalHT) || 0) + vat };
+}
+
+function escapeHtml(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+// Lignes HT d'une réservation, reconstruites depuis les champs stockés.
+function bookingLineItems(b) {
+  const price = Number(b.price) || 0;
+  const prestation = Number(b.prestationPrice) || 0;
+  const amenities = Number(b.amenitiesPrice) || 0;
+  const travel = Number(b.travelFee) || 0;
+  const commission = Number(b.commission) || 0;
+  const extrasHT = Number(b.extrasHT) || 0;
+  const kits = Math.max(0, price - prestation - amenities - extrasHT - travel - commission);
+  const rooms = Number(b.bedrooms != null ? b.bedrooms : b.kitCount) || 0;
+  const rate = b.hours ? Math.round(prestation / b.hours) : (b.serviceType === 'deep' ? 50 : 30);
+  const items = [
+    { label: `Ménage ${b.serviceType === 'deep' ? 'approfondi' : 'standard'}${b.hours ? ` · ${String(b.hours).replace('.', ',')} h × ${rate}€/h` : ''}`, amount: prestation },
+  ];
+  if (kits) items.push({ label: `Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, amount: kits });
+  if (amenities) items.push({ label: 'Amenities (consommables)', amount: amenities });
+  (b.extras || []).forEach(e => items.push({ label: `${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, amount: (Number(e.priceHT) || 0) * (Number(e.qty) || 0) }));
+  if (commission) items.push({ label: 'Commission CleanFlow', amount: commission });
+  if (travel) items.push({ label: 'Frais de déplacement', amount: travel });
+  return { items, totalHT: price };
+}
+
+// Ouvre un devis / reçu imprimable (→ « Enregistrer au format PDF » du navigateur).
+// Entièrement côté client : aucun backend requis.
+export function openDevisDocument(booking, client) {
+  const P = getPricing();
+  const { items, totalHT } = bookingLineItems(booking);
+  const rate = P.vatRate;
+  const vat = Math.round(totalHT * rate);
+  const ttc = totalHT + vat;
+  const devisText = escapeHtml(P.devisText || '');
+  const subscription = Math.max(0, Number(P.subscriptionMonthly) || 0);
+  const ref = `CF-${String(booking.id || '').slice(0, 6).toUpperCase()}`;
+  const today = new Date();
+  const fmt = d => d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const validUntil = new Date(today); validUntil.setDate(today.getDate() + 30);
+  const clientName = escapeHtml((client && client.name) || '');
+  const clientEmail = escapeHtml((client && client.email) || booking.clientEmail || '');
+  const rows = items.map(it => `<tr><td>${escapeHtml(it.label)}</td><td class="amt">${it.amount}&nbsp;€</td></tr>`).join('');
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis ${ref} — CleanFlow</title>
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Helvetica Neue',Arial,sans-serif; color:#12123A; padding:40px 46px; font-size:14px; }
+  .top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px; }
+  .brand{ display:flex; align-items:center; gap:12px; font-size:24px; font-weight:800; }
+  .brand .k{ color:#E6007E; }
+  .doc-meta{ text-align:right; font-size:13px; color:#555; }
+  .doc-meta h1{ font-size:22px; letter-spacing:2px; color:#12123A; margin-bottom:6px; }
+  .parties{ display:flex; justify-content:space-between; gap:30px; margin-bottom:26px; }
+  .parties h3{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#E6007E; margin-bottom:6px; }
+  .parties div{ font-size:13px; line-height:1.5; color:#333; }
+  table{ width:100%; border-collapse:collapse; margin-bottom:20px; }
+  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#888; border-bottom:2px solid #12123A; padding:8px 0; }
+  th.amt, td.amt{ text-align:right; white-space:nowrap; }
+  td{ padding:11px 0; border-bottom:1px solid #ECEAF3; }
+  .totals{ margin-left:auto; width:280px; }
+  .totals .row{ display:flex; justify-content:space-between; padding:7px 0; font-size:14px; }
+  .totals .ttc{ border-top:2px solid #12123A; margin-top:4px; padding-top:12px; font-size:18px; font-weight:800; color:#E6007E; }
+  .foot{ margin-top:38px; font-size:11px; color:#888; line-height:1.6; border-top:1px solid #ECEAF3; padding-top:16px; }
+  svg{ width:34px; height:34px; }
+  @media print{ body{ padding:24px; } .noprint{ display:none; } }
+  .noprint{ margin-top:26px; }
+  .noprint button{ background:#E6007E; color:#fff; border:none; border-radius:8px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; }
+</style></head><body>
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 400 400"><g fill="#E6007E"><path d="M56 332 Q116.4 194.7 127.42 41.45 A22 22 0 1 1 169.02 54.97 Q137.2 201.5 56 332 Z" opacity=".55"/><path d="M56 332 Q144.9 218.0 193.63 77.81 A23 23 0 1 1 232.29 102.88 Q164.3 230.5 56 332 Z" opacity=".7"/><path d="M56 332 Q166.5 243.3 250.25 124.83 A24 24 0 1 1 282.26 160.40 Q182.5 261.1 56 332 Z" opacity=".82"/><path d="M56 332 Q192.7 272.8 318.04 188.07 A25 25 0 1 1 338.31 233.58 Q202.9 295.6 56 332 Z" opacity=".92"/><path d="M56 332 Q208.3 309.3 358.36 268.77 A26 26 0 1 1 364.68 320.21 Q211.4 335.0 56 332 Z"/></g></svg>
+      <span><span class="k">Clean</span>Flow</span>
+    </div>
+    <div class="doc-meta">
+      <h1>DEVIS</h1>
+      <div>N° ${ref}</div>
+      <div>Date : ${fmt(today)}</div>
+      <div>Validité : ${fmt(validUntil)}</div>
+    </div>
+  </div>
+  <div class="parties">
+    <div>
+      <h3>Client</h3>
+      <div>${clientName || '—'}<br>${clientEmail}</div>
+    </div>
+    <div style="text-align:right">
+      <h3>Logement</h3>
+      <div>${escapeHtml(booking.propertyAddress || '')}<br>${booking.surface ? `${booking.surface} m²` : ''} · Intervention le ${escapeHtml(formatShortDate(booking.scheduledDate))}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Prestation</th><th class="amt">Montant HT</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="totals">
+    <div class="row"><span>Total HT</span><b>${totalHT}&nbsp;€</b></div>
+    <div class="row"><span>TVA (${Math.round(rate * 100)} %)</span><b>${vat}&nbsp;€</b></div>
+    <div class="row ttc"><span>Total TTC</span><span>${ttc}&nbsp;€</span></div>
+  </div>
+  ${subscription ? `<div style="margin-top:10px;font-size:11px;color:#888;text-align:right;">+ Abonnement application : ${subscription}&nbsp;€ HT / mois / logement (facturé séparément)</div>` : ''}
+  <div class="foot">
+    ${devisText} Conditions générales disponibles sur le site.
+  </div>
+  <div class="noprint"><button onclick="window.print()">Imprimer / enregistrer en PDF</button></div>
+  <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) return false;
+  w.document.write(html);
+  w.document.close();
+  return true;
+}
+
+// ---- QR code du logement (contrôle Welcomer) --------------------------------
+// Le Welcomer scanne ce QR sur place ; il ouvre l'interface Welcomer directement
+// sur le bon contrôle. Le QR encode un lien profond vers /welcomer/?m=<bookingId>.
+const QR_FALLBACK_ORIGIN = 'https://clean-flow-dun.vercel.app';
+
+export function logementQrUrl(bookingId) {
+  const origin = (typeof location !== 'undefined' && typeof location.origin === 'string' && location.origin.startsWith('http'))
+    ? location.origin
+    : QR_FALLBACK_ORIGIN;
+  return `${origin}/welcomer/?m=${encodeURIComponent(bookingId)}`;
+}
+
+// Renvoie une balise <svg> QR autonome (aucune dépendance réseau à l'affichage).
+export function qrSvg(text, { cellSize = 6, margin = 4 } = {}) {
+  const q = qrcode(0, 'M'); // type auto, correction M
+  q.addData(String(text));
+  q.make();
+  return q.createSvgTag({ cellSize, margin, scalable: false });
+}
+
+// Ouvre une fiche QR imprimable à afficher dans le logement (→ « Enregistrer en
+// PDF » du navigateur). Entièrement côté client.
+export function openLogementQr(booking) {
+  const url = logementQrUrl(booking.id);
+  const ref6 = String(booking.id).slice(0, 6).toUpperCase();
+  const svg = qrSvg(url, { cellSize: 9, margin: 4 });
+  const addr = escapeHtml(booking.propertyAddress || booking.propertyId || 'Logement');
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR logement · ${escapeHtml(ref6)}</title>
+  <style>
+    @page { margin: 20mm; }
+    body { font-family:'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; color:#221541; text-align:center; padding:32px 24px; }
+    .brand { font-size:26px; font-weight:800; letter-spacing:-0.01em; }
+    .brand span { color:#E6007E; }
+    .sub { color:#6B6480; margin-top:4px; font-size:14px; }
+    .qr { display:inline-block; margin:26px auto 14px; padding:18px; border:1px solid #eadff0; border-radius:16px; }
+    .qr svg { width:280px; height:280px; display:block; }
+    .ref { font-weight:700; font-size:18px; letter-spacing:0.04em; }
+    .addr { color:#6B6480; margin-top:6px; font-size:14px; }
+    .hint { max-width:340px; margin:22px auto 0; color:#221541; font-size:14px; line-height:1.5; }
+    .noprint button { margin-top:24px; padding:10px 16px; border:0; border-radius:10px; background:#E6007E; color:#fff; font-weight:700; cursor:pointer; }
+    @media print { .noprint { display:none; } }
+  </style></head>
+  <body>
+    <div class="brand"><span>Clean</span>Flow</div>
+    <div class="sub">Contrôle qualité — logement</div>
+    <div class="qr">${svg}</div>
+    <div class="ref">Réf ${escapeHtml(ref6)}</div>
+    <div class="addr">${addr}</div>
+    <p class="hint">À votre arrivée, scannez ce code avec l’appareil photo de votre téléphone (ou le bouton « Scanner le QR » de l’interface Welcomer) pour ouvrir directement le contrôle de ce logement.</p>
+    <div class="noprint"><button onclick="window.print()">Imprimer / enregistrer en PDF</button></div>
+    <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) return false;
+  w.document.write(html);
+  w.document.close();
+  return true;
+}
+
+// ⇩⇩ ADRESSE DE L'ÉQUIPE — SOURCE UNIQUE POUR TOUT LE SITE ⇩⇩
+// Utilisée par les 4 portails + le devis public (tous importent TEAM_EMAIL).
+// Pour basculer sur la boîte OVH : changez CETTE ligne (une seule), puis
+// alignez teamInbox() dans firestore.rules (+ republier les règles) et le
+// FROM/SMTP de l'extension « Trigger Email ». Détails : SETUP.md.
 export const TEAM_EMAIL = 'w.wanecque@gmail.com';
 
 // TODO: confirm with team — liste exacte des photos exigées par mission.
@@ -185,6 +479,14 @@ export async function uploadBookingImage({ bookingId, slot, file, uploadedBy }) 
   };
   await setDoc(doc(db, 'photos', `${bookingId}_${normalizedSlot}`), photoDoc);
   return photoDoc;
+}
+
+// Upload d'une image d'article de catalogue (admin) → renvoie l'URL publique.
+export async function uploadCatalogImage(file) {
+  const safe = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storageRef = ref(storage, `catalog/${Date.now()}-${safe}`);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+  return getDownloadURL(storageRef);
 }
 
 export function formatShortDate(dateString) {

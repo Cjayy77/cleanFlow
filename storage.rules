@@ -36,6 +36,32 @@ service firebase.storage {
         && request.resource.size < 15 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
+
+    // Photos du catalogue (kits, consommables…) : visibles par les utilisateurs
+    // connectés (le client les voit), déposées par l'équipe CleanFlow.
+    match /catalog/{filePath=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && userRole() == 'admin'
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Photos de contrôle du Welcomer, déposées sur place. Le Welcomer assigné
+    // écrit ; admin, client concerné et Welcomer assigné peuvent lire.
+    match /welcomer/{bookingId}/{filePath=**} {
+      function bk() { return firestore.get(/databases/(default)/documents/bookings/$(bookingId)).data; }
+      allow read: if request.auth != null && (
+        userRole() == 'admin'
+        || (userRole() == 'welcomer' && bk().get('welcomerId', '') == request.auth.uid)
+        || (userRole() == 'client' && bk().clientId == request.auth.uid)
+      );
+      allow write: if request.auth != null
+        && userRole() == 'welcomer'
+        && bk().get('welcomerId', '') == request.auth.uid
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
   }
 }
 

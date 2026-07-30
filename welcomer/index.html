@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>CleanFlow — Welcomer</title>
+<link rel="icon" href="../assets/fan-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/ui.css">
+<style>
+  .wc-check{ display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--line); font-size:14px; }
+  .wc-check input{ width:auto; }
+  .wc-sign{ border:1px dashed var(--line); border-radius:10px; background:var(--soft); touch-action:none; width:100%; max-width:360px; height:140px; display:block; }
+  .wc-level label{ display:flex; align-items:flex-start; gap:8px; margin:6px 0; font-size:14px; }
+  .wc-level input{ width:auto; margin-top:3px; }
+  .wc-photos{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .wc-photos img{ width:64px; height:64px; object-fit:cover; border-radius:8px; }
+  .wc-scan-actions{ margin-top:12px; }
+  .wc-scan{ margin-top:14px; }
+  .wc-scan video{ width:100%; max-width:360px; border-radius:12px; background:#000; display:block; margin-bottom:10px; }
+  .wc-manual{ margin-top:16px; border-top:1px solid var(--line); padding-top:12px; }
+  .wc-manual summary{ cursor:pointer; font-size:14px; font-weight:600; color:var(--pink-deep); }
+  .wc-manual .form-row{ margin-top:12px; }
+  .wc-qr-badge{ display:inline-block; margin-bottom:12px; padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; color:#fff; background:linear-gradient(120deg, var(--pink-deep), var(--plum)); }
+</style>
+</head>
+<body>
+<div class="app-wrap">
+  <div class="top-row">
+    <div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil CleanFlow"><span class="k">Clean</span>Flow</a></div>
+      <div class="role-tag">Interface Welcomer</div>
+    </div>
+    <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
+  </div>
+
+  <div class="card" id="loadingScreen">
+    <div class="loading-state" role="status"><span class="spinner" aria-hidden="true"></span>Chargement…</div>
+  </div>
+
+  <div class="card hidden" id="authScreen">
+    <div class="eyebrow">Accès réservé</div>
+    <h1>Connexion Welcomer</h1>
+    <p>Espace réservé aux Welcomers partenaires — contrôle qualité sur place. L’accès se fait sur demande, vérifiée et approuvée par l’équipe CleanFlow.</p>
+    <div id="authError" class="status-banner hidden" role="alert"></div>
+    <form id="signInForm">
+      <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
+      <div class="form-row"><label for="signInPassword">Mot de passe</label><input id="signInPassword" type="password" autocomplete="current-password" required></div>
+      <button class="btn primary" type="submit">Se connecter</button>
+      <div class="note-box"><a href="#" id="forgotPassword">Mot de passe oublié ?</a></div>
+      <div class="note-box"><a href="#" id="switchToRequest">Demander un accès Welcomer</a></div>
+    </form>
+    <form id="requestForm" class="hidden">
+      <p>Votre demande sera vérifiée par l’équipe CleanFlow avant l’activation du compte.</p>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestName">Nom</label><input id="requestName" type="text" required></div>
+        <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
+      </div>
+      <div class="form-cols">
+        <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
+        <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
+      </div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par CleanFlow)</label><input id="requestCode" type="text"></div>
+      <button class="btn primary" type="submit">Envoyer la demande</button>
+      <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte, me connecter</a></div>
+    </form>
+  </div>
+
+  <div id="appScreen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Bonjour</div>
+      <h1 id="userNameLabel">Welcomer</h1>
+      <p>Contrôlez la qualité sur place après le passage du prestataire et avant l’arrivée du voyageur. Checklist, photos, signature — la validation part automatiquement au propriétaire.</p>
+    </div>
+    <div id="workStatus" class="status-banner hidden" role="alert"></div>
+    <div class="card">
+      <div class="eyebrow">Sur place</div>
+      <h2>Scanner le logement</h2>
+      <p>Scannez le QR affiché dans le logement pour ouvrir directement le bon contrôle. Vous pouvez aussi viser le QR avec l’appareil photo de votre téléphone.</p>
+      <div class="wc-scan-actions">
+        <button class="btn primary" id="scanBtn" type="button">Scanner le QR</button>
+      </div>
+      <div id="scanArea" class="wc-scan hidden">
+        <video id="scanVideo" playsinline muted></video>
+        <button class="btn ghost" id="scanStop" type="button">Arrêter la caméra</button>
+      </div>
+      <details class="wc-manual">
+        <summary>Saisir la réf du logement manuellement</summary>
+        <div class="form-row"><label for="manualCode">Réf du logement (6 caractères)</label><input id="manualCode" type="text" autocapitalize="characters" autocomplete="off" placeholder="Ex. A1B2C3"></div>
+        <button class="btn ghost" id="manualGo" type="button">Ouvrir le contrôle</button>
+      </details>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Mes validations</div>
+      <h2>Missions à contrôler</h2>
+      <div id="taskList"></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="../assets/js/welcomer.js"></script>
+</body>
+</html>

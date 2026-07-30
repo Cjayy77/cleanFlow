@@ -110,12 +110,29 @@ navigateur :
    partir.
 
 Notifications envoyées : nouvelle réservation, annulation, dossier photos
-soumis et demande d'accès → **boîte de l'équipe** (`w.wanecque@gmail.com`,
-adresse codée dans `assets/js/shared.js` **et** dans `firestore.rules`,
-modifier les deux ensemble) ; ménage confirmé → **client** ; dossier à
-corriger → **prestataire**. La réinitialisation de mot de passe (« Mot de
-passe oublié ? ») passe par Firebase Auth directement, sans l'extension —
-personnalisez ce modèle dans Authentication → Templates.
+soumis et demande d'accès → **boîte de l'équipe** ; ménage confirmé →
+**client** ; dossier à corriger → **prestataire**. La réinitialisation de
+mot de passe (« Mot de passe oublié ? ») passe par Firebase Auth
+directement, sans l'extension — personnalisez ce modèle dans
+Authentication → Templates.
+
+### Basculer l'adresse de l'équipe (ex. nouvelle boîte OVH)
+
+L'adresse de notification est isolée à **une ligne par fichier**, toutes
+marquées d'un repère `⇩⇩`. Pour changer d'adresse :
+
+1. `assets/js/shared.js` → constante **`TEAM_EMAIL`** (couvre les 4 portails
+   + le devis public). Redéployer le site (statique).
+2. `firestore.rules` → fonction **`teamInbox()`**. Republier les règles
+   (Console → Firestore → Rules → Publier), sinon les notifications des
+   comptes non-admin seront refusées.
+3. Extension « Trigger Email » → *Default FROM address* + *SMTP* de la
+   nouvelle boîte (c'est ce qui fait **partir** les emails).
+4. (Optionnel, plus tard) `functions/index.js` → `TEAM_EMAIL` — seulement si
+   vous déployez les Cloud Functions.
+
+Les adresses de contact **public** (bas de page, pages légales `legal/`)
+sont distinctes et se changent à part si besoin.
 
 ## 8. Les quatre interfaces
 
@@ -154,7 +171,23 @@ dans **Storage → `bookings/`**, supprimer les dossiers des réservations de
 plus de 90 jours, et purger les documents `photos` correspondants dans
 Firestore.
 
+## Devis en ligne public (`/devis/`)
+
+La page de devis public fonctionne **sans compte** : elle se connecte en
+**authentification anonyme** pour lire les tarifs et enregistrer le prospect.
+À activer une fois dans la console :
+
+1. **Firebase → Authentication → Sign-in method → Anonyme → Activer.**
+2. Republier `firestore.rules` (la création de prospect depuis le devis public
+   y est autorisée, statut « Nouveau » forcé et champs contrôlés).
+
+Sans cette activation, le devis se calcule et se télécharge quand même en PDF,
+mais l'envoi de la demande (fiche CRM) est indisponible.
+
 ## Hors périmètre bêta (volontairement non construit)
 
-- Paiements (gérés directement avec l'équipe), tracking GPS, vérification
-  automatique/IA, import Airbnb, intégrations calendrier tierces.
+- Paiement en ligne (Stripe) : le code back-office existe en **placeholder**
+  (functions/) ; à activer une fois un compte Stripe créé et la clé fournie.
+- Intégrations Brevo / Make / Zapier / HubSpot / Pennylane et API REST :
+  squelettes livrés dans `functions/`, à brancher avec les clés dédiées.
+- Tracking GPS, vérification automatique/IA, import Airbnb.

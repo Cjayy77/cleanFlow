@@ -6,6 +6,10 @@ import {
   loadUserDoc,
   registerClient,
   computeBookingPrice,
+  setPricing,
+  openDevisDocument,
+  WELCOMER_TIERS,
+  welcomerTier,
   ZONES,
   zoneLabel,
   formatShortDate,
@@ -63,12 +67,26 @@ const propertyPostal = document.getElementById('propertyPostal');
 const propertySurface = document.getElementById('propertySurface');
 const propertyZone = document.getElementById('propertyZone');
 const propertyNotes = document.getElementById('propertyNotes');
+const propertyKeyAccess = document.getElementById('propertyKeyAccess');
 const propertyFormTitle = document.getElementById('propertyFormTitle');
 const propertySubmitBtn = document.getElementById('propertySubmitBtn');
 const cancelEditWrap = document.getElementById('cancelEditWrap');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const propertyFormCard = document.getElementById('propertyFormCard');
-const kitCountInput = document.getElementById('kitCount');
+const bedroomsInput = document.getElementById('bedrooms');
+const bedsInput = document.getElementById('beds');
+const bathroomsInput = document.getElementById('bathrooms');
+const guestsInput = document.getElementById('guests');
+const propertyTypeInput = document.getElementById('propertyType');
+const supplementsCard = document.getElementById('supplementsCard');
+const supplementsList = document.getElementById('supplementsList');
+const welcomerSelect = document.getElementById('welcomerService');
+if (welcomerSelect) {
+  welcomerSelect.innerHTML = '<option value="">Sans Welcomer</option>'
+    + WELCOMER_TIERS.map(t => `<option value="${t.key}">${t.label} — ${t.fee}€ HT</option>`).join('');
+}
+
+const CATALOG_LABELS = { service: 'Prestations', kit: "Kits d'accueil", consumable: 'Consommables', linen: 'Location de linge' };
 const priceBreakdown = document.getElementById('priceBreakdown');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
@@ -85,11 +103,20 @@ let currentUser = null;
 let selectedPropertyId = null;
 let selectedDate = null;
 let selectedServiceType = 'normal';
-let kitCount = 0;
+let welcomerService = '';
+let beds = 1;
+let bathrooms = 1;
+let guests = 0;
+let propertyType = 'appartement';
+let bedrooms = 0;
 let properties = [];
 let bookings = [];
 let propertiesUnsub = null;
 let bookingsUnsub = null;
+let pricingUnsub = null;
+let catalogUnsub = null;
+let catalog = [];
+let selectedExtras = {}; // { itemId: quantité }
 let authNotice = null;
 let editingPropertyId = null;
 let calendarMonth = startOfMonth(new Date());
@@ -119,6 +146,7 @@ function setPropertyFormMode(property = null) {
   propertySurface.value = property && property.surface ? property.surface : '';
   propertyZone.value = property && property.zone ? property.zone : (ZONES[0] ? ZONES[0].value : '');
   propertyNotes.value = property ? (property.notes || '') : '';
+  if (propertyKeyAccess) propertyKeyAccess.value = property ? (property.keyAccess || '') : '';
   if (property) {
     propertyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
     propertyStreet.focus();
@@ -168,7 +196,7 @@ function updateBookingBar() {
   const property = properties.find(p => p.id === selectedPropertyId);
   bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
   currentQuote = property
-    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, kitCount, zone: property.zone })
+    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bathrooms, bedrooms, zone: property.zone })
     : null;
 
   // Bien sans surface renseignée (ancien bien) : inviter à compléter.
@@ -191,25 +219,48 @@ function updateBookingBar() {
     return;
   }
 
-  renderPriceBreakdown(currentQuote);
-  const total = currentQuote ? currentQuote.total : null;
-  priceValue.textContent = total != null ? `${total}€` : '—';
-  bookBtn.textContent = selectedDate && total != null
-    ? `Réserver le ${formatShortDate(selectedDate)} · ${total}€`
+  const extras = currentQuote ? selectedExtrasList() : [];
+  const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
+  const wf = welcomerFeeValue();
+  renderPriceBreakdown(currentQuote, extras, wf);
+  let ttc = null;
+  if (currentQuote) {
+    const finalHT = currentQuote.total + extrasHT + wf;
+    ttc = finalHT + Math.round(finalHT * currentQuote.vatRate);
+  }
+  priceValue.textContent = ttc != null ? `${ttc}€` : '—';
+  bookBtn.textContent = selectedDate && ttc != null
+    ? `Réserver le ${formatShortDate(selectedDate)} · ${ttc}€`
     : 'Choisir une date pour réserver';
-  bookBtn.disabled = !selectedPropertyId || !selectedDate || total == null;
+  bookBtn.disabled = !selectedPropertyId || !selectedDate || ttc == null;
 }
 
-function renderPriceBreakdown(quote) {
+function welcomerFeeValue() {
+  const t = welcomerTier(welcomerService);
+  return t ? t.fee : 0;
+}
+
+function renderPriceBreakdown(quote, extras, welcomerFee) {
   if (!quote || quote.custom) { priceBreakdown.classList.add('hidden'); return; }
+  extras = extras || [];
+  welcomerFee = welcomerFee || 0;
+  const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
+  const finalHT = quote.total + extrasHT + welcomerFee;
+  const vat = Math.round(finalHT * quote.vatRate);
+  const h = String(quote.hours).replace('.', ',');
   const rows = [
-    [`Prestation · ${quote.band.label} · ${quote.serviceType === 'deep' ? 'en profondeur' : 'normal'}`, `${quote.prestation}€`],
+    [`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${h} h × ${quote.hourlyRate}€/h`, `${quote.prestation}€`, ''],
   ];
-  if (quote.kitCount > 0) rows.push([`Kits · ${quote.kitCount} × 20€`, `${quote.kitsTotal}€`]);
-  rows.push(['Frais de déplacement', `${quote.travel}€`]);
+  if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''}`, `${quote.kitsTotal}€`, '']);
+  extras.forEach(e => rows.push([`${e.name}${e.qty > 1 ? ` × ${e.qty}` : ''}`, `${e.lineHT}€`, '']));
+  if (welcomerFee) { const t = welcomerTier(welcomerService); rows.push([`Welcomer · ${t ? t.label : 'validation'}`, `${welcomerFee}€`, '']); }
+  if (quote.commission) rows.push(['Commission CleanFlow', `${quote.commission}€`, '']);
+  rows.push(['Frais de déplacement', `${quote.travel}€`, '']);
+  rows.push(['Total HT', `${finalHT}€`, 'pb-total']);
+  rows.push([`TVA (${Math.round(quote.vatRate * 100)} %)`, `${vat}€`, '']);
   priceBreakdown.classList.remove('hidden');
   priceBreakdown.innerHTML = rows
-    .map(([label, value]) => `<div class="pb-line"><span></span><b>${value}</b></div>`)
+    .map(([label, value, cls]) => `<div class="pb-line ${cls}"><span></span><b>${value}</b></div>`)
     .join('');
   // Remplit les libellés en texte (évite l'injection HTML depuis les données).
   priceBreakdown.querySelectorAll('.pb-line span').forEach((span, index) => {
@@ -467,6 +518,13 @@ function renderBookings() {
     // problème constaté après le ménage). Reste dispo même mission terminée.
     if (booking.status !== 'cancelled') {
       card.appendChild(buildContactTeam(booking, address));
+      const devisBtn = document.createElement('button');
+      devisBtn.className = 'mini-btn';
+      devisBtn.type = 'button';
+      devisBtn.style.paddingLeft = '0';
+      devisBtn.textContent = 'Devis / reçu (PDF)';
+      devisBtn.onclick = () => openDevisDocument(booking, currentUser);
+      card.appendChild(devisBtn);
     }
     bookingsWrap.appendChild(card);
   });
@@ -564,6 +622,116 @@ function buildContactTeam(booking, address) {
   return wrap;
 }
 
+// Charge la grille tarifaire définie par l'admin (back-office). En cas d'absence
+// ou d'erreur, le calcul retombe sur les valeurs par défaut (setPricing est
+// défensif). Live : une modification admin recalcule le prix affiché.
+function subscribePricing() {
+  if (pricingUnsub) pricingUnsub();
+  pricingUnsub = onSnapshot(doc(db, 'settings', 'pricing'), snap => {
+    if (snap.exists()) setPricing(snap.data());
+    updateBookingBar();
+  }, () => { /* défauts déjà en place */ });
+}
+
+// Catalogue (kits, consommables, linge) proposé en supplément à la réservation.
+function subscribeCatalog() {
+  if (catalogUnsub) catalogUnsub();
+  catalogUnsub = onSnapshot(collection(db, 'catalog'), snap => {
+    catalog = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(i => i.active !== false);
+    renderSupplements();
+    updateBookingBar();
+  }, () => { /* catalogue indisponible : on masque simplement les suppléments */ });
+}
+
+// Liste des suppléments sélectionnés (quantité > 0), avec le détail de ligne.
+function selectedExtrasList() {
+  return catalog
+    .filter(i => (selectedExtras[i.id] || 0) > 0)
+    .map(i => {
+      const qty = selectedExtras[i.id];
+      const priceHT = Number(i.priceHT) || 0;
+      return { id: i.id, name: i.name || '', type: i.type || '', priceHT, priceTTC: Number(i.priceTTC) || 0, qty, lineHT: priceHT * qty };
+    });
+}
+
+function renderSupplements() {
+  if (!supplementsCard || !supplementsList) return;
+  if (!catalog.length) { supplementsCard.classList.add('hidden'); return; }
+  supplementsCard.classList.remove('hidden');
+  supplementsList.innerHTML = '';
+  ['service', 'kit', 'consumable', 'linen'].forEach(type => {
+    const items = catalog.filter(i => i.type === type).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (!items.length) return;
+    const head = document.createElement('div');
+    head.className = 'p-meta';
+    head.style.cssText = 'text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 4px;';
+    head.textContent = CATALOG_LABELS[type] || type;
+    supplementsList.appendChild(head);
+    items.forEach(item => supplementsList.appendChild(supplementRow(item)));
+  });
+}
+
+function supplementRow(item) {
+  const row = document.createElement('div');
+  row.className = 'supp-row';
+  const info = document.createElement('div');
+  const name = document.createElement('div');
+  name.className = 'supp-name';
+  name.textContent = item.name || '(sans nom)';
+  const auto = item.unit === 'bed' || item.unit === 'guest';
+  const per = item.unit === 'bed' ? 'lit' : 'voyageur';
+  const basis = item.unit === 'bed' ? beds : guests;
+  const meta = document.createElement('div');
+  meta.className = 'p-meta';
+  meta.textContent = `${Number(item.priceTTC) || 0}€ TTC / ${auto ? per : 'unité'}`;
+  info.append(name, meta);
+
+  if (auto) {
+    // Quantité calculée automatiquement selon le nombre de lits / voyageurs.
+    const wrap = document.createElement('label');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.style.cssText = 'width:auto;';
+    cb.checked = (selectedExtras[item.id] || 0) > 0;
+    const hint = document.createElement('span');
+    hint.textContent = `× ${basis} ${per}${basis > 1 ? 's' : ''}`;
+    cb.addEventListener('change', () => {
+      if (cb.checked && basis > 0) selectedExtras[item.id] = basis; else delete selectedExtras[item.id];
+      updateBookingBar();
+    });
+    wrap.append(cb, hint);
+    row.append(info, wrap);
+  } else {
+    const qty = document.createElement('input');
+    qty.type = 'number';
+    qty.min = '0';
+    qty.step = '1';
+    qty.className = 'supp-qty';
+    qty.value = selectedExtras[item.id] || 0;
+    qty.setAttribute('aria-label', `Quantité — ${item.name || ''}`);
+    qty.addEventListener('input', () => {
+      const n = Math.max(0, Math.floor(Number(qty.value) || 0));
+      if (n > 0) selectedExtras[item.id] = n; else delete selectedExtras[item.id];
+      updateBookingBar();
+    });
+    row.append(info, qty);
+  }
+  return row;
+}
+
+// Recalcule la quantité des suppléments « par lit / par voyageur » cochés.
+function resyncAutoExtras() {
+  catalog.forEach(i => {
+    if ((i.unit === 'bed' || i.unit === 'guest') && (selectedExtras[i.id] || 0) > 0) {
+      const basis = i.unit === 'bed' ? beds : guests;
+      if (basis > 0) selectedExtras[i.id] = basis; else delete selectedExtras[i.id];
+    }
+  });
+}
+
 function subscribeData() {
   if (propertiesUnsub) propertiesUnsub();
   if (bookingsUnsub) bookingsUnsub();
@@ -600,6 +768,8 @@ onAuthStateChanged(auth, async user => {
     currentUser = null;
     if (propertiesUnsub) propertiesUnsub();
     if (bookingsUnsub) bookingsUnsub();
+    if (pricingUnsub) pricingUnsub();
+    if (catalogUnsub) catalogUnsub();
     if (authNotice) {
       showAuth(authNotice.mode, authNotice.message);
       authNotice = null;
@@ -622,6 +792,8 @@ onAuthStateChanged(auth, async user => {
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
+    subscribePricing();
+    subscribeCatalog();
     subscribeData();
   } catch (error) {
     authNotice = { mode: 'signin', message: authErrorMessage(error) };
@@ -686,7 +858,7 @@ signOutBtn.addEventListener('click', async () => {
   await signOut(auth);
   selectedPropertyId = null;
   selectedDate = null;
-  kitCount = 0;
+  bedrooms = 0;
   properties = [];
   bookings = [];
 });
@@ -698,9 +870,39 @@ serviceRadios.forEach(radio => {
   });
 });
 
-kitCountInput.addEventListener('input', () => {
-  kitCount = Math.max(0, Math.floor(Number(kitCountInput.value) || 0));
+bedroomsInput.addEventListener('input', () => {
+  bedrooms = Math.max(0, Math.floor(Number(bedroomsInput.value) || 0));
   updateBookingBar();
+});
+
+if (welcomerSelect) {
+  welcomerSelect.addEventListener('change', () => {
+    welcomerService = welcomerSelect.value;
+    updateBookingBar();
+  });
+}
+
+bedsInput.addEventListener('input', () => {
+  beds = Math.max(1, Math.floor(Number(bedsInput.value) || 1));
+  resyncAutoExtras();
+  renderSupplements();
+  updateBookingBar();
+});
+
+bathroomsInput.addEventListener('input', () => {
+  bathrooms = Math.max(1, Math.floor(Number(bathroomsInput.value) || 1));
+  updateBookingBar();
+});
+
+guestsInput.addEventListener('input', () => {
+  guests = Math.max(0, Math.floor(Number(guestsInput.value) || 0));
+  resyncAutoExtras();
+  renderSupplements();
+  updateBookingBar();
+});
+
+propertyTypeInput.addEventListener('change', () => {
+  propertyType = propertyTypeInput.value;
 });
 
 propertyForm.addEventListener('submit', async event => {
@@ -712,6 +914,7 @@ propertyForm.addEventListener('submit', async event => {
   const surface = Math.floor(Number(propertySurface.value) || 0);
   const zone = propertyZone.value;
   const notes = propertyNotes.value.trim();
+  const keyAccess = propertyKeyAccess ? propertyKeyAccess.value.trim() : '';
   if (!street || !city || !postalCode) {
     setAppStatus('Veuillez renseigner l’adresse complète du bien.', 'error');
     return;
@@ -732,9 +935,9 @@ propertyForm.addEventListener('submit', async event => {
       // pour que prestataire et livreur ne voient jamais l'ancienne.
       const affected = bookings.filter(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
       await withButtonLoading(propertySubmitBtn, () => withTimeout((async () => {
-        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, surface, zone, notes });
+        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, surface, zone, notes, keyAccess });
         await Promise.all(affected.map(b =>
-          updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress })));
+          updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress, keyAccess })));
       })(), 20000));
       setPropertyFormMode(null);
       setAppStatus(affected.length
@@ -750,6 +953,7 @@ propertyForm.addEventListener('submit', async event => {
           surface,
           zone,
           notes,
+          keyAccess,
           createdAt: serverTimestamp(),
         }), 15000));
       propertyForm.reset();
@@ -771,7 +975,7 @@ bookBtn.addEventListener('click', async () => {
   const property = properties.find(p => p.id === selectedPropertyId);
   if (!property) return;
   const bookedDate = selectedDate;
-  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, kitCount, zone: property.zone });
+  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bathrooms, bedrooms, zone: property.zone });
   if (!quote) {
     setAppStatus('Renseignez la surface de ce bien avant de réserver.', 'error');
     return;
@@ -781,7 +985,7 @@ bookBtn.addEventListener('click', async () => {
   // de devis à l'équipe qui reviendra vers le client avec un prix.
   if (quote.custom) {
     const address = `${property.street}, ${property.city}`;
-    const devisText = `Demande de devis (sur-mesure, > 250 m²) — ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${kitCount} kit(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
+    const devisText = `Demande de devis (sur-mesure, > 250 m²) — ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${beds} lit(s) · ${bedrooms} chambre(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
     try {
       // Trace la demande côté équipe (onglet Messages de l'admin) en plus de l'email.
       await withButtonLoading(bookBtn, () =>
@@ -807,21 +1011,43 @@ bookBtn.addEventListener('click', async () => {
     return;
   }
 
+  // Suppléments choisis (kits, consommables, linge) : ajoutés au total HT.
+  const extras = selectedExtrasList().map(e => ({
+    id: e.id, name: e.name, type: e.type, priceHT: e.priceHT, priceTTC: e.priceTTC, qty: e.qty,
+  }));
+  const extrasHT = extras.reduce((s, e) => s + e.priceHT * e.qty, 0);
+  const wFee = welcomerFeeValue();
+  const finalHT = quote.total + extrasHT + wFee;
+
   try {
     await withButtonLoading(bookBtn, () =>
       withTimeout(addDoc(collection(db, 'bookings'), {
         clientId: currentUser.uid,
         propertyId: selectedPropertyId,
         propertyAddress: `${property.street}, ${property.city}`,
+        keyAccess: property.keyAccess || '',
         prestataireId: null,
         livreurId: null,
         serviceType: quote.serviceType,
         surface: Number(property.surface),
         zone: property.zone || '',
+        propertyType,
+        beds: quote.beds,
+        bathrooms: quote.bathrooms,
+        guests,
+        hours: quote.hours,
+        bedrooms: quote.bedrooms,
         kitCount: quote.kitCount,
         prestationPrice: quote.prestation,
+        amenitiesPrice: quote.amenitiesTotal,
         travelFee: quote.travel,
-        price: quote.total,
+        commission: quote.commission,
+        extras,
+        extrasHT,
+        welcomerService: welcomerService || '',
+        welcomerFee: wFee,
+        welcomerId: null,
+        price: finalHT,
         scheduledDate: selectedDate,
         status: 'pending',
         linenRequested: quote.kitCount > 0,
@@ -830,13 +1056,23 @@ bookBtn.addEventListener('click', async () => {
     queueEmail({
       to: TEAM_EMAIL,
       subject: `CleanFlow — nouvelle réservation · ${property.street}, ${property.city}`,
-      text: `${formatShortDate(bookedDate)} · ${quote.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² · ${quote.kitCount} kit(s) · total ${quote.total}€ · zone ${zoneLabel(property.zone)} · client : ${currentUser.email}`,
+      text: `${formatShortDate(bookedDate)} · ${quote.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² · ${quote.kitCount} chambre(s)/kit(s) · total ${quote.total}€ · zone ${zoneLabel(property.zone)} · client : ${currentUser.email}`,
     });
     setAppStatus('Réservation enregistrée. Vous serez notifié par email une fois le ménage vérifié par l’équipe CleanFlow.', 'success');
     selectedDate = null;
     selectedDateLabel.value = 'Aucune date';
-    kitCount = 0;
-    if (kitCountInput) kitCountInput.value = '0';
+    bedrooms = 0;
+    if (bedroomsInput) bedroomsInput.value = '0';
+    beds = 1;
+    if (bedsInput) bedsInput.value = '1';
+    bathrooms = 1;
+    if (bathroomsInput) bathroomsInput.value = '1';
+    guests = 0;
+    if (guestsInput) guestsInput.value = '0';
+    welcomerService = '';
+    if (welcomerSelect) welcomerSelect.value = '';
+    selectedExtras = {};
+    renderSupplements();
     renderCalendar();
     updateBookingBar();
   } catch (err) {

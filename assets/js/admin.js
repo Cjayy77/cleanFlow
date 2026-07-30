@@ -17,6 +17,14 @@ import {
   resetPassword,
   requestTeamAccess,
   queueEmail,
+  getPricing,
+  setPricing,
+  DEFAULT_PRICING,
+  PRICING_SCALARS,
+  openDevisDocument,
+  uploadCatalogImage,
+  welcomerTier,
+  openLogementQr,
 } from './shared.js';
 import {
   collection,
@@ -24,6 +32,9 @@ import {
   where,
   onSnapshot,
   updateDoc,
+  setDoc,
+  addDoc,
+  deleteDoc,
   doc,
   getDoc,
   writeBatch,
@@ -48,9 +59,11 @@ const userNameLabel = document.getElementById('userNameLabel');
 const bookingQueue = document.getElementById('bookingQueue');
 const bookingTitle = document.getElementById('bookingTitle');
 const bookingMeta = document.getElementById('bookingMeta');
+const bookingCost = document.getElementById('bookingCost');
 const photoGrid = document.getElementById('photoGrid');
 const verifyBtn = document.getElementById('verifyBtn');
 const rejectBtn = document.getElementById('rejectBtn');
+const devisBtn = document.getElementById('devisBtn');
 const rejectNote = document.getElementById('rejectNote');
 const incidentList = document.getElementById('incidentList');
 const adminStatus = document.getElementById('adminStatus');
@@ -62,6 +75,7 @@ const openIncidents = document.getElementById('openIncidents');
 const clientMessages = document.getElementById('clientMessages');
 const missionsToAssign = document.getElementById('missionsToAssign');
 const kitsToAssign = document.getElementById('kitsToAssign');
+const welcomersToAssign = document.getElementById('welcomersToAssign');
 const adminCalendar = document.getElementById('adminCalendar');
 const adminCalMonth = document.getElementById('adminCalMonth');
 const adminCalPrev = document.getElementById('adminCalPrev');
@@ -79,12 +93,20 @@ let selectedBooking = null;
 let bookingQueueData = [];
 let bookingQueueUnsub = null;
 let statsUnsub = null;
+let pricingUnsub = null;
+let catalogUnsub = null;
+let latestCatalog = [];
+let prospectsUnsub = null;
+let latestProspects = [];
+
+const PROSPECT_STATUSES = ['Nouveau', 'À rappeler', 'En attente', 'Client', 'Perdu'];
 let incidentsUnsub = null;
 let messagesUnsub = null;
 let latestBookings = [];
 let prestataires = [];
 let livreurs = [];
-let suspended = { prestataire: [], livreur: [] };
+let welcomers = [];
+let suspended = { prestataire: [], livreur: [], welcomer: [] };
 let membersUnsubs = [];
 let openMessagesCount = 0;
 let openIncidentsCount = 0;
@@ -120,6 +142,8 @@ let selectedCalDay = null;
 // Période de la compta : semaine / mois / année en cours, tout, ou plage libre.
 let comptaRange = 'month';
 let comptaCustom = { from: '', to: '' };
+let comptaPrestataire = ''; // '' = tous les prestataires
+let comptaSearch = '';      // recherche par adresse / bien
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -166,14 +190,658 @@ function subscribeStats() {
     statSubmitted.textContent = counts.submitted;
     statVerified.textContent = counts.verified;
     renderAssignments();
+    renderDashboard();
   }, error => setAdminStatus(`Impossible de charger la vue d’ensemble : ${authErrorMessage(error)}`, 'error'));
+}
+
+// ---- Back-office tarifs : charge, édite et enregistre la config de prix ----
+function subscribePricing() {
+  if (pricingUnsub) pricingUnsub();
+  pricingUnsub = onSnapshot(doc(db, 'settings', 'pricing'), snap => {
+    if (snap.exists()) setPricing(snap.data());
+    renderPricingForm();
+  }, error => setPricingStatus(`Impossible de charger les tarifs : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setPricingStatus(message, type) {
+  const el = document.getElementById('pricingStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+// Petit générateur de champ « label + input numérique ».
+function priceField(label, value, opts) {
+  opts = opts || {};
+  const row = document.createElement('label');
+  row.className = 'price-field';
+  const span = document.createElement('span');
+  span.textContent = label;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = opts.step || '1';
+  if (opts.min != null) input.min = opts.min;
+  input.value = value;
+  input.dataset.key = opts.key || '';
+  row.appendChild(span);
+  row.appendChild(input);
+  if (opts.suffix) { const s = document.createElement('em'); s.textContent = opts.suffix; row.appendChild(s); }
+  return row;
+}
+
+function renderPricingForm() {
+  const form = document.getElementById('pricingForm');
+  if (!form) return;
+  const P = getPricing();
+  form.innerHTML = '';
+
+  const group = (title) => {
+    const g = document.createElement('div');
+    g.className = 'price-group';
+    const h = document.createElement('div');
+    h.className = 'roster-subhead';
+    h.textContent = title;
+    g.appendChild(h);
+    form.appendChild(g);
+    return g;
+  };
+
+  // Tarifs horaires
+  const g1 = group('Tarifs horaires (€ HT / h)');
+  g1.appendChild(priceField('Ménage standard', P.hourlyRates.normal, { key: 'rate_normal', suffix: '€/h' }));
+  g1.appendChild(priceField('Nettoyage approfondi', P.hourlyRates.deep, { key: 'rate_deep', suffix: '€/h' }));
+
+  // Grille de durée (bandes de surface)
+  const g2 = group('Durée de base par surface (colonne « 1 lit »)');
+  const bandsWrap = document.createElement('div');
+  bandsWrap.id = 'pricingBands';
+  g2.appendChild(bandsWrap);
+  P.timeGrid.forEach(b => bandsWrap.appendChild(bandRow(b.max, b.baseHours)));
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'mini-btn';
+  addBtn.textContent = '+ Ajouter une tranche';
+  addBtn.onclick = () => bandsWrap.appendChild(bandRow('', ''));
+  g2.appendChild(addBtn);
+
+  // Règles de durée
+  const g3 = group('Règles de durée');
+  g3.appendChild(priceField('Heures par lit supplémentaire', P.hoursPerExtraBed, { key: 'hoursPerExtraBed', step: '0.25', suffix: 'h' }));
+  g3.appendChild(priceField('Heures par salle de bain supplémentaire', P.hoursPerExtraBathroom, { key: 'hoursPerExtraBathroom', step: '0.25', suffix: 'h' }));
+  g3.appendChild(priceField('Heures par 25 m² au-delà de la grille', P.hoursPer25sqmAbove90, { key: 'hoursPer25sqmAbove90', step: '0.25', suffix: 'h' }));
+  g3.appendChild(priceField('Surface max. calcul auto (au-delà : devis)', P.maxAutoSurface, { key: 'maxAutoSurface', suffix: 'm²' }));
+
+  // Suppléments & abonnement
+  const g4 = group('Suppléments, abonnement & commission');
+  g4.appendChild(priceField('Kit de bienvenue (par chambre)', P.kitPrice, { key: 'kitPrice', suffix: '€' }));
+  g4.appendChild(priceField('Frais de déplacement', P.travelFee, { key: 'travelFee', suffix: '€' }));
+  g4.appendChild(priceField('Abonnement application', P.subscriptionMonthly, { key: 'subscriptionMonthly', suffix: '€/mois' }));
+  g4.appendChild(priceField('Commission CleanFlow (appliquée / intervention)', P.commission, { key: 'commission', suffix: '€' }));
+  g4.appendChild(priceField('Commission — borne min (indicatif)', P.commissionMin, { key: 'commissionMin', suffix: '€' }));
+  g4.appendChild(priceField('Commission — borne max (indicatif)', P.commissionMax, { key: 'commissionMax', suffix: '€' }));
+  g4.appendChild(priceField('TVA', Math.round(P.vatRate * 100), { key: 'vatPct', suffix: '%' }));
+
+  // Textes & zones desservies
+  const g5 = group('Textes du devis & villes desservies');
+  const txtWrap = document.createElement('label');
+  txtWrap.className = 'price-field';
+  txtWrap.style.alignItems = 'flex-start';
+  const txtSpan = document.createElement('span'); txtSpan.textContent = 'Bas de page du devis';
+  const txt = document.createElement('textarea');
+  txt.id = 'pricingDevisText'; txt.style.cssText = 'flex:1;min-width:240px;min-height:80px;';
+  txt.value = P.devisText || '';
+  txtWrap.append(txtSpan, txt);
+  g5.appendChild(txtWrap);
+  const cityWrap = document.createElement('label');
+  cityWrap.className = 'price-field';
+  const citySpan = document.createElement('span'); citySpan.textContent = 'Villes desservies (séparées par des virgules)';
+  const cityIn = document.createElement('input');
+  cityIn.type = 'text'; cityIn.id = 'pricingCities'; cityIn.style.cssText = 'flex:1;min-width:200px;';
+  cityIn.value = (P.cities || []).join(', ');
+  cityWrap.append(citySpan, cityIn);
+  g5.appendChild(cityWrap);
+
+  // Crédit d'impôt (Services à la Personne)
+  const g6 = group("Crédit d'impôt (Services à la Personne)");
+  g6.appendChild(priceField("Taux du crédit d'impôt", Math.round((P.taxCreditRate || 0) * 100), { key: 'taxCreditPct', suffix: '%' }));
+  const tcWrap = document.createElement('label');
+  tcWrap.className = 'price-field';
+  const tcSpan = document.createElement('span'); tcSpan.textContent = "Proposer le crédit d'impôt dans le devis";
+  const tcCb = document.createElement('input');
+  tcCb.type = 'checkbox'; tcCb.id = 'pricingTaxCredit'; tcCb.style.width = 'auto';
+  tcCb.checked = P.taxCreditEnabled !== false;
+  tcWrap.append(tcSpan, tcCb);
+  g6.appendChild(tcWrap);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.className = 'btn primary';
+  save.textContent = 'Enregistrer les tarifs';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'btn ghost';
+  reset.textContent = 'Réinitialiser (barème par défaut)';
+  armInlineConfirm(reset, 'Confirmer la réinitialisation', () => savePricing(DEFAULT_PRICING));
+  actions.appendChild(save);
+  actions.appendChild(reset);
+  form.appendChild(actions);
+}
+
+function bandRow(max, baseHours) {
+  const row = document.createElement('div');
+  row.className = 'band-row';
+  const m = document.createElement('input');
+  m.type = 'number'; m.min = '1'; m.placeholder = 'm² max'; m.value = max; m.dataset.role = 'max';
+  const arrow = document.createElement('span'); arrow.textContent = '→';
+  const h = document.createElement('input');
+  h.type = 'number'; h.min = '0'; h.step = '0.25'; h.placeholder = 'heures'; h.value = baseHours; h.dataset.role = 'hours';
+  const hLabel = document.createElement('em'); hLabel.textContent = 'h';
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = '✕';
+  del.onclick = () => row.remove();
+  row.append(m, arrow, h, hLabel, del);
+  return row;
+}
+
+// Lit le formulaire, construit une config propre et l'enregistre.
+function collectPricingFromForm() {
+  const form = document.getElementById('pricingForm');
+  const val = (key) => {
+    const el = form.querySelector(`input[data-key="${key}"]`);
+    return el ? Number(el.value) : NaN;
+  };
+  const bands = Array.from(form.querySelectorAll('#pricingBands .band-row')).map(r => ({
+    max: Number(r.querySelector('input[data-role="max"]').value),
+    baseHours: Number(r.querySelector('input[data-role="hours"]').value),
+  }));
+  const textEl = form.querySelector('#pricingDevisText');
+  const cityEl = form.querySelector('#pricingCities');
+  return {
+    hourlyRates: { normal: val('rate_normal'), deep: val('rate_deep') },
+    timeGrid: bands,
+    hoursPerExtraBed: val('hoursPerExtraBed'),
+    hoursPerExtraBathroom: val('hoursPerExtraBathroom'),
+    hoursPer25sqmAbove90: val('hoursPer25sqmAbove90'),
+    maxAutoSurface: val('maxAutoSurface'),
+    kitPrice: val('kitPrice'),
+    travelFee: val('travelFee'),
+    subscriptionMonthly: val('subscriptionMonthly'),
+    commission: val('commission'),
+    commissionMin: val('commissionMin'),
+    commissionMax: val('commissionMax'),
+    vatRate: val('vatPct') / 100,
+    taxCreditRate: (val('taxCreditPct') || 0) / 100,
+    taxCreditEnabled: form.querySelector('#pricingTaxCredit') ? form.querySelector('#pricingTaxCredit').checked : true,
+    devisText: textEl ? textEl.value : undefined,
+    cities: cityEl ? cityEl.value.split(',').map(s => s.trim()).filter(Boolean) : [],
+  };
+}
+
+async function savePricing(config) {
+  const clean = {};
+  // On enregistre une config déjà normalisée par le moteur (mêmes défauts de secours).
+  const normalized = setPricing(config); // met aussi à jour l'aperçu local
+  Object.assign(clean, normalized);
+  try {
+    await withTimeout(setDoc(doc(db, 'settings', 'pricing'), { ...clean, updatedAt: serverTimestamp() }), 15000);
+    setPricingStatus('Tarifs enregistrés. Les nouvelles réservations utilisent ce barème.', 'success');
+  } catch (error) {
+    setPricingStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- Back-office catalogue : kits, consommables, location de linge ----
+const CATALOG_TYPES = [
+  { key: 'service', label: 'Prestations (check-in, check-out, clés, urgence…)', singular: 'une prestation', hasStock: false, hasCategory: false },
+  { key: 'kit', label: "Kits d'accueil", singular: 'un kit', hasStock: false, hasCategory: false },
+  { key: 'consumable', label: 'Consommables', singular: 'un consommable', hasStock: true, hasCategory: true },
+  { key: 'linen', label: 'Location de linge', singular: 'un article de linge', hasStock: false, hasCategory: false },
+];
+
+function subscribeCatalog() {
+  if (catalogUnsub) catalogUnsub();
+  catalogUnsub = onSnapshot(collection(db, 'catalog'), snap => {
+    latestCatalog = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderCatalog();
+  }, error => setCatalogStatus(`Impossible de charger le catalogue : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setCatalogStatus(message, type) {
+  const el = document.getElementById('catalogStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function renderCatalog() {
+  const root = document.getElementById('catalogRoot');
+  if (!root) return;
+  root.innerHTML = '';
+  CATALOG_TYPES.forEach(type => {
+    const group = document.createElement('div');
+    group.className = 'catalog-group';
+    const head = document.createElement('div');
+    head.className = 'roster-subhead';
+    head.textContent = type.label;
+    group.appendChild(head);
+
+    const items = latestCatalog
+      .filter(i => i.type === type.key)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Aucun article pour le moment.';
+      group.appendChild(empty);
+    } else {
+      items.forEach(item => group.appendChild(buildCatalogCard(item, type)));
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn ghost';
+    addBtn.style.marginTop = '12px';
+    addBtn.textContent = `+ Ajouter ${type.singular}`;
+    addBtn.onclick = () => {
+      if (group.querySelector('.catalog-form')) return; // un seul formulaire à la fois
+      addBtn.before(catalogItemForm(type, null));
+    };
+    group.appendChild(addBtn);
+    root.appendChild(group);
+  });
+}
+
+function buildCatalogCard(item, type) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item';
+
+  const thumb = document.createElement('div');
+  thumb.className = 'catalog-thumb';
+  if (item.photoUrl) {
+    const img = document.createElement('img');
+    img.src = item.photoUrl; img.alt = ''; img.loading = 'lazy';
+    thumb.appendChild(img);
+  }
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = item.name || '(sans nom)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [`${item.priceHT || 0}€ HT`, `${item.priceTTC || 0}€ TTC`];
+  if (type.hasCategory && item.category) bits.unshift(item.category);
+  if (type.hasStock && item.stock != null) bits.push(`stock ${item.stock}`);
+  if (item.unit === 'bed') bits.push('par lit');
+  else if (item.unit === 'guest') bits.push('par voyageur');
+  meta.textContent = bits.join(' · ');
+  info.append(name, meta);
+  if (item.description) {
+    const d = document.createElement('div');
+    d.className = 'task-meta';
+    d.textContent = item.description;
+    info.appendChild(d);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'catalog-actions';
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+      card.nextElementSibling.remove(); return;
+    }
+    card.after(catalogItemForm(type, item));
+  };
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+  armInlineConfirm(del, 'Confirmer la suppression', () => deleteCatalogItem(item.id));
+  actions.append(edit, del);
+
+  card.append(thumb, info, actions);
+  return card;
+}
+
+function catalogField(label, name, value, inputType) {
+  const wrap = document.createElement('label');
+  wrap.className = 'form-row';
+  const span = document.createElement('span');
+  span.textContent = label;
+  span.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const input = document.createElement('input');
+  input.type = inputType || 'text';
+  if (inputType === 'number') { input.min = '0'; input.step = '0.01'; }
+  input.name = name;
+  input.value = value == null ? '' : value;
+  wrap.append(span, input);
+  return wrap;
+}
+
+function catalogItemForm(type, existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const vat = getPricing().vatRate;
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fName = catalogField('Nom', 'name', existing ? existing.name : '');
+  const fDesc = catalogField('Description', 'description', existing ? existing.description : '');
+  const fCat = type.hasCategory ? catalogField('Catégorie', 'category', existing ? existing.category : '') : null;
+  const fHT = catalogField('Prix HT (€)', 'priceHT', existing ? existing.priceHT : '', 'number');
+  const fTTC = catalogField('Prix TTC (€)', 'priceTTC', existing ? existing.priceTTC : '', 'number');
+  const fStock = type.hasStock ? catalogField('Stock', 'stock', existing ? existing.stock : '', 'number') : null;
+  const fPhoto = catalogField('Photo (URL, optionnel)', 'photoUrl', existing ? existing.photoUrl : '');
+
+  // Base de facturation : à l'unité, par lit, ou par voyageur (surtout pour le linge).
+  const fUnit = document.createElement('label');
+  fUnit.className = 'form-row';
+  const uSpan = document.createElement('span');
+  uSpan.textContent = 'Facturation';
+  uSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const uSel = document.createElement('select');
+  uSel.name = 'unit';
+  [['unit', "À l'unité (quantité choisie)"], ['bed', 'Par lit'], ['guest', 'Par voyageur']].forEach(([v, l]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = l;
+    if ((existing && existing.unit) === v) o.selected = true;
+    uSel.appendChild(o);
+  });
+  fUnit.append(uSpan, uSel);
+
+  form.append(fName, fDesc);
+  if (fCat) form.append(fCat);
+  const cols = document.createElement('div');
+  cols.className = 'form-cols';
+  cols.append(fHT, fTTC);
+  form.append(cols);
+  if (fStock) form.append(fStock);
+  form.append(fUnit, fPhoto);
+
+  // TTC auto-calculé depuis le HT (modifiable ensuite).
+  fHT.querySelector('input').addEventListener('input', e => {
+    const v = Number(e.target.value);
+    if (Number.isFinite(v)) get('priceTTC').value = Math.round(v * (1 + vat));
+  });
+
+  // Upload d'image (remplit le champ URL). Nécessite Firebase Storage (Blaze).
+  const upWrap = document.createElement('label');
+  upWrap.className = 'form-row';
+  const upSpan = document.createElement('span');
+  upSpan.textContent = 'Téléverser une photo';
+  upSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const upInput = document.createElement('input');
+  upInput.type = 'file';
+  upInput.accept = 'image/*';
+  upInput.addEventListener('change', async () => {
+    const file = upInput.files && upInput.files[0];
+    if (!file) return;
+    upSpan.textContent = 'Téléversement…';
+    try {
+      const url = await withTimeout(uploadCatalogImage(file), 30000);
+      get('photoUrl').value = url;
+      upSpan.textContent = 'Photo téléversée ✓';
+    } catch (err) {
+      upSpan.textContent = 'Téléverser une photo';
+      setCatalogStatus(`Upload impossible : ${authErrorMessage(err)}`, 'error');
+    }
+  });
+  upWrap.append(upSpan, upInput);
+  form.append(upWrap);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      type: type.key,
+      name: get('name').value.trim(),
+      description: get('description').value.trim(),
+      priceHT: Math.max(0, Number(get('priceHT').value) || 0),
+      priceTTC: Math.max(0, Number(get('priceTTC').value) || 0),
+      photoUrl: get('photoUrl').value.trim(),
+      unit: get('unit') ? get('unit').value : 'unit',
+      active: true,
+    };
+    if (type.hasCategory) data.category = get('category').value.trim();
+    if (type.hasStock) data.stock = Math.max(0, Math.floor(Number(get('stock').value) || 0));
+    if (!data.name) { setCatalogStatus('Le nom est obligatoire.', 'error'); return; }
+    saveCatalogItem(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveCatalogItem(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'catalog', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'catalog'), { ...data, createdAt: serverTimestamp() }), 15000));
+    setCatalogStatus(id ? 'Article mis à jour.' : 'Article ajouté.', 'success');
+    // onSnapshot reconstruit le catalogue (et retire le formulaire ouvert).
+  } catch (error) {
+    setCatalogStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteCatalogItem(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'catalog', id)), 15000);
+    setCatalogStatus('Article supprimé.', 'success');
+  } catch (error) {
+    setCatalogStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- CRM : prospects ----
+function subscribeProspects() {
+  if (prospectsUnsub) prospectsUnsub();
+  prospectsUnsub = onSnapshot(collection(db, 'prospects'), snap => {
+    latestProspects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderProspects();
+    renderDashboard();
+  }, error => setProspectStatus(`Impossible de charger les prospects : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setProspectStatus(message, type) {
+  const el = document.getElementById('prospectStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function renderProspects() {
+  const list = document.getElementById('prospectList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!latestProspects.length) {
+    list.innerHTML = '<div class="empty-state">Aucun prospect pour le moment.</div>';
+    return;
+  }
+  const order = { 'Nouveau': 0, 'À rappeler': 1, 'En attente': 2, 'Client': 3, 'Perdu': 4 };
+  latestProspects
+    .slice()
+    .sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    .forEach(p => list.appendChild(buildProspectCard(p)));
+}
+
+function buildProspectCard(p) {
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  const top = document.createElement('div');
+  top.className = 'task-top';
+  const left = document.createElement('div');
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = p.name || '(sans nom)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [p.email, p.phone, p.address].filter(Boolean);
+  if (p.montant) bits.push(`${p.montant}€`);
+  if (p.source) bits.push(`source : ${p.source}`);
+  meta.textContent = bits.join(' · ');
+  left.append(title, meta);
+  if (p.note) { const n = document.createElement('div'); n.className = 'task-meta'; n.textContent = p.note; left.appendChild(n); }
+
+  const sel = document.createElement('select');
+  sel.style.cssText = 'width:auto;min-width:130px;padding:8px 10px;font-size:13px;';
+  PROSPECT_STATUSES.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    if ((p.status || 'Nouveau') === s) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => setProspectStatusValue(p.id, sel.value);
+  top.append(left, sel);
+  card.appendChild(top);
+
+  const actions = document.createElement('div');
+  actions.style.cssText = 'display:flex;gap:2px;margin-top:8px;';
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) { card.nextElementSibling.remove(); return; }
+    card.after(prospectForm(p));
+  };
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+  armInlineConfirm(del, 'Confirmer la suppression', () => deleteProspect(p.id));
+  actions.append(edit, del);
+  card.appendChild(actions);
+  return card;
+}
+
+function prospectForm(existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+  form.append(
+    catalogField('Nom', 'name', existing ? existing.name : ''),
+    catalogField('Email', 'email', existing ? existing.email : ''),
+    catalogField('Téléphone', 'phone', existing ? existing.phone : ''),
+    catalogField('Logement / adresse', 'address', existing ? existing.address : ''),
+  );
+  const cols = document.createElement('div');
+  cols.className = 'form-cols';
+  cols.append(
+    catalogField('Montant estimé (€)', 'montant', existing ? existing.montant : '', 'number'),
+    catalogField("Source d'acquisition", 'source', existing ? existing.source : ''),
+  );
+  form.append(cols, catalogField('Note', 'note', existing ? existing.note : ''));
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      name: get('name').value.trim(),
+      email: get('email').value.trim(),
+      phone: get('phone').value.trim(),
+      address: get('address').value.trim(),
+      montant: Math.max(0, Number(get('montant').value) || 0),
+      source: get('source').value.trim(),
+      note: get('note').value.trim(),
+    };
+    if (!existing) { data.status = 'Nouveau'; data.createdAt = serverTimestamp(); }
+    if (!data.name && !data.email && !data.phone) { setProspectStatus('Renseignez au moins un nom, un email ou un téléphone.', 'error'); return; }
+    saveProspect(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveProspect(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'prospects', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'prospects'), data), 15000));
+    setProspectStatus(id ? 'Prospect mis à jour.' : 'Prospect ajouté.', 'success');
+  } catch (error) {
+    setProspectStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function setProspectStatusValue(id, status) {
+  try {
+    await withTimeout(updateDoc(doc(db, 'prospects', id), { status }), 15000);
+  } catch (error) {
+    setProspectStatus(`Changement de statut impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteProspect(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'prospects', id)), 15000);
+    setProspectStatus('Prospect supprimé.', 'success');
+  } catch (error) {
+    setProspectStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- Tableau de bord : indicateurs calculés depuis réservations + prospects ----
+function renderDashboard() {
+  const host = document.getElementById('dashKpis');
+  if (!host) return;
+  const active = latestBookings.filter(b => b.status !== 'cancelled');
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const y = `${now.getFullYear()}`;
+  const sum = arr => arr.reduce((s, b) => s + (Number(b.price) || 0), 0);
+  const caPotentiel = sum(active);
+  const caSigne = sum(active.filter(b => b.status === 'verified'));
+  const nb = active.length;
+  const panier = nb ? Math.round(caPotentiel / nb) : 0;
+  const clients = new Set(active.map(b => b.clientId)).size;
+  const caMois = sum(active.filter(b => (b.scheduledDate || '').startsWith(ym)));
+  const caAn = sum(active.filter(b => (b.scheduledDate || '').startsWith(y)));
+  const prospects = latestProspects.length;
+  const gagnes = latestProspects.filter(p => p.status === 'Client').length;
+  const taux = prospects ? Math.round(gagnes / prospects * 100) : 0;
+
+  const kpis = [
+    [`${nb}`, 'Réservations'],
+    [`${caPotentiel}€`, 'CA potentiel (HT)'],
+    [`${caSigne}€`, 'CA confirmé (HT)'],
+    [`${panier}€`, 'Panier moyen'],
+    [`${clients}`, 'Clients actifs'],
+    [`${caMois}€`, 'CA ce mois'],
+    [`${caAn}€`, 'CA cette année'],
+    [`${prospects}`, 'Prospects'],
+    [`${taux}%`, 'Taux de transformation'],
+  ];
+  host.innerHTML = '';
+  kpis.forEach(([value, label]) => {
+    const d = document.createElement('div');
+    d.className = 'stat';
+    const b = document.createElement('b'); b.textContent = value;
+    const s = document.createElement('span'); s.textContent = label;
+    d.append(b, s);
+    host.appendChild(d);
+  });
 }
 
 // Prestataires et livreurs approuvés, pour les listes déroulantes d'assignation.
 function subscribeTeamMembers() {
   membersUnsubs.forEach(unsub => unsub());
   membersUnsubs = [];
-  ['prestataire', 'livreur'].forEach(role => {
+  ['prestataire', 'livreur', 'welcomer'].forEach(role => {
     const unsub = onSnapshot(query(collection(db, 'users'), where('role', '==', role)), snapshot => {
       const all = snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
@@ -183,7 +851,8 @@ function subscribeTeamMembers() {
       const approved = all.filter(m => (m.accountStatus ?? 'approved') === 'approved');
       const suspendedList = all.filter(m => m.accountStatus === 'suspended');
       if (role === 'prestataire') { prestataires = approved; suspended.prestataire = suspendedList; }
-      else { livreurs = approved; suspended.livreur = suspendedList; }
+      else if (role === 'livreur') { livreurs = approved; suspended.livreur = suspendedList; }
+      else { welcomers = approved; suspended.welcomer = suspendedList; }
       renderAssignments();
     }, error => setAdminStatus(`Impossible de charger l’équipe : ${authErrorMessage(error)}`, 'error'));
     membersUnsubs.push(unsub);
@@ -206,7 +875,7 @@ function buildMemberSelect(members, placeholder, annotate) {
   return select;
 }
 
-function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn, annotate) {
+function appendAssignCard(container, booking, members, placeholder, noMembersNote, metaText, assignFn, annotate, extraActions) {
   const card = document.createElement('div');
   card.className = 'task-card';
   const title = document.createElement('div');
@@ -222,6 +891,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
     note.className = 'task-meta';
     note.textContent = noMembersNote;
     card.appendChild(note);
+    if (typeof extraActions === 'function') extraActions(card);
     container.appendChild(card);
     return;
   }
@@ -235,6 +905,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
   assignBtn.onclick = () => assignFn(select.value, assignBtn);
   row.appendChild(select);
   row.appendChild(assignBtn);
+  if (typeof extraActions === 'function') extraActions(row);
   card.appendChild(row);
   container.appendChild(card);
 }
@@ -242,6 +913,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
 function renderAssignments() {
   renderMissionsToAssign();
   renderKitsToAssign();
+  renderWelcomersToAssign();
   renderAdminCalendar();
   renderRoster();
   renderCompta();
@@ -251,8 +923,9 @@ function renderAssignments() {
 function renderRoster() {
   if (!roster) return;
   roster.innerHTML = '';
-  roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire'));
+  roster.appendChild(buildRosterGroup('Prestataires', prestataires, 'prestataire', suspended.prestataire));
   roster.appendChild(buildRosterGroup('Livreurs', livreurs, 'livreur', suspended.livreur));
+  roster.appendChild(buildRosterGroup('Welcomers', welcomers, 'welcomer', suspended.welcomer));
 }
 
 function buildRosterGroup(title, members, role, suspendedMembers = []) {
@@ -286,6 +959,10 @@ function prestataireStats(memberId) {
   let done = 0;
   let ratingSum = 0;
   let ratingCount = 0;
+  // Contrôles Welcomer : niveau 1 = conforme, niveaux 2/3 = non-conforme.
+  // Le taux de validation nourrit le badge « Prestataire Premium ».
+  let wcTotal = 0;
+  let wcConforme = 0;
   latestBookings.forEach(booking => {
     if (booking.prestataireId !== memberId) return;
     if (['accepted', 'submitted', 'rejected'].includes(booking.status)) {
@@ -294,8 +971,19 @@ function prestataireStats(memberId) {
       done += 1;
       if (typeof booking.rating === 'number') { ratingSum += booking.rating; ratingCount += 1; }
     }
+    if (booking.welcomerLevel) {
+      wcTotal += 1;
+      if (Number(booking.welcomerLevel) === 1) wcConforme += 1;
+    }
   });
-  return { active, done, ratingCount, average: ratingCount ? ratingSum / ratingCount : null };
+  const wcRate = wcTotal ? wcConforme / wcTotal : null;
+  // Premium : au moins 3 contrôles Welcomer, ≥ 90 % conformes, et une note
+  // client d'au moins 4,5/5 si des avis existent.
+  const premium = wcTotal >= 3 && wcRate >= 0.9 && (ratingCount === 0 || ratingSum / ratingCount >= 4.5);
+  return {
+    active, done, ratingCount, average: ratingCount ? ratingSum / ratingCount : null,
+    wcTotal, wcConforme, wcRate, premium,
+  };
 }
 
 function livreurStats(memberId) {
@@ -304,6 +992,18 @@ function livreurStats(memberId) {
   latestBookings.forEach(booking => {
     if (booking.livreurId !== memberId || booking.status === 'cancelled') return;
     if (booking.linenDone) done += 1;
+    else active += 1;
+  });
+  return { active, done };
+}
+
+function welcomerStats(memberId) {
+  let active = 0;
+  let done = 0;
+  latestBookings.forEach(booking => {
+    if (booking.welcomerId !== memberId || booking.status === 'cancelled') return;
+    // Contrôle réalisé une fois la mission validée ou rejetée par le Welcomer.
+    if (['verified', 'rejected'].includes(booking.status) && booking.welcomerLevel) done += 1;
     else active += 1;
   });
   return { active, done };
@@ -324,6 +1024,12 @@ function buildStaticStars(value) {
   return stars;
 }
 
+function memberStats(memberId, role) {
+  if (role === 'prestataire') return prestataireStats(memberId);
+  if (role === 'welcomer') return welcomerStats(memberId);
+  return livreurStats(memberId);
+}
+
 function buildRosterCard(member, role, isSuspended) {
   const card = document.createElement('div');
   card.className = 'task-card' + (isSuspended ? ' roster-suspended' : '');
@@ -336,12 +1042,14 @@ function buildRosterCard(member, role, isSuspended) {
   name.onclick = () => openMemberModal(member, role);
   card.appendChild(name);
 
-  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
+  const stats = memberStats(member.id, role);
   const load = document.createElement('div');
   load.className = 'task-meta roster-load';
   load.textContent = role === 'prestataire'
     ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
-    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
+    : role === 'welcomer'
+      ? `${stats.active} contrôle(s) à faire · ${stats.done} validé(s)`
+      : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
   card.appendChild(load);
 
   if (role === 'prestataire') {
@@ -356,6 +1064,18 @@ function buildRosterCard(member, role, isSuspended) {
       ratingLine.appendChild(text);
     }
     card.appendChild(ratingLine);
+    if (stats.wcTotal) {
+      const wcLine = document.createElement('div');
+      wcLine.className = 'task-meta roster-quality';
+      wcLine.textContent = `Contrôles Welcomer : ${Math.round(stats.wcRate * 100)}% conformes (${stats.wcConforme}/${stats.wcTotal})`;
+      card.appendChild(wcLine);
+    }
+    if (stats.premium) {
+      const badge = document.createElement('span');
+      badge.className = 'premium-badge';
+      badge.textContent = '★ Prestataire Premium';
+      card.appendChild(badge);
+    }
   }
   return card;
 }
@@ -365,6 +1085,11 @@ function memberActiveJobs(member, role) {
   if (role === 'prestataire') {
     return latestBookings
       .filter(b => b.prestataireId === member.id && ['accepted', 'submitted', 'rejected'].includes(b.status))
+      .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  }
+  if (role === 'welcomer') {
+    return latestBookings
+      .filter(b => b.welcomerId === member.id && !b.welcomerLevel && b.status !== 'cancelled')
       .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   }
   return latestBookings
@@ -385,7 +1110,7 @@ function closeMemberModal() {
 function openMemberModal(member, role) {
   closeMemberModal();
   const isSuspended = member.accountStatus === 'suspended';
-  const stats = role === 'prestataire' ? prestataireStats(member.id) : livreurStats(member.id);
+  const stats = memberStats(member.id, role);
   const jobs = memberActiveJobs(member, role);
 
   const overlay = document.createElement('div');
@@ -408,7 +1133,7 @@ function openMemberModal(member, role) {
 
   const eyebrow = document.createElement('div');
   eyebrow.className = 'eyebrow';
-  eyebrow.textContent = (role === 'prestataire' ? 'Prestataire' : 'Livreur') + (isSuspended ? ' · suspendu' : '');
+  eyebrow.textContent = (role === 'prestataire' ? 'Prestataire' : role === 'welcomer' ? 'Welcomer' : 'Livreur') + (isSuspended ? ' · suspendu' : '');
   modal.appendChild(eyebrow);
   const h = document.createElement('h2');
   h.textContent = member.name || member.email;
@@ -436,7 +1161,9 @@ function openMemberModal(member, role) {
   summary.className = 'modal-summary';
   summary.textContent = role === 'prestataire'
     ? `${stats.active} mission(s) en cours · ${stats.done} confirmée(s)`
-    : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
+    : role === 'welcomer'
+      ? `${stats.active} contrôle(s) à faire · ${stats.done} validé(s)`
+      : `${stats.active} tournée(s) à faire · ${stats.done} faite(s)`;
   modal.appendChild(summary);
   if (role === 'prestataire') {
     const ratingLine = document.createElement('div');
@@ -456,7 +1183,7 @@ function openMemberModal(member, role) {
   const jobsHead = document.createElement('div');
   jobsHead.className = 'eyebrow';
   jobsHead.style.marginTop = '20px';
-  jobsHead.textContent = role === 'prestataire' ? 'Missions en cours' : 'Tournées en cours';
+  jobsHead.textContent = role === 'prestataire' ? 'Missions en cours' : role === 'welcomer' ? 'Contrôles en cours' : 'Tournées en cours';
   modal.appendChild(jobsHead);
   if (jobs.length === 0) {
     const none = document.createElement('div');
@@ -741,11 +1468,30 @@ function comptaLine(booking) {
   const price = Number(booking.price) || 0;
   const prestation = Number(booking.prestationPrice) || 0;
   const travel = Number(booking.travelFee) || 0;
-  const kits = Math.max(0, price - prestation - travel);
+  const amenities = Number(booking.amenitiesPrice) || 0;
+  const extras = Number(booking.extrasHT) || 0;
+  const commission = Number(booking.commission) || 0;
+  // Kits de bienvenue = reliquat (prix − prestation − amenities − suppléments − commission − déplacement).
+  const kits = Math.max(0, price - prestation - amenities - extras - commission - travel);
   const base = Number(booking.prestatairePay) || 0;
   const adj = Number(booking.adjustment) || 0;
   const payout = base + adj;
-  return { price, prestation, travel, kits, base, adj, payout, margin: price - payout };
+  return { price, prestation, travel, kits, amenities, extras, commission, base, adj, payout, margin: price - payout };
+}
+
+// Décomposition « ce que coûte quoi » d'une mission, pour que l'admin sache
+// comment le prix client se répartit (il fixe ensuite lui-même la paie).
+function comptaBreakdownText(booking) {
+  const l = comptaLine(booking);
+  const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
+  const hrs = booking.hours ? ` (${String(booking.hours).replace('.', ',')} h)` : '';
+  const parts = [`prestation ${l.prestation}€${hrs}`];
+  if (l.kits) parts.push(`kits ${l.kits}€${rooms ? ` (${rooms} chambre${rooms > 1 ? 's' : ''})` : ''}`);
+  parts.push(`amenities ${l.amenities}€`);
+  if (l.extras) parts.push(`suppléments ${l.extras}€`);
+  if (l.commission) parts.push(`commission ${l.commission}€`);
+  if (l.travel) parts.push(`déplacement ${l.travel}€`);
+  return parts.join(' · ');
 }
 
 function isoOf(date) {
@@ -814,17 +1560,52 @@ function renderComptaFilter(bounds) {
     lbl.textContent = `${formatShortDate(bounds.from)} — ${formatShortDate(bounds.to)}`;
     host.appendChild(lbl);
   }
+
+  // Deuxième ligne : filtrer par prestataire et rechercher un bien/une mission.
+  const drill = document.createElement('div');
+  drill.className = 'seg-drill';
+  const sel = document.createElement('select');
+  sel.setAttribute('aria-label', 'Filtrer par prestataire');
+  const optAll = document.createElement('option');
+  optAll.value = ''; optAll.textContent = 'Tous les prestataires';
+  sel.appendChild(optAll);
+  prestataires.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.name || p.email || p.id;
+    if (p.id === comptaPrestataire) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => { comptaPrestataire = sel.value; renderComptaResults(); };
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.placeholder = 'Rechercher un bien / une adresse';
+  search.value = comptaSearch;
+  search.setAttribute('aria-label', 'Rechercher une mission');
+  search.oninput = () => { comptaSearch = search.value; renderComptaResults(); };
+  drill.appendChild(sel);
+  drill.appendChild(search);
+  host.appendChild(drill);
 }
 
 function renderCompta() {
+  renderComptaFilter(comptaBounds());
+  renderComptaResults();
+}
+
+// Totaux + liste seuls (sans reconstruire la barre de filtres), pour que la
+// saisie dans le champ de recherche ne perde pas le focus à chaque frappe.
+function renderComptaResults() {
   const totals = document.getElementById('comptaTotals');
   const list = document.getElementById('comptaList');
   if (!totals || !list) return;
   const bounds = comptaBounds();
-  renderComptaFilter(bounds);
+  const q = comptaSearch.trim().toLowerCase();
   const rows = latestBookings
     .filter(b => b.status !== 'cancelled')
     .filter(b => !bounds || (b.scheduledDate && b.scheduledDate >= bounds.from && b.scheduledDate <= bounds.to))
+    .filter(b => !comptaPrestataire || b.prestataireId === comptaPrestataire)
+    .filter(b => !q || `${b.propertyAddress || b.propertyId || ''}`.toLowerCase().includes(q))
     .sort((a, b) => (b.scheduledDate || '').localeCompare(a.scheduledDate || ''));
   const agg = rows.reduce((acc, b) => {
     const l = comptaLine(b);
@@ -853,7 +1634,8 @@ function renderCompta() {
 
   list.innerHTML = '';
   if (rows.length === 0) {
-    list.innerHTML = `<div class="empty-state">Aucune mission ${comptaRange === 'all' ? 'à comptabiliser' : 'sur cette période'}.</div>`;
+    const filtered = comptaPrestataire || comptaSearch.trim();
+    list.innerHTML = `<div class="empty-state">Aucune mission ${filtered ? 'pour ce filtre' : (comptaRange === 'all' ? 'à comptabiliser' : 'sur cette période')}.</div>`;
     return;
   }
   rows.forEach(booking => list.appendChild(buildComptaRow(booking)));
@@ -886,7 +1668,7 @@ function buildComptaRow(booking) {
   // Revenu client (d'où vient l'argent).
   const rev = document.createElement('div');
   rev.className = 'task-meta';
-  rev.textContent = `Revenu : prestation ${l.prestation}€${l.kits ? ` · kits ${l.kits}€` : ''}${l.travel ? ` · déplacement ${l.travel}€` : ''}`;
+  rev.textContent = `Revenu : ${comptaBreakdownText(booking)}`;
   row.appendChild(rev);
 
   // Ce qui est versé au prestataire (base + bonus/malus).
@@ -1002,6 +1784,8 @@ function renderMissionsToAssign() {
   const rankedPrestataires = prestataires.slice().sort((a, b) => {
     const sa = prestataireStats(a.id);
     const sb = prestataireStats(b.id);
+    // Les Premium passent devant, puis meilleure note, puis moins chargés.
+    if (sa.premium !== sb.premium) return sa.premium ? -1 : 1;
     const ra = sa.average ?? -1;
     const rb = sb.average ?? -1;
     if (rb !== ra) return rb - ra;
@@ -1011,7 +1795,8 @@ function renderMissionsToAssign() {
   const prestataireAnnotate = member => {
     const s = prestataireStats(member.id);
     const ratingPart = s.average != null ? `★${s.average.toFixed(1)} (${s.ratingCount})` : 'non noté';
-    return `${ratingPart} · ${s.active} en cours`;
+    const premiumPart = s.premium ? 'Premium · ' : '';
+    return `${premiumPart}${ratingPart} · ${s.active} en cours`;
   };
 
   pending.forEach(booking => {
@@ -1079,6 +1864,62 @@ function renderKitsToAssign() {
           setAdminStatus(`Impossible d’assigner la tournée : ${authErrorMessage(e)}`, 'error');
         }
       }, livreurAnnotate);
+  });
+}
+
+function renderWelcomersToAssign() {
+  if (!welcomersToAssign) return;
+  welcomersToAssign.innerHTML = '';
+  // Réservations où le client a demandé un contrôle Welcomer mais aucun
+  // Welcomer n'est encore affecté. Le contrôle a lieu après le ménage.
+  const needing = latestBookings
+    .filter(booking => booking.welcomerService && !booking.welcomerId && booking.status !== 'cancelled')
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+  if (needing.length === 0) {
+    welcomersToAssign.innerHTML = '<div class="empty-state">Aucun contrôle Welcomer en attente d’assignation.</div>';
+    return;
+  }
+  const rankedWelcomers = welcomers.slice().sort((a, b) => {
+    const sa = welcomerStats(a.id);
+    const sb = welcomerStats(b.id);
+    if (sa.active !== sb.active) return sa.active - sb.active;
+    return (a.name || a.email).localeCompare(b.name || b.email);
+  });
+  const welcomerAnnotate = member => `${welcomerStats(member.id).active} à contrôler`;
+
+  needing.forEach(booking => {
+    const tier = welcomerTier(booking.welcomerService);
+    const tierLabel = tier ? tier.label : 'Contrôle sur place';
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${tierLabel}${booking.welcomerFee ? ` · ${booking.welcomerFee}€` : ''}`;
+    appendAssignCard(welcomersToAssign, booking, rankedWelcomers, 'Choisir un welcomer…',
+      'Aucun welcomer approuvé. Approuvez d’abord une demande d’accès.', metaText,
+      async (welcomerId, assignBtn) => {
+        if (!welcomerId) { setAdminStatus('Choisissez un welcomer avant d’assigner.', 'error'); return; }
+        const member = welcomers.find(w => w.id === welcomerId);
+        try {
+          await withButtonLoading(assignBtn, () =>
+            withTimeout(updateDoc(doc(db, 'bookings', booking.id), { welcomerId }), 15000));
+          if (member?.email) {
+            queueEmail({
+              to: member.email,
+              subject: `CleanFlow — nouveau contrôle assigné · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              text: `${booking.propertyAddress || 'Contrôle'} · ${formatShortDate(booking.scheduledDate)} · ${tierLabel}. Retrouvez-le dans votre interface welcomer.`,
+            });
+          }
+          setAdminStatus(`Contrôle assigné à ${member?.name || member?.email || 'ce welcomer'}.`, 'success');
+        } catch (e) {
+          setAdminStatus(`Impossible d’assigner le contrôle : ${authErrorMessage(e)}`, 'error');
+        }
+      }, welcomerAnnotate,
+      // QR imprimable à placer dans le logement (scanné par le Welcomer sur place).
+      host => {
+        const qrBtn = document.createElement('button');
+        qrBtn.className = 'btn ghost';
+        qrBtn.type = 'button';
+        qrBtn.textContent = 'QR du logement';
+        qrBtn.onclick = () => { if (!openLogementQr(booking)) setAdminStatus('Autorisez les fenêtres pop-up pour imprimer le QR.', 'error'); };
+        host.appendChild(qrBtn);
+      });
   });
 }
 
@@ -1257,19 +2098,54 @@ function renderBookingQueue() {
   bookingQueueData.forEach(booking => bookingQueue.appendChild(buildBookingQueueItem(booking)));
 }
 
+// Décomposition du prix client d'une mission dans la vue Vérification :
+// l'admin voit « ce que coûte quoi » avant de fixer la paie du prestataire.
+function renderBookingCost(booking) {
+  if (!bookingCost) return;
+  const l = comptaLine(booking);
+  const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
+  const hstr = booking.hours ? `${String(booking.hours).replace('.', ',')} h · ` : '';
+  const rows = [[`Prestation · ${hstr}${booking.surface ? `${booking.surface} m²` : ''}`.replace(/· $/, ''), l.prestation]];
+  if (l.kits) rows.push([`Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, l.kits]);
+  rows.push(['Amenities (consommables)', l.amenities, '']);
+  (booking.extras || []).forEach(e => {
+    rows.push([`${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, (Number(e.priceHT) || 0) * (Number(e.qty) || 0), '']);
+  });
+  if (l.commission) rows.push(['Commission CleanFlow', l.commission, '']);
+  if (l.travel) rows.push(['Frais de déplacement', l.travel, '']);
+  // HT → TVA → TTC (TVA = pass-through, hors marge).
+  const rate = getPricing().vatRate;
+  const vat = Math.round(l.price * rate);
+  rows.push(['Total HT', l.price, 'pb-total']);
+  rows.push([`TVA (${Math.round(rate * 100)} %)`, vat, '']);
+  rows.push(['Total TTC (payé par le client)', l.price + vat, 'pb-warn']);
+  bookingCost.classList.remove('hidden');
+  bookingCost.innerHTML = rows
+    .map(r => `<div class="pb-line ${r[2] || ''}"><span></span><b>${r[1]}€</b></div>`)
+    .join('');
+  bookingCost.querySelectorAll('.pb-line span').forEach((span, i) => { span.textContent = rows[i][0]; });
+}
+
 function renderBookingDetail() {
   if (!selectedBooking) {
     bookingTitle.textContent = 'Aucun dossier sélectionné';
     bookingMeta.textContent = 'Sélectionnez un dossier dans la file pour contrôler les photos.';
+    if (bookingCost) { bookingCost.classList.add('hidden'); bookingCost.innerHTML = ''; }
     photoGrid.innerHTML = '';
     incidentList.innerHTML = '';
     verifyBtn.disabled = true;
     rejectBtn.disabled = true;
+    if (devisBtn) devisBtn.disabled = true;
     return;
+  }
+  if (devisBtn) {
+    devisBtn.disabled = false;
+    devisBtn.onclick = () => openDevisDocument(selectedBooking, { name: selectedBooking.clientName || '', email: selectedBooking.clientEmail || '' });
   }
 
   bookingTitle.textContent = selectedBooking.propertyAddress || selectedBooking.propertyId;
   bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.surface ? ` · ${selectedBooking.surface} m²` : ''}${selectedBooking.kitCount ? ` · ${selectedBooking.kitCount} kit(s)` : ''} · ${selectedBooking.price}€`;
+  renderBookingCost(selectedBooking);
   photoGrid.innerHTML = '';
 
   PHOTO_SLOTS.forEach(slot => {
@@ -1441,6 +2317,9 @@ onAuthStateChanged(auth, async user => {
     if (bookingQueueUnsub) bookingQueueUnsub();
     if (accessUnsub) accessUnsub();
     if (statsUnsub) statsUnsub();
+    if (pricingUnsub) pricingUnsub();
+    if (catalogUnsub) catalogUnsub();
+    if (prospectsUnsub) prospectsUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();
     membersUnsubs.forEach(unsub => unsub());
@@ -1484,6 +2363,9 @@ onAuthStateChanged(auth, async user => {
     subscribeTeamMembers();
     subscribeOpenIncidents();
     subscribeClientMessages();
+    subscribePricing();
+    subscribeCatalog();
+    subscribeProspects();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
@@ -1518,6 +2400,24 @@ if (adminTabs) {
     if (!btn) return;
     activateTab(btn.dataset.tab);
     adminTabs.scrollIntoView({ block: 'start' });
+  });
+}
+
+const pricingFormEl = document.getElementById('pricingForm');
+if (pricingFormEl) {
+  pricingFormEl.addEventListener('submit', event => {
+    event.preventDefault();
+    savePricing(collectPricingFromForm());
+  });
+}
+
+const addProspectBtn = document.getElementById('addProspectBtn');
+if (addProspectBtn) {
+  addProspectBtn.addEventListener('click', () => {
+    if (addProspectBtn.nextElementSibling && addProspectBtn.nextElementSibling.classList.contains('catalog-form')) {
+      addProspectBtn.nextElementSibling.remove(); return;
+    }
+    addProspectBtn.after(prospectForm(null));
   });
 }
 

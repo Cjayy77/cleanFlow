@@ -273,6 +273,15 @@ function renderActiveBooking() {
   activeBookingContainer.appendChild(title);
   activeBookingContainer.appendChild(text);
 
+  if (activeBooking.keyAccess) {
+    const keyBox = document.createElement('div');
+    keyBox.className = 'key-access';
+    const kh = document.createElement('div'); kh.className = 'key-access-head'; kh.textContent = '🔑 Accès & clés';
+    const kt = document.createElement('div'); kt.className = 'key-access-body'; kt.textContent = activeBooking.keyAccess;
+    keyBox.append(kh, kt);
+    activeBookingContainer.appendChild(keyBox);
+  }
+
   if (activeBooking.status === 'rejected' && activeBooking.adminNote) {
     const note = document.createElement('div');
     note.className = 'status-banner';

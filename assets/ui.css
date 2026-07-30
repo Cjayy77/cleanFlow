@@ -78,6 +78,10 @@ input, textarea, select{ width:100%; border:1px solid var(--line); border-radius
 input:focus, textarea:focus, select:focus{ outline:2px solid var(--pink); outline-offset:0; border-color:var(--pink); }
 textarea{ min-height:110px; resize:vertical; }
 .form-row{ margin-bottom:16px; }
+.field-hint{ margin-top:6px; font-size:12px; color:var(--muted); line-height:1.5; }
+.key-access{ margin-top:12px; padding:12px 14px; border-radius:10px; background:var(--soft); border:1px solid var(--line); }
+.key-access-head{ font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--pink-deep); margin-bottom:4px; }
+.key-access-body{ font-size:14px; color:var(--ink); line-height:1.5; white-space:pre-wrap; }
 .form-cols{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 @media (max-width:720px){ .form-cols{ grid-template-columns:1fr; } }
 
@@ -189,6 +193,38 @@ textarea{ min-height:110px; resize:vertical; }
 .seg-custom input{ width:auto; padding:8px 10px; font-size:13px; }
 .seg-custom span{ color:var(--muted); }
 .seg-period{ font-size:12.5px; font-weight:600; color:var(--muted); }
+.seg-drill{ display:flex; flex-wrap:wrap; gap:10px; flex-basis:100%; }
+.seg-drill select{ width:auto; min-width:190px; padding:9px 12px; font-size:13px; }
+.seg-drill input{ flex:1; min-width:180px; padding:9px 12px; font-size:13px; }
+
+/* Back-office tarifs */
+.price-group{ margin-bottom:24px; }
+.price-group .roster-subhead{ margin-bottom:10px; }
+.price-field{ display:flex; align-items:center; gap:12px; margin:8px 0; font-size:14px; flex-wrap:wrap; }
+.price-field span{ flex:1; min-width:180px; color:var(--ink); font-weight:600; }
+.price-field input{ width:110px; flex:0 0 auto; }
+.price-field em{ color:var(--muted); font-style:normal; font-size:13px; min-width:42px; }
+.band-row{ display:flex; align-items:center; gap:10px; margin:8px 0; }
+.band-row input{ width:96px; }
+.band-row span{ color:var(--muted); }
+.band-row .mini-btn{ min-height:auto; padding:6px 8px; }
+
+/* Back-office catalogue */
+.catalog-group{ margin-bottom:28px; }
+.catalog-group .roster-subhead{ margin-bottom:10px; }
+.catalog-item{ display:flex; align-items:center; gap:14px; border-top:1px solid var(--line); padding:14px 2px; }
+.catalog-thumb{ width:48px; height:48px; border-radius:10px; background:var(--tint); flex-shrink:0; overflow:hidden; }
+.catalog-thumb img{ width:100%; height:100%; object-fit:cover; }
+.catalog-info{ flex:1; min-width:0; }
+.catalog-name{ font-weight:700; font-size:15px; }
+.catalog-actions{ display:flex; gap:2px; flex-shrink:0; }
+.catalog-form{ border:1px solid var(--line); border-radius:12px; background:var(--soft); padding:16px 16px 6px; margin:10px 0; }
+.catalog-form .modal-actions{ margin-top:14px; padding-top:14px; }
+
+/* Sélection de suppléments côté client (réservation) */
+.supp-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding:11px 0; }
+.supp-name{ font-weight:600; font-size:14px; }
+.supp-qty{ width:72px; flex:0 0 auto; padding:8px 10px; text-align:center; }
 
 /* Roster équipe (admin) */
 .roster-group{ margin-bottom:10px; }
@@ -217,6 +253,8 @@ textarea{ min-height:110px; resize:vertical; }
 .roster-rating{ display:flex; align-items:center; gap:8px; margin-top:6px; }
 .roster-rating .stars-static{ margin-top:0; }
 .roster-rating .star-static{ font-size:15px; }
+.roster-quality{ font-size:12px; color:var(--muted); margin-top:6px; }
+.premium-badge{ display:inline-block; margin-top:10px; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:0.02em; color:#fff; background:linear-gradient(120deg, var(--pink-deep), var(--plum)); }
 
 /* Calendrier ops admin */
 .acal-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:14px; }
@@ -257,6 +295,8 @@ textarea{ min-height:110px; resize:vertical; }
 .pb-line{ display:flex; justify-content:space-between; align-items:baseline; gap:14px; font-size:13.5px; color:var(--muted); padding:5px 0; }
 .pb-line b{ color:var(--ink); font-weight:600; }
 .pb-line.pb-warn{ color:var(--pink-deep); font-weight:500; }
+.pb-line.pb-total{ border-top:1px solid var(--line); margin-top:4px; padding-top:10px; }
+.pb-line.pb-total b, .pb-line.pb-total span{ color:var(--ink); font-weight:700; }
 
 .photo-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin:18px 0; }
 @media (max-width:720px){ .photo-grid{ grid-template-columns: repeat(2,1fr); } }
