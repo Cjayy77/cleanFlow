@@ -7,6 +7,7 @@ import {
   registerClient,
   computeBookingPrice,
   setPricing,
+  openDevisDocument,
   ZONES,
   zoneLabel,
   formatShortDate,
@@ -492,6 +493,13 @@ function renderBookings() {
     // problème constaté après le ménage). Reste dispo même mission terminée.
     if (booking.status !== 'cancelled') {
       card.appendChild(buildContactTeam(booking, address));
+      const devisBtn = document.createElement('button');
+      devisBtn.className = 'mini-btn';
+      devisBtn.type = 'button';
+      devisBtn.style.paddingLeft = '0';
+      devisBtn.textContent = 'Devis / reçu (PDF)';
+      devisBtn.onclick = () => openDevisDocument(booking, currentUser);
+      card.appendChild(devisBtn);
     }
     bookingsWrap.appendChild(card);
   });

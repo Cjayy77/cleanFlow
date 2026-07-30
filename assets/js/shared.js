@@ -176,6 +176,115 @@ export function vatBreakdown(totalHT) {
   return { rate, vat, ttc: (Number(totalHT) || 0) + vat };
 }
 
+function escapeHtml(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+// Lignes HT d'une réservation, reconstruites depuis les champs stockés.
+function bookingLineItems(b) {
+  const price = Number(b.price) || 0;
+  const prestation = Number(b.prestationPrice) || 0;
+  const amenities = Number(b.amenitiesPrice) || 0;
+  const travel = Number(b.travelFee) || 0;
+  const extrasHT = Number(b.extrasHT) || 0;
+  const kits = Math.max(0, price - prestation - amenities - extrasHT - travel);
+  const rooms = Number(b.bedrooms != null ? b.bedrooms : b.kitCount) || 0;
+  const rate = b.hours ? Math.round(prestation / b.hours) : (b.serviceType === 'deep' ? 50 : 30);
+  const items = [
+    { label: `Ménage ${b.serviceType === 'deep' ? 'approfondi' : 'standard'}${b.hours ? ` · ${String(b.hours).replace('.', ',')} h × ${rate}€/h` : ''}`, amount: prestation },
+  ];
+  if (kits) items.push({ label: `Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, amount: kits });
+  if (amenities) items.push({ label: 'Amenities (consommables)', amount: amenities });
+  (b.extras || []).forEach(e => items.push({ label: `${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, amount: (Number(e.priceHT) || 0) * (Number(e.qty) || 0) }));
+  if (travel) items.push({ label: 'Frais de déplacement', amount: travel });
+  return { items, totalHT: price };
+}
+
+// Ouvre un devis / reçu imprimable (→ « Enregistrer au format PDF » du navigateur).
+// Entièrement côté client : aucun backend requis.
+export function openDevisDocument(booking, client) {
+  const { items, totalHT } = bookingLineItems(booking);
+  const rate = getPricing().vatRate;
+  const vat = Math.round(totalHT * rate);
+  const ttc = totalHT + vat;
+  const ref = `CF-${String(booking.id || '').slice(0, 6).toUpperCase()}`;
+  const today = new Date();
+  const fmt = d => d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const validUntil = new Date(today); validUntil.setDate(today.getDate() + 30);
+  const clientName = escapeHtml((client && client.name) || '');
+  const clientEmail = escapeHtml((client && client.email) || booking.clientEmail || '');
+  const rows = items.map(it => `<tr><td>${escapeHtml(it.label)}</td><td class="amt">${it.amount}&nbsp;€</td></tr>`).join('');
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis ${ref} — CleanFlow</title>
+<style>
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'Helvetica Neue',Arial,sans-serif; color:#12123A; padding:40px 46px; font-size:14px; }
+  .top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px; }
+  .brand{ display:flex; align-items:center; gap:12px; font-size:24px; font-weight:800; }
+  .brand .k{ color:#E6007E; }
+  .doc-meta{ text-align:right; font-size:13px; color:#555; }
+  .doc-meta h1{ font-size:22px; letter-spacing:2px; color:#12123A; margin-bottom:6px; }
+  .parties{ display:flex; justify-content:space-between; gap:30px; margin-bottom:26px; }
+  .parties h3{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#E6007E; margin-bottom:6px; }
+  .parties div{ font-size:13px; line-height:1.5; color:#333; }
+  table{ width:100%; border-collapse:collapse; margin-bottom:20px; }
+  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#888; border-bottom:2px solid #12123A; padding:8px 0; }
+  th.amt, td.amt{ text-align:right; white-space:nowrap; }
+  td{ padding:11px 0; border-bottom:1px solid #ECEAF3; }
+  .totals{ margin-left:auto; width:280px; }
+  .totals .row{ display:flex; justify-content:space-between; padding:7px 0; font-size:14px; }
+  .totals .ttc{ border-top:2px solid #12123A; margin-top:4px; padding-top:12px; font-size:18px; font-weight:800; color:#E6007E; }
+  .foot{ margin-top:38px; font-size:11px; color:#888; line-height:1.6; border-top:1px solid #ECEAF3; padding-top:16px; }
+  svg{ width:34px; height:34px; }
+  @media print{ body{ padding:24px; } .noprint{ display:none; } }
+  .noprint{ margin-top:26px; }
+  .noprint button{ background:#E6007E; color:#fff; border:none; border-radius:8px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; }
+</style></head><body>
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 400 400"><g fill="#E6007E"><path d="M56 332 Q116.4 194.7 127.42 41.45 A22 22 0 1 1 169.02 54.97 Q137.2 201.5 56 332 Z" opacity=".55"/><path d="M56 332 Q144.9 218.0 193.63 77.81 A23 23 0 1 1 232.29 102.88 Q164.3 230.5 56 332 Z" opacity=".7"/><path d="M56 332 Q166.5 243.3 250.25 124.83 A24 24 0 1 1 282.26 160.40 Q182.5 261.1 56 332 Z" opacity=".82"/><path d="M56 332 Q192.7 272.8 318.04 188.07 A25 25 0 1 1 338.31 233.58 Q202.9 295.6 56 332 Z" opacity=".92"/><path d="M56 332 Q208.3 309.3 358.36 268.77 A26 26 0 1 1 364.68 320.21 Q211.4 335.0 56 332 Z"/></g></svg>
+      <span><span class="k">Clean</span>Flow</span>
+    </div>
+    <div class="doc-meta">
+      <h1>DEVIS</h1>
+      <div>N° ${ref}</div>
+      <div>Date : ${fmt(today)}</div>
+      <div>Validité : ${fmt(validUntil)}</div>
+    </div>
+  </div>
+  <div class="parties">
+    <div>
+      <h3>Client</h3>
+      <div>${clientName || '—'}<br>${clientEmail}</div>
+    </div>
+    <div style="text-align:right">
+      <h3>Logement</h3>
+      <div>${escapeHtml(booking.propertyAddress || '')}<br>${booking.surface ? `${booking.surface} m²` : ''} · Intervention le ${escapeHtml(formatShortDate(booking.scheduledDate))}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Prestation</th><th class="amt">Montant HT</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="totals">
+    <div class="row"><span>Total HT</span><b>${totalHT}&nbsp;€</b></div>
+    <div class="row"><span>TVA (${Math.round(rate * 100)} %)</span><b>${vat}&nbsp;€</b></div>
+    <div class="row ttc"><span>Total TTC</span><span>${ttc}&nbsp;€</span></div>
+  </div>
+  <div class="foot">
+    Devis émis par CleanFlow. Prix en euros. Le ménage est réalisé par un prestataire vérifié ; chaque intervention fait l'objet d'un contrôle photo par l'équipe CleanFlow avant confirmation. Devis valable 30 jours. Conditions générales disponibles sur le site.
+  </div>
+  <div class="noprint"><button onclick="window.print()">Imprimer / enregistrer en PDF</button></div>
+  <script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) return false;
+  w.document.write(html);
+  w.document.close();
+  return true;
+}
+
 // Boîte de réception de l'équipe pour les notifications internes.
 // Doit rester identique à l'adresse autorisée dans firestore.rules (/mail).
 export const TEAM_EMAIL = 'w.wanecque@gmail.com';

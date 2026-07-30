@@ -21,6 +21,7 @@ import {
   setPricing,
   DEFAULT_PRICING,
   PRICING_SCALARS,
+  openDevisDocument,
 } from './shared.js';
 import {
   collection,
@@ -59,6 +60,7 @@ const bookingCost = document.getElementById('bookingCost');
 const photoGrid = document.getElementById('photoGrid');
 const verifyBtn = document.getElementById('verifyBtn');
 const rejectBtn = document.getElementById('rejectBtn');
+const devisBtn = document.getElementById('devisBtn');
 const rejectNote = document.getElementById('rejectNote');
 const incidentList = document.getElementById('incidentList');
 const adminStatus = document.getElementById('adminStatus');
@@ -1721,7 +1723,12 @@ function renderBookingDetail() {
     incidentList.innerHTML = '';
     verifyBtn.disabled = true;
     rejectBtn.disabled = true;
+    if (devisBtn) devisBtn.disabled = true;
     return;
+  }
+  if (devisBtn) {
+    devisBtn.disabled = false;
+    devisBtn.onclick = () => openDevisDocument(selectedBooking, { name: selectedBooking.clientName || '', email: selectedBooking.clientEmail || '' });
   }
 
   bookingTitle.textContent = selectedBooking.propertyAddress || selectedBooking.propertyId;
