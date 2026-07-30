@@ -1117,12 +1117,13 @@ function comptaLine(booking) {
   const prestation = Number(booking.prestationPrice) || 0;
   const travel = Number(booking.travelFee) || 0;
   const amenities = Number(booking.amenitiesPrice) || 0;
-  // Les kits sont le reliquat (prix client − prestation − amenities − déplacement).
-  const kits = Math.max(0, price - prestation - amenities - travel);
+  const extras = Number(booking.extrasHT) || 0;
+  // Les kits de bienvenue sont le reliquat (prix − prestation − amenities − suppléments − déplacement).
+  const kits = Math.max(0, price - prestation - amenities - extras - travel);
   const base = Number(booking.prestatairePay) || 0;
   const adj = Number(booking.adjustment) || 0;
   const payout = base + adj;
-  return { price, prestation, travel, kits, amenities, base, adj, payout, margin: price - payout };
+  return { price, prestation, travel, kits, amenities, extras, base, adj, payout, margin: price - payout };
 }
 
 // Décomposition « ce que coûte quoi » d'une mission, pour que l'admin sache
@@ -1134,6 +1135,7 @@ function comptaBreakdownText(booking) {
   const parts = [`prestation ${l.prestation}€${hrs}`];
   if (l.kits) parts.push(`kits ${l.kits}€${rooms ? ` (${rooms} chambre${rooms > 1 ? 's' : ''})` : ''}`);
   parts.push(`amenities ${l.amenities}€`);
+  if (l.extras) parts.push(`suppléments ${l.extras}€`);
   if (l.travel) parts.push(`déplacement ${l.travel}€`);
   return parts.join(' · ');
 }
@@ -1693,6 +1695,9 @@ function renderBookingCost(booking) {
   const rows = [[`Prestation · ${hstr}${booking.surface ? `${booking.surface} m²` : ''}`.replace(/· $/, ''), l.prestation]];
   if (l.kits) rows.push([`Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, l.kits]);
   rows.push(['Amenities (consommables)', l.amenities, '']);
+  (booking.extras || []).forEach(e => {
+    rows.push([`${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, (Number(e.priceHT) || 0) * (Number(e.qty) || 0), '']);
+  });
   if (l.travel) rows.push(['Frais de déplacement', l.travel, '']);
   // HT → TVA → TTC (TVA = pass-through, hors marge).
   const rate = getPricing().vatRate;

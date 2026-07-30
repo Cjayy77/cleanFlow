@@ -71,6 +71,10 @@ const cancelEditBtn = document.getElementById('cancelEditBtn');
 const propertyFormCard = document.getElementById('propertyFormCard');
 const bedroomsInput = document.getElementById('bedrooms');
 const bedsInput = document.getElementById('beds');
+const supplementsCard = document.getElementById('supplementsCard');
+const supplementsList = document.getElementById('supplementsList');
+
+const CATALOG_LABELS = { kit: "Kits d'accueil", consumable: 'Consommables', linen: 'Location de linge' };
 const priceBreakdown = document.getElementById('priceBreakdown');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
@@ -94,6 +98,9 @@ let bookings = [];
 let propertiesUnsub = null;
 let bookingsUnsub = null;
 let pricingUnsub = null;
+let catalogUnsub = null;
+let catalog = [];
+let selectedExtras = {}; // { itemId: quantité }
 let authNotice = null;
 let editingPropertyId = null;
 let calendarMonth = startOfMonth(new Date());
@@ -195,8 +202,14 @@ function updateBookingBar() {
     return;
   }
 
-  renderPriceBreakdown(currentQuote);
-  const ttc = currentQuote ? currentQuote.totalTTC : null;
+  const extras = currentQuote ? selectedExtrasList() : [];
+  const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
+  renderPriceBreakdown(currentQuote, extras);
+  let ttc = null;
+  if (currentQuote) {
+    const finalHT = currentQuote.total + extrasHT;
+    ttc = finalHT + Math.round(finalHT * currentQuote.vatRate);
+  }
   priceValue.textContent = ttc != null ? `${ttc}€` : '—';
   bookBtn.textContent = selectedDate && ttc != null
     ? `Réserver le ${formatShortDate(selectedDate)} · ${ttc}€`
@@ -204,16 +217,21 @@ function updateBookingBar() {
   bookBtn.disabled = !selectedPropertyId || !selectedDate || ttc == null;
 }
 
-function renderPriceBreakdown(quote) {
+function renderPriceBreakdown(quote, extras) {
   if (!quote || quote.custom) { priceBreakdown.classList.add('hidden'); return; }
+  extras = extras || [];
+  const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
+  const finalHT = quote.total + extrasHT;
+  const vat = Math.round(finalHT * quote.vatRate);
   const h = String(quote.hours).replace('.', ',');
   const rows = [
     [`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${h} h × ${quote.hourlyRate}€/h`, `${quote.prestation}€`, ''],
   ];
   if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''}`, `${quote.kitsTotal}€`, '']);
   rows.push(['Frais de déplacement', `${quote.travel}€`, '']);
-  rows.push(['Total HT', `${quote.total}€`, 'pb-total']);
-  rows.push([`TVA (${Math.round(quote.vatRate * 100)} %)`, `${quote.vat}€`, '']);
+  extras.forEach(e => rows.push([`${e.name}${e.qty > 1 ? ` × ${e.qty}` : ''}`, `${e.lineHT}€`, '']));
+  rows.push(['Total HT', `${finalHT}€`, 'pb-total']);
+  rows.push([`TVA (${Math.round(quote.vatRate * 100)} %)`, `${vat}€`, '']);
   priceBreakdown.classList.remove('hidden');
   priceBreakdown.innerHTML = rows
     .map(([label, value, cls]) => `<div class="pb-line ${cls}"><span></span><b>${value}</b></div>`)
@@ -582,6 +600,73 @@ function subscribePricing() {
   }, () => { /* défauts déjà en place */ });
 }
 
+// Catalogue (kits, consommables, linge) proposé en supplément à la réservation.
+function subscribeCatalog() {
+  if (catalogUnsub) catalogUnsub();
+  catalogUnsub = onSnapshot(collection(db, 'catalog'), snap => {
+    catalog = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(i => i.active !== false);
+    renderSupplements();
+    updateBookingBar();
+  }, () => { /* catalogue indisponible : on masque simplement les suppléments */ });
+}
+
+// Liste des suppléments sélectionnés (quantité > 0), avec le détail de ligne.
+function selectedExtrasList() {
+  return catalog
+    .filter(i => (selectedExtras[i.id] || 0) > 0)
+    .map(i => {
+      const qty = selectedExtras[i.id];
+      const priceHT = Number(i.priceHT) || 0;
+      return { id: i.id, name: i.name || '', type: i.type || '', priceHT, priceTTC: Number(i.priceTTC) || 0, qty, lineHT: priceHT * qty };
+    });
+}
+
+function renderSupplements() {
+  if (!supplementsCard || !supplementsList) return;
+  if (!catalog.length) { supplementsCard.classList.add('hidden'); return; }
+  supplementsCard.classList.remove('hidden');
+  supplementsList.innerHTML = '';
+  ['kit', 'consumable', 'linen'].forEach(type => {
+    const items = catalog.filter(i => i.type === type).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (!items.length) return;
+    const head = document.createElement('div');
+    head.className = 'p-meta';
+    head.style.cssText = 'text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 4px;';
+    head.textContent = CATALOG_LABELS[type] || type;
+    supplementsList.appendChild(head);
+    items.forEach(item => supplementsList.appendChild(supplementRow(item)));
+  });
+}
+
+function supplementRow(item) {
+  const row = document.createElement('div');
+  row.className = 'supp-row';
+  const info = document.createElement('div');
+  const name = document.createElement('div');
+  name.className = 'supp-name';
+  name.textContent = item.name || '(sans nom)';
+  const meta = document.createElement('div');
+  meta.className = 'p-meta';
+  meta.textContent = `${Number(item.priceTTC) || 0}€ TTC / unité`;
+  info.append(name, meta);
+  const qty = document.createElement('input');
+  qty.type = 'number';
+  qty.min = '0';
+  qty.step = '1';
+  qty.className = 'supp-qty';
+  qty.value = selectedExtras[item.id] || 0;
+  qty.setAttribute('aria-label', `Quantité — ${item.name || ''}`);
+  qty.addEventListener('input', () => {
+    const n = Math.max(0, Math.floor(Number(qty.value) || 0));
+    if (n > 0) selectedExtras[item.id] = n; else delete selectedExtras[item.id];
+    updateBookingBar();
+  });
+  row.append(info, qty);
+  return row;
+}
+
 function subscribeData() {
   if (propertiesUnsub) propertiesUnsub();
   if (bookingsUnsub) bookingsUnsub();
@@ -619,6 +704,7 @@ onAuthStateChanged(auth, async user => {
     if (propertiesUnsub) propertiesUnsub();
     if (bookingsUnsub) bookingsUnsub();
     if (pricingUnsub) pricingUnsub();
+    if (catalogUnsub) catalogUnsub();
     if (authNotice) {
       showAuth(authNotice.mode, authNotice.message);
       authNotice = null;
@@ -642,6 +728,7 @@ onAuthStateChanged(auth, async user => {
     currentUser = { uid: user.uid, ...docData };
     showApp();
     subscribePricing();
+    subscribeCatalog();
     subscribeData();
   } catch (error) {
     authNotice = { mode: 'signin', message: authErrorMessage(error) };
@@ -832,6 +919,13 @@ bookBtn.addEventListener('click', async () => {
     return;
   }
 
+  // Suppléments choisis (kits, consommables, linge) : ajoutés au total HT.
+  const extras = selectedExtrasList().map(e => ({
+    id: e.id, name: e.name, type: e.type, priceHT: e.priceHT, priceTTC: e.priceTTC, qty: e.qty,
+  }));
+  const extrasHT = extras.reduce((s, e) => s + e.priceHT * e.qty, 0);
+  const finalHT = quote.total + extrasHT;
+
   try {
     await withButtonLoading(bookBtn, () =>
       withTimeout(addDoc(collection(db, 'bookings'), {
@@ -850,7 +944,9 @@ bookBtn.addEventListener('click', async () => {
         prestationPrice: quote.prestation,
         amenitiesPrice: quote.amenitiesTotal,
         travelFee: quote.travel,
-        price: quote.total,
+        extras,
+        extrasHT,
+        price: finalHT,
         scheduledDate: selectedDate,
         status: 'pending',
         linenRequested: quote.kitCount > 0,
@@ -868,6 +964,8 @@ bookBtn.addEventListener('click', async () => {
     if (bedroomsInput) bedroomsInput.value = '0';
     beds = 1;
     if (bedsInput) bedsInput.value = '1';
+    selectedExtras = {};
+    renderSupplements();
     renderCalendar();
     updateBookingBar();
   } catch (err) {

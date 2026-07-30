@@ -217,6 +217,11 @@ textarea{ min-height:110px; resize:vertical; }
 .catalog-form{ border:1px solid var(--line); border-radius:12px; background:var(--soft); padding:16px 16px 6px; margin:10px 0; }
 .catalog-form .modal-actions{ margin-top:14px; padding-top:14px; }
 
+/* Sélection de suppléments côté client (réservation) */
+.supp-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding:11px 0; }
+.supp-name{ font-weight:600; font-size:14px; }
+.supp-qty{ width:72px; flex:0 0 auto; padding:8px 10px; text-align:center; }
+
 /* Roster équipe (admin) */
 .roster-group{ margin-bottom:10px; }
 .roster-group + .roster-group{ margin-top:22px; }
