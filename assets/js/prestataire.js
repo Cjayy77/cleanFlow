@@ -530,6 +530,11 @@ incidentForm.addEventListener('submit', async event => {
       }
       await withTimeout(addDoc(collection(db, 'incidents'), incidentPayload), 15000);
     });
+    queueEmail({
+      to: TEAM_EMAIL,
+      subject: `CleanFlow — incident signalé · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+      text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · ${type} — « ${description} » signalé par ${currentUser.name || currentUser.email}.${file ? ' (photo jointe)' : ''} À traiter dans /admin/.`,
+    });
     incidentForm.reset();
     setIncidentMessage('Signalement envoyé à l’équipe CleanFlow.', 'success');
   } catch (err) {
