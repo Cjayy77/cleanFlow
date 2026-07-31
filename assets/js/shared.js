@@ -322,15 +322,16 @@ export function openDevisDocument(booking, client) {
 }
 
 // ---- QR code du logement (contrôle Welcomer) --------------------------------
-// Le Welcomer scanne ce QR sur place ; il ouvre l'interface Welcomer directement
-// sur le bon contrôle. Le QR encode un lien profond vers /welcomer/?m=<bookingId>.
+// Un QR PERMANENT par logement : imprimé une fois, laissé dans l'appartement.
+// Le Welcomer le scanne sur place ; l'app ouvre sa mission en cours sur ce
+// logement. Le QR encode un lien profond vers /welcomer/?p=<propertyId>.
 const QR_FALLBACK_ORIGIN = 'https://clean-flow-dun.vercel.app';
 
-export function logementQrUrl(bookingId) {
+export function logementQrUrl(propertyId) {
   const origin = (typeof location !== 'undefined' && typeof location.origin === 'string' && location.origin.startsWith('http'))
     ? location.origin
     : QR_FALLBACK_ORIGIN;
-  return `${origin}/welcomer/?m=${encodeURIComponent(bookingId)}`;
+  return `${origin}/welcomer/?p=${encodeURIComponent(propertyId)}`;
 }
 
 // Renvoie une balise <svg> QR autonome (aucune dépendance réseau à l'affichage).
@@ -343,11 +344,18 @@ export function qrSvg(text, { cellSize = 6, margin = 4 } = {}) {
 
 // Ouvre une fiche QR imprimable à afficher dans le logement (→ « Enregistrer en
 // PDF » du navigateur). Entièrement côté client.
-export function openLogementQr(booking) {
-  const url = logementQrUrl(booking.id);
-  const ref6 = String(booking.id).slice(0, 6).toUpperCase();
+// Accepte un bien ({ id, street, city }) ou une réservation ({ propertyId,
+// propertyAddress }) : le QR encode toujours le LOGEMENT (propertyId).
+export function openLogementQr(target) {
+  const propertyId = target.propertyId || target.id;
+  if (!propertyId) return false;
+  const url = logementQrUrl(propertyId);
+  const ref6 = String(propertyId).slice(0, 6).toUpperCase();
   const svg = qrSvg(url, { cellSize: 9, margin: 4 });
-  const addr = escapeHtml(booking.propertyAddress || booking.propertyId || 'Logement');
+  const addressText = target.propertyAddress
+    || [target.street, target.city].filter(Boolean).join(', ')
+    || 'Logement';
+  const addr = escapeHtml(addressText);
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QR logement · ${escapeHtml(ref6)}</title>

@@ -8,6 +8,7 @@ import {
   computeBookingPrice,
   setPricing,
   openDevisDocument,
+  openLogementQr,
   WELCOMER_TIERS,
   welcomerTier,
   ZONES,
@@ -354,7 +355,15 @@ function renderPropertyButtons() {
       }
       return true;
     });
+    const qrBtn = document.createElement('button');
+    qrBtn.className = 'mini-btn';
+    qrBtn.type = 'button';
+    qrBtn.textContent = 'QR logement';
+    qrBtn.setAttribute('aria-label', `Imprimer le QR de ${prop.street}`);
+    qrBtn.title = 'À imprimer et laisser dans le logement (contrôle Welcomer sur place)';
+    qrBtn.onclick = () => { if (!openLogementQr(prop)) setAppStatus('Autorisez les fenêtres pop-up pour imprimer le QR.', 'error'); };
     actions.appendChild(editBtn);
+    actions.appendChild(qrBtn);
     actions.appendChild(deleteBtn);
 
     row.appendChild(selectBtn);

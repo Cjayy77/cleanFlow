@@ -49,8 +49,10 @@ let taskUnsub = null;
 // Carte des missions rendues (bookingId → { booking, card, done, open }).
 // Le scan QR / la saisie manuelle s'en servent pour ouvrir le bon contrôle.
 const taskCards = new Map();
-// Lien profond : /welcomer/?m=<bookingId> (scan avec l'appareil photo natif).
-const initialQrCode = new URLSearchParams(location.search).get('m');
+// Lien profond : /welcomer/?p=<propertyId> (QR du logement, permanent) — on
+// accepte aussi l'ancien ?m=<bookingId> par compatibilité.
+const initialQrParams = new URLSearchParams(location.search);
+const initialQrCode = initialQrParams.get('p') || initialQrParams.get('m');
 let deeplinkHandled = false;
 // Scanner intégré (BarcodeDetector) — état de la caméra.
 let scanStream = null;
@@ -154,23 +156,42 @@ function renderTasks(bookings) {
   });
 }
 
-// Normalise une valeur scannée / saisie : accepte un lien profond (?m=…),
-// un ID complet, ou la réf courte à 6 caractères affichée sur la carte.
+// Normalise une valeur scannée / saisie en { kind, code }. Le QR du logement
+// encode ?p=<propertyId> ; on tolère l'ancien ?m=<bookingId>, un ID complet,
+// ou une réf courte à 6 caractères (propriété ou réservation).
 function normalizeScanned(raw) {
   const s = String(raw || '').trim();
-  if (!s) return '';
+  if (!s) return { kind: 'unknown', code: '' };
+  const dec = v => { try { return decodeURIComponent(v); } catch (_) { return v; } };
+  const p = s.match(/[?&]p=([^&\s]+)/);
+  if (p) return { kind: 'property', code: dec(p[1]) };
   const m = s.match(/[?&]m=([^&\s]+)/);
-  if (m) { try { return decodeURIComponent(m[1]); } catch (_) { return m[1]; } }
-  return s;
+  if (m) return { kind: 'booking', code: dec(m[1]) };
+  return { kind: 'unknown', code: s };
 }
 
+const norm6 = v => String(v || '').toUpperCase();
+const matchesProperty = (e, code) => e.booking.propertyId
+  && (e.booking.propertyId === code || norm6(e.booking.propertyId).slice(0, 6) === norm6(code));
+const matchesBooking = (e, code) => e.booking.id === code || norm6(e.booking.id).slice(0, 6) === norm6(code);
+
 // Ouvre le contrôle correspondant au code, ou explique pourquoi c'est impossible.
+// Un QR de logement peut couvrir plusieurs missions : on ouvre la prochaine à
+// contrôler (non terminée, la plus proche dans le temps).
 function focusMissionByCode(raw, { viaQr = false } = {}) {
-  const code = normalizeScanned(raw);
+  const { kind, code } = normalizeScanned(raw);
   if (!code) { setWorkStatus('Code du logement non reconnu.'); return; }
-  const entry = [...taskCards.values()].find(e =>
-    e.booking.id === code || e.booking.id.slice(0, 6).toUpperCase() === code.toUpperCase());
-  if (!entry) { setWorkStatus('Ce QR ne correspond à aucune de vos missions assignées.'); return; }
+  const entries = [...taskCards.values()];
+  let matches;
+  if (kind === 'property') matches = entries.filter(e => matchesProperty(e, code));
+  else if (kind === 'booking') matches = entries.filter(e => matchesBooking(e, code));
+  else matches = entries.filter(e => matchesProperty(e, code) || matchesBooking(e, code));
+  if (!matches.length) { setWorkStatus('Ce QR ne correspond à aucune de vos missions assignées.'); return; }
+  // Priorité à une mission encore à contrôler ; sinon on informe.
+  const pending = matches
+    .filter(e => !e.done && e.open)
+    .sort((a, b) => (a.booking.scheduledDate || '').localeCompare(b.booking.scheduledDate || ''));
+  const entry = pending[0] || matches[0];
   entry.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (entry.done || !entry.open) { setWorkStatus('Ce logement a déjà été contrôlé.', 'info'); return; }
   entry.open(viaQr);
