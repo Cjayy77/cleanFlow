@@ -520,8 +520,17 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
   const secondary = initializeApp(firebaseConfig, `access-request-${Date.now()}`);
   const secondaryAuth = getAuth(secondary);
   const secondaryDb = getFirestore(secondary);
+  // Nettoyage volontairement NON attendu : deleteApp peut ne jamais se résoudre
+  // tant que Firestore garde une connexion ouverte, ce qui bloquerait le bouton
+  // (le spinner ne s'arrête qu'à la fin de la fonction). On le lance en arrière-plan.
+  const cleanup = () => {
+    signOut(secondaryAuth).catch(() => {});
+    deleteApp(secondary).catch(() => {});
+  };
   try {
-    const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    // Toutes les étapes sont bornées : aucune ne peut faire tourner le spinner
+    // indéfiniment (réseau lent sur mobile, règles, etc.).
+    const credential = await withTimeout(createUserWithEmailAndPassword(secondaryAuth, email, password), 20000);
     await withTimeout(setDoc(doc(secondaryDb, 'users', credential.user.uid), {
       uid: credential.user.uid,
       role,
@@ -542,8 +551,7 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
     }), 10000).catch(() => {});
     return credential.user.uid;
   } finally {
-    await signOut(secondaryAuth).catch(() => {});
-    await deleteApp(secondary).catch(() => {});
+    cleanup();
   }
 }
 
