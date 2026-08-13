@@ -1,12 +1,12 @@
 'use strict';
 
 /**
- * CleanFlow — Cloud Functions.
+ * Zebramoon, Cloud Functions.
  *
  * ⚠️ DÉPLOIEMENT REQUIS (voir functions/README.md) :
  *   - Firebase plan **Blaze** (les Functions ne tournent pas sur le plan gratuit)
  *   - `cd functions && npm install`
- *   - clés/secrets à définir (Stripe, webhooks) — voir README
+ *   - clés/secrets à définir (Stripe, webhooks), voir README
  *   - `firebase deploy --only functions`
  *
  * Ce fichier est livré prêt à déployer mais N'A PAS été exécuté/testé en live
@@ -26,7 +26,7 @@ setGlobalOptions({ region: 'europe-west1', maxInstances: 10 });
 
 const db = admin.firestore();
 // Doit rester identique à TEAM_EMAIL (shared.js) et teamInbox() (firestore.rules).
-// Déploiement en attente (Blaze) — à aligner lors du basculement OVH.
+// Déploiement en attente (Blaze), à aligner lors du basculement OVH.
 const TEAM_EMAIL = 'w.wanecque@gmail.com';
 const VAT_RATE_FALLBACK = 0.20;
 
@@ -75,7 +75,7 @@ function buildDevisPdf(booking, client, vatRate) {
     const ttc = totalHT + vat;
     const ref = `CF-${String(booking.id || '').slice(0, 6).toUpperCase()}`;
 
-    doc.fontSize(22).fillColor('#E6007E').text('CleanFlow', { continued: false });
+    doc.fontSize(22).fillColor('#E6007E').text('Zebramoon', { continued: false });
     doc.moveDown(0.2).fontSize(18).fillColor('#12123A').text('DEVIS');
     doc.fontSize(10).fillColor('#555')
       .text(`N° ${ref}`)
@@ -83,7 +83,7 @@ function buildDevisPdf(booking, client, vatRate) {
     doc.moveDown();
     doc.fontSize(11).fillColor('#12123A')
       .text(`Client : ${(client && client.email) || ''}`)
-      .text(`Logement : ${booking.propertyAddress || ''}${booking.surface ? ` — ${booking.surface} m²` : ''}`);
+      .text(`Logement : ${booking.propertyAddress || ''}${booking.surface ? `, ${booking.surface} m²` : ''}`);
     doc.moveDown();
 
     items.forEach((it) => {
@@ -95,7 +95,7 @@ function buildDevisPdf(booking, client, vatRate) {
     doc.text(`TVA (${Math.round(vatRate * 100)} %) : ${vat} EUR`);
     doc.fontSize(14).fillColor('#E6007E').text(`Total TTC : ${ttc} EUR`);
     doc.moveDown();
-    doc.fontSize(8).fillColor('#888').text('Devis emis par CleanFlow. Valable 30 jours. Menage verifie par controle photo avant confirmation.');
+    doc.fontSize(8).fillColor('#888').text('Devis emis par Zebramoon. Valable 30 jours. Menage verifie par controle photo avant confirmation.');
     doc.end();
   });
 }
@@ -122,8 +122,8 @@ exports.sendDevisOnBooking = onDocumentCreated('bookings/{bookingId}', async (ev
     await db.collection('mail').add({
       to: email,
       message: {
-        subject: `CleanFlow — votre devis ${String(booking.id).slice(0, 6).toUpperCase()}`,
-        text: 'Bonjour,\n\nVeuillez trouver ci-joint le devis de votre réservation CleanFlow.\n\nL’équipe CleanFlow.',
+        subject: `Zebramoon, votre devis ${String(booking.id).slice(0, 6).toUpperCase()}`,
+        text: 'Bonjour,\n\nVeuillez trouver ci-joint le devis de votre réservation Zebramoon.\n\nL’équipe Zebramoon.',
         attachments: [{
           filename: `devis-${String(booking.id).slice(0, 6).toUpperCase()}.pdf`,
           content: pdf.toString('base64'),
@@ -189,7 +189,7 @@ exports.api = onRequest(async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 4) PAIEMENT — PLACEHOLDER Stripe.
+// 4) PAIEMENT, PLACEHOLDER Stripe.
 //    Aucun compte Stripe n'existe encore. Cette fonction renvoie une erreur
 //    tant que la clé n'est pas configurée. Décommenter et compléter une fois
 //    le compte créé et `STRIPE_SECRET` défini (voir README).
@@ -208,7 +208,7 @@ exports.createCheckoutSession = onCall(async (request) => {
 });
 
 // ---------------------------------------------------------------------------
-// 5) Intégrations (Make / Zapier / HubSpot / Pennylane) — PLACEHOLDER.
+// 5) Intégrations (Make / Zapier / HubSpot / Pennylane), PLACEHOLDER.
 //    Poste un événement vers un webhook si l'URL est configurée ; sinon no-op.
 //    Ex. : définir INTEGRATIONS_WEBHOOK pour relayer chaque nouveau prospect.
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-// CleanFlow — interface Welcomer : contrôle qualité sur place (checklist,
+// Zebramoon, interface Welcomer : contrôle qualité sur place (checklist,
 // photos horodatées, signature) et validation envoyée au propriétaire.
 import {
   auth,
@@ -49,12 +49,12 @@ let taskUnsub = null;
 // Carte des missions rendues (bookingId → { booking, card, done, open }).
 // Le scan QR / la saisie manuelle s'en servent pour ouvrir le bon contrôle.
 const taskCards = new Map();
-// Lien profond : /welcomer/?p=<propertyId> (QR du logement, permanent) — on
+// Lien profond : /welcomer/?p=<propertyId> (QR du logement, permanent), on
 // accepte aussi l'ancien ?m=<bookingId> par compatibilité.
 const initialQrParams = new URLSearchParams(location.search);
 const initialQrCode = initialQrParams.get('p') || initialQrParams.get('m');
 let deeplinkHandled = false;
-// Scanner intégré (BarcodeDetector) — état de la caméra.
+// Scanner intégré (BarcodeDetector), état de la caméra.
 let scanStream = null;
 let scanTimer = null;
 let barcodeDetector = null;
@@ -195,7 +195,7 @@ function focusMissionByCode(raw, { viaQr = false } = {}) {
   entry.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (entry.done || !entry.open) { setWorkStatus('Ce logement a déjà été contrôlé.', 'info'); return; }
   entry.open(viaQr);
-  setWorkStatus(viaQr ? 'Logement confirmé par QR — complétez le contrôle.' : 'Contrôle ouvert.', 'success');
+  setWorkStatus(viaQr ? 'Logement confirmé par QR, complétez le contrôle.' : 'Contrôle ouvert.', 'success');
 }
 
 // ---- Scanner QR intégré (BarcodeDetector, sans dépendance) -------------------
@@ -313,7 +313,7 @@ function buildValidationForm(booking) {
   const lvHead = document.createElement('div'); lvHead.className = 'eyebrow'; lvHead.style.marginTop = '16px'; lvHead.textContent = 'Résultat';
   form.appendChild(lvHead);
   const lv = document.createElement('div'); lv.className = 'wc-level';
-  [[1, 'Conforme — validé (petites corrections faites sur place)'], [2, 'À corriger — le prestataire doit repasser (reste en attente)'], [3, 'Non conforme — propriétaire averti, pénalité prestataire']].forEach(([v, l], i) => {
+  [[1, 'Conforme, validé (petites corrections faites sur place)'], [2, 'À corriger, le prestataire doit repasser (reste en attente)'], [3, 'Non conforme, propriétaire averti, pénalité prestataire']].forEach(([v, l], i) => {
     const row = document.createElement('label');
     const r = document.createElement('input'); r.type = 'radio'; r.name = `lv-${booking.id}`; r.value = String(v); if (i === 0) r.checked = true;
     const s = document.createElement('span'); s.textContent = l;
@@ -346,10 +346,10 @@ function buildValidationForm(booking) {
       await withButtonLoading(submit, () => withTimeout(updateDoc(doc(db, 'bookings', booking.id), payload), 20000));
       queueEmail({
         to: TEAM_EMAIL,
-        subject: `CleanFlow — contrôle Welcomer niveau ${level} · ${booking.propertyAddress || ''}`,
+        subject: `Zebramoon, contrôle Welcomer niveau ${level} · ${booking.propertyAddress || ''}`,
         text: `Réf ${booking.id.slice(0, 6).toUpperCase()} · niveau ${level} · ${photoUrls.length} photo(s).${payload.welcomerNote ? ' Note : ' + payload.welcomerNote : ''}`,
       });
-      setWorkStatus(level === 1 ? 'Logement validé — le propriétaire est notifié.' : 'Contrôle enregistré — mission renvoyée.', 'success');
+      setWorkStatus(level === 1 ? 'Logement validé, le propriétaire est notifié.' : 'Contrôle enregistré, mission renvoyée.', 'success');
     } catch (e) {
       setWorkStatus(`Validation impossible : ${authErrorMessage(e)}`);
     }
@@ -386,11 +386,11 @@ onAuthStateChanged(auth, async user => {
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe CleanFlow.', type: 'info' };
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Zebramoon.', type: 'info' };
       await signOut(auth); return;
     }
     if (accountStatus === 'suspended') {
-      authNotice = { message: 'Votre accès a été suspendu par l’équipe CleanFlow.', type: '' };
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe Zebramoon.', type: '' };
       await signOut(auth); return;
     }
     if (accountStatus !== 'approved') {
@@ -448,7 +448,7 @@ requestForm.addEventListener('submit', async event => {
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe CleanFlow va la vérifier.', 'success');
+    setAuthMessage('Demande envoyée. L’équipe Zebramoon va la vérifier.', 'success');
   } catch (err) { setAuthMessage(authErrorMessage(err), 'error'); }
 });
 

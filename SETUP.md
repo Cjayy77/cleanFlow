@@ -1,4 +1,4 @@
-# CleanFlow — Mise en route (100% depuis le navigateur)
+# Zebramoon — Mise en route (100% depuis le navigateur)
 
 Hébergement : **Vercel** (site statique). Backend : **Firebase** (Auth,
 Firestore, Storage). Aucune ligne de commande nécessaire — tout se fait
@@ -104,7 +104,7 @@ navigateur :
      Le plus simple : un compte gratuit **Brevo** ou **SendGrid** (SMTP
      fourni en 5 minutes), ou le SMTP Gmail avec un « mot de passe
      d'application ».
-   - *Default FROM address* : ex. `CleanFlow <w.wanecque@gmail.com>`.
+   - *Default FROM address* : ex. `Zebramoon <w.wanecque@gmail.com>`.
 3. C'est tout. Sans l'extension, l'application fonctionne normalement — les
    notifications s'accumulent simplement dans la collection `mail` sans
    partir.

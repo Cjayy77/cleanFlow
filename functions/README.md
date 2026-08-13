@@ -1,6 +1,6 @@
-# CleanFlow — Cloud Functions (backend)
+# Zebramoon — Cloud Functions (backend)
 
-Ce dossier contient le **backend** CleanFlow (Firebase Cloud Functions, Node 20).
+Ce dossier contient le **backend** Zebramoon (Firebase Cloud Functions, Node 20).
 Il est **livré prêt à déployer mais pas encore mis en ligne** : le déploiement
 demande des accès et des comptes que seul l'administrateur possède.
 

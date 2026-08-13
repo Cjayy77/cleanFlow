@@ -1,4 +1,4 @@
-// CleanFlow — couche de données Firebase partagée par les quatre interfaces.
+// Zebramoon, couche de données Firebase partagée par les quatre interfaces.
 // Firestore = données, Firebase Auth = connexion, Firebase Storage = photos.
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -56,9 +56,9 @@ export const DEFAULT_PRICING = {
   hoursPerExtraBathroom: 0.5, // +0,5 h par salle de bain au-delà de la première
   hoursPer25sqmAbove90: 1,    // au-delà de 90 m² : +1 h par tranche de 25 m²
   maxAutoSurface: 250,        // au-delà : devis sur-mesure (pas de prix automatique)
-  kitPrice: 20,               // kit de bienvenue (linge, consommables) — 1 / chambre
+  kitPrice: 20,               // kit de bienvenue (linge, consommables), 1 / chambre
   travelFee: 10,              // frais de déplacement (forfait provisoire)
-  commission: 8,              // commission CleanFlow appliquée (€ HT / intervention)
+  commission: 8,              // commission Zebramoon appliquée (€ HT / intervention)
   commissionMin: 4,           // borne basse indicative (€ HT)
   commissionMax: 12,          // borne haute indicative (€ HT)
   subscriptionMonthly: 10,    // abonnement application (€ HT / mois / logement)
@@ -66,7 +66,7 @@ export const DEFAULT_PRICING = {
   taxCreditRate: 0.5,         // crédit d'impôt Services à la Personne (50 %)
   taxCreditEnabled: true,     // proposer le crédit d'impôt dans le devis
   // Texte libre du bas de devis (éditable back-office).
-  devisText: "Devis émis par CleanFlow. Prix en euros. Le ménage est réalisé par un prestataire vérifié ; chaque intervention fait l'objet d'un contrôle photo par l'équipe CleanFlow avant confirmation. Devis valable 30 jours.",
+  devisText: "Devis émis par Zebramoon. Prix en euros. Le ménage est réalisé par un prestataire vérifié ; chaque intervention fait l'objet d'un contrôle photo par l'équipe Zebramoon avant confirmation. Devis valable 30 jours.",
   // Villes desservies (éditable back-office).
   cities: [],
 };
@@ -172,7 +172,7 @@ export function computeBookingPrice({ surface, serviceType, beds, bathrooms, bed
   const kitsTotal = kits * P.kitPrice;
   const amenitiesTotal = Math.max(0, Number(amenitiesPrice) || 0);
   const travel = travelFeeForZone(zone);
-  const commission = Math.max(0, Number(P.commission) || 0); // commission CleanFlow / intervention
+  const commission = Math.max(0, Number(P.commission) || 0); // commission Zebramoon / intervention
   // Les tarifs sont HT ; la TVA est un pass-through (n'entre pas dans la marge).
   const total = prestation + kitsTotal + amenitiesTotal + travel + commission; // total HT
   const vatRate = P.vatRate;
@@ -229,7 +229,7 @@ function bookingLineItems(b) {
   if (kits) items.push({ label: `Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, amount: kits });
   if (amenities) items.push({ label: 'Amenities (consommables)', amount: amenities });
   (b.extras || []).forEach(e => items.push({ label: `${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, amount: (Number(e.priceHT) || 0) * (Number(e.qty) || 0) }));
-  if (commission) items.push({ label: 'Commission CleanFlow', amount: commission });
+  if (commission) items.push({ label: 'Commission Zebramoon', amount: commission });
   if (travel) items.push({ label: 'Frais de déplacement', amount: travel });
   return { items, totalHT: price };
 }
@@ -251,7 +251,7 @@ export function openDevisDocument(booking, client) {
   const clientName = escapeHtml((client && client.name) || '');
   const clientEmail = escapeHtml((client && client.email) || booking.clientEmail || '');
   const rows = items.map(it => `<tr><td>${escapeHtml(it.label)}</td><td class="amt">${it.amount}&nbsp;€</td></tr>`).join('');
-  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis ${ref} — CleanFlow</title>
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis ${ref}, Zebramoon</title>
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{ font-family:'Helvetica Neue',Arial,sans-serif; color:#12123A; padding:40px 46px; font-size:14px; }
@@ -291,7 +291,7 @@ export function openDevisDocument(booking, client) {
   <div class="parties">
     <div>
       <h3>Client</h3>
-      <div>${clientName || '—'}<br>${clientEmail}</div>
+      <div>${clientName || ', '}<br>${clientEmail}</div>
     </div>
     <div style="text-align:right">
       <h3>Logement</h3>
@@ -375,7 +375,7 @@ export function openLogementQr(target) {
   </style></head>
   <body>
     <div class="brand"><span>Clean</span>Flow</div>
-    <div class="sub">Contrôle qualité — logement</div>
+    <div class="sub">Contrôle qualité, logement</div>
     <div class="qr">${svg}</div>
     <div class="ref">Réf ${escapeHtml(ref6)}</div>
     <div class="addr">${addr}</div>
@@ -390,17 +390,17 @@ export function openLogementQr(target) {
   return true;
 }
 
-// ⇩⇩ ADRESSE DE L'ÉQUIPE — SOURCE UNIQUE POUR TOUT LE SITE ⇩⇩
+// ⇩⇩ ADRESSE DE L'ÉQUIPE, SOURCE UNIQUE POUR TOUT LE SITE ⇩⇩
 // Utilisée par les 4 portails + le devis public (tous importent TEAM_EMAIL).
 // Pour basculer sur la boîte OVH : changez CETTE ligne (une seule), puis
 // alignez teamInbox() dans firestore.rules (+ republier les règles) et le
 // FROM/SMTP de l'extension « Trigger Email ». Détails : SETUP.md.
 export const TEAM_EMAIL = 'w.wanecque@gmail.com';
 
-// TODO: confirm with team — liste exacte des photos exigées par mission.
+// TODO: confirm with team, liste exacte des photos exigées par mission.
 export const PHOTO_SLOTS = [
-  { key: 'kitchen_before', label: 'Cuisine — avant' },
-  { key: 'kitchen_after', label: 'Cuisine — après' },
+  { key: 'kitchen_before', label: 'Cuisine, avant' },
+  { key: 'kitchen_after', label: 'Cuisine, après' },
   { key: 'bathroom', label: 'Salle de bain' },
   { key: 'bedroom1', label: 'Chambre 1' },
   { key: 'bedroom2', label: 'Chambre 2' },
@@ -412,7 +412,7 @@ if (configMissing) {
   const renderNotice = () => {
     document.body.innerHTML = `
       <div style="max-width:560px;margin:80px auto;padding:36px;font-family:sans-serif;border:1px solid #DCE1EE;border-radius:8px;background:#fff;color:#10131A;">
-        <div style="font-family:monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#002FA7;margin-bottom:12px;">CleanFlow — configuration requise</div>
+        <div style="font-family:monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#002FA7;margin-bottom:12px;">Zebramoon, configuration requise</div>
         <h1 style="font-size:20px;margin:0 0 12px;">Firebase n'est pas encore configuré</h1>
         <p style="line-height:1.6;color:#5A6472;">Copiez la configuration web de votre projet Firebase dans <code>firebase-config.js</code>, puis rechargez la page. Les étapes complètes sont dans <code>SETUP.md</code>.</p>
       </div>`;
@@ -422,7 +422,7 @@ if (configMissing) {
   } else {
     renderNotice();
   }
-  throw new Error('Firebase non configuré — voir SETUP.md');
+  throw new Error('Firebase non configuré, voir SETUP.md');
 }
 
 const app = initializeApp(firebaseConfig);
@@ -552,7 +552,7 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
     await withTimeout(addDoc(collection(secondaryDb, 'mail'), {
       to: TEAM_EMAIL,
       message: {
-        subject: `CleanFlow — nouvelle demande d’accès ${role}`,
+        subject: `Zebramoon, nouvelle demande d’accès ${role}`,
         text: `${name} (${email}, ${phone}) demande un accès ${role}.${inviteCode ? ` Code d’invitation saisi : ${inviteCode}.` : ' Aucun code d’invitation saisi.'} À traiter dans /admin/.`,
       },
       createdAt: serverTimestamp(),
@@ -570,8 +570,7 @@ export function resetPassword(email) {
 
 // File d'envoi d'e-mails : dépose un document dans la collection `mail`,
 // que l'extension Firebase « Trigger Email » transforme en vrai e-mail
-// (voir SETUP.md). Sans l'extension, les documents s'accumulent sans effet —
-// l'action métier n'échoue jamais à cause d'un e-mail.
+// (voir SETUP.md). Sans l'extension, les documents s'accumulent sans effet, // l'action métier n'échoue jamais à cause d'un e-mail.
 export function queueEmail({ to, subject, text }) {
   return addDoc(collection(db, 'mail'), {
     to,

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>CleanFlow — Vérification</title>
+<title>Zebramoon, Vérification</title>
 <link rel="icon" href="../assets/fan-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,8 +14,8 @@
 <div class="app-wrap">
   <div class="top-row">
     <div>
-      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil CleanFlow"><span class="k">Clean</span>Flow</a></div>
-      <div class="role-tag">Vérification CleanFlow</div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil Zebramoon"><span class="k">Zebra</span>moon</a></div>
+      <div class="role-tag">Vérification Zebramoon</div>
     </div>
     <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
   </div>
@@ -27,7 +27,7 @@
   <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion admin</h1>
-    <p>Espace réservé à l’équipe CleanFlow pour le contrôle des dossiers photo. Tout nouvel accès doit être approuvé par un admin existant.</p>
+    <p>Espace réservé à l’équipe Zebramoon pour le contrôle des dossiers photo. Tout nouvel accès doit être approuvé par un admin existant.</p>
     <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
@@ -37,7 +37,7 @@
       <div class="note-box"><a href="#" id="switchToRequest">Demander un accès admin</a></div>
     </form>
     <form id="requestForm" class="hidden">
-      <p>Votre demande sera vérifiée par l’équipe CleanFlow avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
+      <p>Votre demande sera vérifiée par l’équipe Zebramoon avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
       <div class="form-cols">
         <div class="form-row"><label for="requestName">Nom</label><input id="requestName" type="text" required></div>
         <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
@@ -46,7 +46,7 @@
         <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
         <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
       </div>
-      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par CleanFlow)</label><input id="requestCode" type="text"></div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Zebramoon)</label><input id="requestCode" type="text"></div>
       <button class="btn primary" type="submit">Envoyer la demande</button>
       <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte, me connecter</a></div>
     </form>
@@ -55,7 +55,7 @@
   <div id="appScreen" class="hidden">
     <div class="card">
       <div class="eyebrow">Contrôle qualité</div>
-      <h1 id="userNameLabel">Équipe CleanFlow</h1>
+      <h1 id="userNameLabel">Équipe Zebramoon</h1>
       <p>Aucun dossier ne se valide automatiquement : chaque jeu de photos est contrôlé ici avant que le client ne soit notifié.</p>
     </div>
 
@@ -99,10 +99,10 @@
       <div class="card">
         <div class="eyebrow">Vue d’ensemble</div>
         <div class="stat-grid">
-          <div class="stat"><b id="statPending">–</b><span>En attente de prestataire</span></div>
-          <div class="stat"><b id="statAccepted">–</b><span>Ménages en cours</span></div>
-          <div class="stat"><b id="statSubmitted">–</b><span>Dossiers à vérifier</span></div>
-          <div class="stat"><b id="statVerified">–</b><span>Confirmés</span></div>
+          <div class="stat"><b id="statPending">, </b><span>En attente de prestataire</span></div>
+          <div class="stat"><b id="statAccepted">, </b><span>Ménages en cours</span></div>
+          <div class="stat"><b id="statSubmitted">, </b><span>Dossiers à vérifier</span></div>
+          <div class="stat"><b id="statVerified">, </b><span>Confirmés</span></div>
         </div>
       </div>
       <div class="card">
@@ -192,7 +192,7 @@
       <div class="card">
         <div class="eyebrow">Comptabilité</div>
         <h2>Compta &amp; ajustements</h2>
-        <p>Les <b>revenus clients</b> (prix des missions) ne bougent pas. Le <b>bonus / malus</b> ajuste séparément la <b>paie du prestataire</b> — par exemple un malus s’il a cassé quelque chose, un bonus pour un travail remarquable. Les totaux excluent les missions annulées.</p>
+        <p>Les <b>revenus clients</b> (prix des missions) ne bougent pas. Le <b>bonus / malus</b> ajuste séparément la <b>paie du prestataire</b>, par exemple un malus s’il a cassé quelque chose, un bonus pour un travail remarquable. Les totaux excluent les missions annulées.</p>
         <div id="comptaFilter"></div>
         <div class="stat-grid" id="comptaTotals"></div>
         <div id="comptaList"></div>
@@ -227,7 +227,7 @@
       <div class="card">
         <div class="eyebrow">Back-office</div>
         <h2>Catalogue</h2>
-        <p>Kits d'accueil, consommables et location de linge — facturés en supplément du ménage. Créez, modifiez et retirez les articles ; les prix TTC se calculent depuis la TVA (modifiable dans « Tarifs »).</p>
+        <p>Kits d'accueil, consommables et location de linge, facturés en supplément du ménage. Créez, modifiez et retirez les articles ; les prix TTC se calculent depuis la TVA (modifiable dans « Tarifs »).</p>
         <div id="catalogStatus" class="status-banner hidden" role="status"></div>
         <div id="catalogRoot"></div>
       </div>

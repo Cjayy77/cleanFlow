@@ -1,6 +1,6 @@
-# CleanFlow — Technical Documentation & Scope of Work
+# Zebramoon — Technical Documentation & Scope of Work
 
-Reference document describing the entire CleanFlow platform: every page, its
+Reference document describing the entire Zebramoon platform: every page, its
 logic, its rules, the data model, and the infrastructure. Intended as the basis
 for invoicing (deliverables summary in Section 10).
 
@@ -8,9 +8,9 @@ for invoicing (deliverables summary in Section 10).
 
 ## 1. Overview
 
-CleanFlow is a web platform for **verified cleaning of short-term rentals**. Its
+Zebramoon is a web platform for **verified cleaning of short-term rentals**. Its
 defining feature: every job is documented with a mandatory set of photos,
-**reviewed by a human (the CleanFlow team) before any confirmation is sent to
+**reviewed by a human (the Zebramoon team) before any confirmation is sent to
 the client**. Nothing is validated automatically. On top of the operations core,
 the platform now includes a full **automatic quote engine** (public, with a
 self-service back-office) and an on-site **quality-control (Welcomer) system**.
@@ -23,7 +23,7 @@ Five roles, five distinct interfaces:
 | **Prestataire** (cleaner) | Partner cleaning company | On approved request |
 | **Livreur** (delivery) | Linen / kit delivery service | On approved request |
 | **Welcomer** (on-site QC) | Independent quality-control partner | On approved request |
-| **Admin** | CleanFlow team (review + operations) | On approved request |
+| **Admin** | Zebramoon team (review + operations) | On approved request |
 
 Plus a **public quote wizard** (`/devis/`) usable without an account (anonymous
 authentication), which feeds the CRM.
@@ -69,7 +69,7 @@ authentication), which feeds the CRM.
 /prestataire/         Cleaner interface
 /livreur/             Delivery interface
 /welcomer/            Welcomer (on-site quality control) interface
-/admin/               CleanFlow admin console + back-office
+/admin/               Zebramoon admin console + back-office
 /legal/cgu.html       Terms of use
 /legal/confidentialite.html   Privacy policy
 ```
@@ -135,7 +135,7 @@ auth). Four steps + result:
   excluding subscription, commission, kits, consumables, linen and supplies from
   the base.
 - **Savings comparator:** estimated rental income, a classic concierge's
-  commission, the annual cost with CleanFlow, and the resulting annual saving.
+  commission, the annual cost with Zebramoon, and the resulting annual saving.
 - **PDF devis:** printable quote (see 7.x) generated client-side.
 - **Submit:** creates a **CRM prospect** (source "Devis en ligne", status
   "Nouveau") and notifies the team.
@@ -328,7 +328,7 @@ type limits everywhere.
 3. **Crédit d'impôt** — Services-à-la-Personne handling: eligible labour, 50 %
    estimate, estimated net, with the correct exclusions; on/off per config.
 4. **Savings comparator** — rental income vs. classic concierge commission vs.
-   CleanFlow annual cost → annual saving.
+   Zebramoon annual cost → annual saving.
 5. **Devis / receipt PDF** — printable, client-side document (logo, quote
    number, date, 30-day validity, client & property, itemised HT lines, Total
    HT / VAT / TTC, editable footer / general terms). Available in the wizard and

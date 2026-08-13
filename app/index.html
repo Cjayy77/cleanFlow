@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CleanFlow — Espace client</title>
+<title>Zebramoon, Espace client</title>
 <link rel="icon" href="../assets/fan-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <div class="app-wrap">
   <div class="top-row">
     <div>
-      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil CleanFlow"><span class="k">Clean</span>Flow</a></div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil Zebramoon"><span class="k">Zebra</span>moon</a></div>
       <div class="role-tag">Espace client</div>
     </div>
     <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
@@ -52,8 +52,8 @@
     <div class="card">
       <div class="eyebrow">Bonjour</div>
       <h1 id="userNameLabel">Client</h1>
-      <p id="welcomeText">Réservez un ménage, suivez sa vérification par l’équipe CleanFlow, et recevez la confirmation une fois le contrôle photo effectué.</p>
-      <div class="beta-note">Le prix est calculé selon la surface de votre bien et affiché avant chaque réservation. Pendant la bêta, le règlement se fait directement avec l’équipe CleanFlow — aucun paiement en ligne.</div>
+      <p id="welcomeText">Réservez un ménage, suivez sa vérification par l’équipe Zebramoon, et recevez la confirmation une fois le contrôle photo effectué.</p>
+      <div class="beta-note">Le prix est calculé selon la surface de votre bien et affiché avant chaque réservation. Pendant la bêta, le règlement se fait directement avec l’équipe Zebramoon, aucun paiement en ligne.</div>
     </div>
 
     <div class="grid2">
@@ -81,7 +81,7 @@
               <div class="form-row"><label for="propertySurface">Surface (m²)</label><input id="propertySurface" type="number" min="1" step="1" inputmode="numeric" required></div>
               <div class="form-row"><label for="propertyZone">Zone</label><select id="propertyZone" required></select></div>
             </div>
-            <div class="form-row"><label for="propertyKeyAccess">Accès & emplacement des clés</label><textarea id="propertyKeyAccess" placeholder="Ex. boîte à clés à gauche de la porte, code 1234 · ou : gardien au rez-de-chaussée · ou digicode 45B12"></textarea><div class="field-hint">Visible par le prestataire et le welcomer une fois la mission assignée — indiquez précisément comment récupérer les clés.</div></div>
+            <div class="form-row"><label for="propertyKeyAccess">Accès & emplacement des clés</label><textarea id="propertyKeyAccess" placeholder="Ex. boîte à clés à gauche de la porte, code 1234 · ou : gardien au rez-de-chaussée · ou digicode 45B12"></textarea><div class="field-hint">Visible par le prestataire et le welcomer une fois la mission assignée, indiquez précisément comment récupérer les clés.</div></div>
             <div class="form-row"><label for="propertyNotes">Autres notes / consignes</label><textarea id="propertyNotes"></textarea></div>
             <button class="btn primary" type="submit" id="propertySubmitBtn">Enregistrer le bien</button>
             <div class="note-box hidden" id="cancelEditWrap"><a href="#" id="cancelEditBtn">Annuler la modification</a></div>
@@ -129,11 +129,11 @@
           </div>
         </div>
         <details id="supplementsCard" class="hidden" style="margin:4px 0 16px;">
-          <summary style="cursor:pointer;font-weight:600;font-size:14px;">Suppléments — kits, consommables, linge</summary>
+          <summary style="cursor:pointer;font-weight:600;font-size:14px;">Suppléments, kits, consommables, linge</summary>
           <div id="supplementsList" style="margin-top:12px;"></div>
         </details>
         <div class="form-row">
-          <label for="welcomerService">Welcomer — contrôle qualité sur place (optionnel)</label>
+          <label for="welcomerService">Welcomer, contrôle qualité sur place (optionnel)</label>
           <select id="welcomerService"></select>
           <div class="note-box">Un partenaire indépendant vérifie le logement après le ménage : checklist, photos horodatées, validation envoyée avant l'arrivée du voyageur.</div>
         </div>
@@ -148,7 +148,7 @@
         <div class="form-footer">
           <div>
             <div class="price-label">Total à payer (TTC)</div>
-            <div class="price-value" id="priceValue">—</div>
+            <div class="price-value" id="priceValue">, </div>
           </div>
           <button class="btn gold" id="bookBtn" type="button" disabled>Choisir une date pour réserver</button>
         </div>

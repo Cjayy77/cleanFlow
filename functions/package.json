@@ -1,6 +1,6 @@
 {
   "name": "cleanflow-functions",
-  "description": "Cloud Functions CleanFlow — devis PDF + email, CRM auto-feed, API REST, paiement (placeholder).",
+  "description": "Cloud Functions Zebramoon — devis PDF + email, CRM auto-feed, API REST, paiement (placeholder).",
   "engines": {
     "node": "20"
   },
