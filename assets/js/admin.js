@@ -1,4 +1,4 @@
-// CleanFlow — interface admin : file de vérification des dossiers photo.
+// Zebramoon, interface admin : file de vérification des dossiers photo.
 // Rien ne s'approuve automatiquement : chaque dossier passe par un humain ici.
 import {
   auth,
@@ -277,9 +277,9 @@ function renderPricingForm() {
   g4.appendChild(priceField('Kit de bienvenue (par chambre)', P.kitPrice, { key: 'kitPrice', suffix: '€' }));
   g4.appendChild(priceField('Frais de déplacement', P.travelFee, { key: 'travelFee', suffix: '€' }));
   g4.appendChild(priceField('Abonnement application', P.subscriptionMonthly, { key: 'subscriptionMonthly', suffix: '€/mois' }));
-  g4.appendChild(priceField('Commission CleanFlow (appliquée / intervention)', P.commission, { key: 'commission', suffix: '€' }));
-  g4.appendChild(priceField('Commission — borne min (indicatif)', P.commissionMin, { key: 'commissionMin', suffix: '€' }));
-  g4.appendChild(priceField('Commission — borne max (indicatif)', P.commissionMax, { key: 'commissionMax', suffix: '€' }));
+  g4.appendChild(priceField('Commission Zebramoon (appliquée / intervention)', P.commission, { key: 'commission', suffix: '€' }));
+  g4.appendChild(priceField('Commission, borne min (indicatif)', P.commissionMin, { key: 'commissionMin', suffix: '€' }));
+  g4.appendChild(priceField('Commission, borne max (indicatif)', P.commissionMax, { key: 'commissionMax', suffix: '€' }));
   g4.appendChild(priceField('TVA', Math.round(P.vatRate * 100), { key: 'vatPct', suffix: '%' }));
 
   // Textes & zones desservies
@@ -840,7 +840,7 @@ function renderDashboard() {
   const deltaInfo = (cur, prev) => {
     if (prev <= 0) return cur > 0 ? { dir: 'up', text: '▲ nouveau' } : null;
     const pct = Math.round((cur - prev) / prev * 100);
-    if (pct === 0) return { dir: 'flat', text: '– stable' };
+    if (pct === 0) return { dir: 'flat', text: ', stable' };
     return pct > 0 ? { dir: 'up', text: `▲ +${pct} %` } : { dir: 'down', text: `▼ ${pct} %` };
   };
 
@@ -950,7 +950,7 @@ function buildMemberSelect(members, placeholder, annotate) {
     const option = document.createElement('option');
     option.value = member.id;
     const suffix = annotate ? annotate(member) : '';
-    option.textContent = suffix ? `${member.name || member.email} — ${suffix}` : (member.name || member.email);
+    option.textContent = suffix ? `${member.name || member.email}, ${suffix}` : (member.name || member.email);
     select.appendChild(option);
   });
   return select;
@@ -1379,7 +1379,7 @@ function renderAdminCalendar() {
       if (iso === selectedCalDay) cell.classList.add('sel');
       cell.setAttribute('role', 'button');
       cell.tabIndex = 0;
-      cell.setAttribute('aria-label', `${dayNum} — ${events.length} réservation(s)${dayHasUrgent ? ', dont une non assignée à traiter' : ''}`);
+      cell.setAttribute('aria-label', `${dayNum}, ${events.length} réservation(s)${dayHasUrgent ? ', dont une non assignée à traiter' : ''}`);
       const open = () => { selectedCalDay = iso; renderAdminCalendar(); };
       cell.onclick = open;
       cell.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
@@ -1444,7 +1444,7 @@ function renderDayPanel() {
     if (bookingIsUrgent(booking)) {
       const warn = document.createElement('div');
       warn.className = 'task-meta cal-urgent-note';
-      warn.textContent = '⚠ Non assignée — échéance sous 3 jours';
+      warn.textContent = '⚠ Non assignée, échéance sous 3 jours';
       row.appendChild(warn);
     }
     if (booking.status === 'pending' || booking.status === 'submitted') {
@@ -1488,8 +1488,8 @@ async function cancelBooking(booking, button) {
       if (clientSnap.exists() && clientSnap.data().email) {
         queueEmail({
           to: clientSnap.data().email,
-          subject: `CleanFlow — réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
-          text: `Votre ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) a été annulé par l'équipe CleanFlow. Contactez-nous pour reprogrammer.`,
+          subject: `Zebramoon, réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+          text: `Votre ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) a été annulé par l'équipe Zebramoon. Contactez-nous pour reprogrammer.`,
         });
       }
     } catch (e) { /* la notification ne doit pas bloquer l'annulation */ }
@@ -1526,8 +1526,8 @@ function openReschedule(booking, row, triggerBtn) {
         if (clientSnap.exists() && clientSnap.data().email) {
           queueEmail({
             to: clientSnap.data().email,
-            subject: `CleanFlow — ménage reprogrammé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
-            text: `Votre ménage (${booking.propertyAddress || 'votre bien'}) a été reprogrammé au ${formatShortDate(newDate)} par l'équipe CleanFlow.`,
+            subject: `Zebramoon, ménage reprogrammé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+            text: `Votre ménage (${booking.propertyAddress || 'votre bien'}) a été reprogrammé au ${formatShortDate(newDate)} par l'équipe Zebramoon.`,
           });
         }
       } catch (e) { /* la notification ne doit pas bloquer la reprogrammation */ }
@@ -1543,7 +1543,7 @@ function openReschedule(booking, row, triggerBtn) {
 }
 
 // Comptabilité : montant de chaque mission + ajustements bonus/malus discrétionnaires.
-// Détail financier d'une mission. CleanFlow encaisse tout (revenu client) et
+// Détail financier d'une mission. Zebramoon encaisse tout (revenu client) et
 // verse au prestataire une rémunération (base fixée par l'admin) + bonus/malus.
 function comptaLine(booking) {
   const price = Number(booking.price) || 0;
@@ -1638,7 +1638,7 @@ function renderComptaFilter(bounds) {
   } else if (bounds) {
     const lbl = document.createElement('div');
     lbl.className = 'seg-period';
-    lbl.textContent = `${formatShortDate(bounds.from)} — ${formatShortDate(bounds.to)}`;
+    lbl.textContent = `${formatShortDate(bounds.from)}, ${formatShortDate(bounds.to)}`;
     host.appendChild(lbl);
   }
 
@@ -1711,7 +1711,7 @@ function renderComptaResults() {
   totals.appendChild(stat(`${rows.length}`, 'Missions'));
   totals.appendChild(stat(`${agg.revenue}€`, 'Revenus clients'));
   totals.appendChild(stat(`${agg.payout}€`, 'Versé aux prestataires'));
-  totals.appendChild(stat(`${margin}€`, 'Marge CleanFlow'));
+  totals.appendChild(stat(`${margin}€`, 'Marge Zebramoon'));
 
   list.innerHTML = '';
   if (rows.length === 0) {
@@ -1767,10 +1767,10 @@ function buildComptaRow(booking) {
   }
   row.appendChild(pay);
 
-  // Marge CleanFlow.
+  // Marge Zebramoon.
   const marginLine = document.createElement('div');
   marginLine.className = 'task-meta roster-load';
-  marginLine.textContent = `Marge CleanFlow : ${l.margin}€`;
+  marginLine.textContent = `Marge Zebramoon : ${l.margin}€`;
   row.appendChild(marginLine);
 
   const editBtn = document.createElement('button');
@@ -1861,7 +1861,7 @@ function renderMissionsToAssign() {
     return;
   }
   // Classement pour l'assignation : mieux notés d'abord, puis les moins
-  // chargés — pour répartir le travail sans sacrifier la qualité.
+  // chargés, pour répartir le travail sans sacrifier la qualité.
   const rankedPrestataires = prestataires.slice().sort((a, b) => {
     const sa = prestataireStats(a.id);
     const sb = prestataireStats(b.id);
@@ -1893,7 +1893,7 @@ function renderMissionsToAssign() {
           if (member?.email) {
             queueEmail({
               to: member.email,
-              subject: `CleanFlow — nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              subject: `Zebramoon, nouvelle mission assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
               text: `${booking.propertyAddress || 'Mission'} · ${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}. Retrouvez-la dans votre interface prestataire.`,
             });
           }
@@ -1936,7 +1936,7 @@ function renderKitsToAssign() {
           if (member?.email) {
             queueEmail({
               to: member.email,
-              subject: `CleanFlow — nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              subject: `Zebramoon, nouvelle tournée assignée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
               text: `${booking.propertyAddress || 'Tournée'} · ${formatShortDate(booking.scheduledDate)} · dépôt des kits / linge propre et récupération. Retrouvez-la dans votre interface livreur.`,
             });
           }
@@ -1983,7 +1983,7 @@ function renderWelcomersToAssign() {
           if (member?.email) {
             queueEmail({
               to: member.email,
-              subject: `CleanFlow — nouveau contrôle assigné · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+              subject: `Zebramoon, nouveau contrôle assigné · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
               text: `${booking.propertyAddress || 'Contrôle'} · ${formatShortDate(booking.scheduledDate)} · ${tierLabel}. Retrouvez-le dans votre interface welcomer.`,
             });
           }
@@ -2192,7 +2192,7 @@ function renderBookingCost(booking) {
   (booking.extras || []).forEach(e => {
     rows.push([`${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, (Number(e.priceHT) || 0) * (Number(e.qty) || 0), '']);
   });
-  if (l.commission) rows.push(['Commission CleanFlow', l.commission, '']);
+  if (l.commission) rows.push(['Commission Zebramoon', l.commission, '']);
   if (l.travel) rows.push(['Frais de déplacement', l.travel, '']);
   // HT → TVA → TTC (TVA = pass-through, hors marge).
   const rate = getPricing().vatRate;
@@ -2247,7 +2247,7 @@ function renderBookingDetail() {
       slotEl.appendChild(link);
     } else {
       const span = document.createElement('span');
-      span.textContent = `${slot.label} — manquante`;
+      span.textContent = `${slot.label}, manquante`;
       slotEl.appendChild(span);
     }
     photoGrid.appendChild(slotEl);
@@ -2365,8 +2365,8 @@ async function resolveBooking(status) {
     if (status === 'verified' && selectedBooking.clientEmail) {
       queueEmail({
         to: selectedBooking.clientEmail,
-        subject: `CleanFlow — votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
-        text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe CleanFlow. Retrouvez le détail dans votre espace client.`,
+        subject: `Zebramoon, votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
+        text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe Zebramoon. Retrouvez le détail dans votre espace client.`,
       });
     }
     if (status === 'rejected' && selectedBooking.prestataireId) {
@@ -2375,7 +2375,7 @@ async function resolveBooking(status) {
         if (prestataireSnap.exists() && prestataireSnap.data().email) {
           queueEmail({
             to: prestataireSnap.data().email,
-            subject: `CleanFlow — dossier à corriger · Réf ${selectedBooking.id.slice(0, 6).toUpperCase()}`,
+            subject: `Zebramoon, dossier à corriger · Réf ${selectedBooking.id.slice(0, 6).toUpperCase()}`,
             text: `Le dossier de ${selectedBooking.propertyAddress || 'la mission'} (${formatShortDate(selectedBooking.scheduledDate)}) a été renvoyé pour correction. Note de l’équipe : ${note}. Corrigez les photos puis re-soumettez depuis votre interface.`,
           });
         }
@@ -2422,17 +2422,17 @@ onAuthStateChanged(auth, async user => {
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe CleanFlow. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Zebramoon. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
       await signOut(auth);
       return;
     }
     if (accountStatus === 'suspended') {
-      authNotice = { message: 'Votre accès a été suspendu par l’équipe CleanFlow. Contactez-nous pour en savoir plus.', type: '' };
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe Zebramoon. Contactez-nous pour en savoir plus.', type: '' };
       await signOut(auth);
       return;
     }
     if (accountStatus !== 'approved') {
-      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe CleanFlow si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Zebramoon si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);
       return;
     }
@@ -2528,7 +2528,7 @@ function buildAccessRequestCard(req) {
   card.className = 'task-card';
   const title = document.createElement('div');
   title.className = 'task-title';
-  title.textContent = `${ROLE_LABELS[req.role] || req.role} — ${req.name || '(sans nom)'}`;
+  title.textContent = `${ROLE_LABELS[req.role] || req.role}, ${req.name || '(sans nom)'}`;
   const meta = document.createElement('div');
   meta.className = 'task-meta';
   meta.textContent = `${req.email || ''} · ${req.phone || ''}`;
@@ -2624,7 +2624,7 @@ requestForm.addEventListener('submit', async event => {
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe CleanFlow va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+    setAuthMessage('Demande envoyée. L’équipe Zebramoon va la vérifier, vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }

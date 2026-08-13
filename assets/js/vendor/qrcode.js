@@ -2296,5 +2296,5 @@ var qrcode = function() {
     return qrcode;
 }));
 
-// CleanFlow: exposé comme module ES (données = URL ASCII, encodage par défaut OK).
+// Zebramoon: exposé comme module ES (données = URL ASCII, encodage par défaut OK).
 export default qrcode;

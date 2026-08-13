@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>CleanFlow — Livreur</title>
+<title>Zebramoon, Livreur</title>
 <link rel="icon" href="../assets/fan-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 <div class="app-wrap">
   <div class="top-row">
     <div>
-      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil CleanFlow"><span class="k">Clean</span>Flow</a></div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;" aria-label="Retour à l’accueil Zebramoon"><span class="k">Zebra</span>moon</a></div>
       <div class="role-tag">Interface livreur</div>
     </div>
     <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
@@ -27,7 +27,7 @@
   <div class="card hidden" id="authScreen">
     <div class="eyebrow">Accès réservé</div>
     <h1>Connexion livreur</h1>
-    <p>Espace réservé au service linge. L’accès se fait sur demande, vérifiée et approuvée par l’équipe CleanFlow.</p>
+    <p>Espace réservé au service linge. L’accès se fait sur demande, vérifiée et approuvée par l’équipe Zebramoon.</p>
     <div id="authError" class="status-banner hidden" role="alert"></div>
     <form id="signInForm">
       <div class="form-row"><label for="signInEmail">Email</label><input id="signInEmail" type="email" autocomplete="email" required></div>
@@ -37,7 +37,7 @@
       <div class="note-box"><a href="#" id="switchToRequest">Demander un accès livreur</a></div>
     </form>
     <form id="requestForm" class="hidden">
-      <p>Votre demande sera vérifiée par l’équipe CleanFlow avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
+      <p>Votre demande sera vérifiée par l’équipe Zebramoon avant l’activation du compte. Si un code d’invitation vous a été transmis, indiquez-le : il permet de confirmer votre identité.</p>
       <div class="form-cols">
         <div class="form-row"><label for="requestName">Nom</label><input id="requestName" type="text" required></div>
         <div class="form-row"><label for="requestPhone">Téléphone</label><input id="requestPhone" type="tel" required></div>
@@ -46,7 +46,7 @@
         <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
         <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
       </div>
-      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par CleanFlow)</label><input id="requestCode" type="text"></div>
+      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Zebramoon)</label><input id="requestCode" type="text"></div>
       <button class="btn primary" type="submit">Envoyer la demande</button>
       <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte, me connecter</a></div>
     </form>

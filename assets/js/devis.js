@@ -1,4 +1,4 @@
-// CleanFlow — devis en ligne public (sans compte). Auth anonyme pour lire les
+// Zebramoon, devis en ligne public (sans compte). Auth anonyme pour lire les
 // tarifs/catalogue et enregistrer le prospect.
 import {
   auth,
@@ -144,12 +144,12 @@ function renderSupplements() {
         cb.checked = (selectedExtras[item.id] || 0) > 0;
         cb.onchange = () => { if (cb.checked && basis > 0) selectedExtras[item.id] = basis; else delete selectedExtras[item.id]; };
         const span = document.createElement('span');
-        span.textContent = `${item.name} — ${item.priceTTC || 0}€ TTC × ${basis} ${item.unit === 'bed' ? 'lit(s)' : 'voyageur(s)'}`;
+        span.textContent = `${item.name}, ${item.priceTTC || 0}€ TTC × ${basis} ${item.unit === 'bed' ? 'lit(s)' : 'voyageur(s)'}`;
         row.append(cb, span);
       } else {
         const span = document.createElement('span');
         span.style.flex = '1';
-        span.textContent = `${item.name} — ${item.priceTTC || 0}€ TTC / unité`;
+        span.textContent = `${item.name}, ${item.priceTTC || 0}€ TTC / unité`;
         const qty = document.createElement('input');
         qty.type = 'number'; qty.min = '0'; qty.step = '1'; qty.value = selectedExtras[item.id] || 0;
         qty.style.cssText = 'width:70px;text-align:center;';
@@ -187,7 +187,7 @@ function renderResult() {
   const breakdown = $('wBreakdown');
   const P = getPricing();
 
-  if (!quote) { breakdown.innerHTML = '<div class="pb-line pb-warn"><span>Indiquez la surface pour calculer.</span><b></b></div>'; $('wTotal').textContent = '—'; return; }
+  if (!quote) { breakdown.innerHTML = '<div class="pb-line pb-warn"><span>Indiquez la surface pour calculer.</span><b></b></div>'; $('wTotal').textContent = ', '; return; }
   if (quote.custom) {
     breakdown.innerHTML = '<div class="pb-line pb-warn"><span>Surface > 250 m² : devis sur-mesure. Envoyez votre demande, l\'équipe vous recontacte.</span><b></b></div>';
     $('wTotal').textContent = 'Sur devis'; $('wTaxCreditBox').innerHTML = ''; $('wSavings').innerHTML = '';
@@ -201,7 +201,7 @@ function renderResult() {
   const rows = [[`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${String(quote.hours).replace('.', ',')} h × ${quote.hourlyRate}€/h`, quote.prestation]];
   if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''}`, quote.kitsTotal]);
   extras.forEach(e => rows.push([`${e.name}${e.qty > 1 ? ` × ${e.qty}` : ''}`, e.lineHT]));
-  if (quote.commission) rows.push(['Commission CleanFlow', quote.commission]);
+  if (quote.commission) rows.push(['Commission Zebramoon', quote.commission]);
   if (quote.travel) rows.push(['Frais de déplacement', quote.travel]);
   rows.push(['Total HT', finalHT, 'pb-total']);
   rows.push([`TVA (${Math.round(quote.vatRate * 100)} %)`, vat]);
@@ -243,8 +243,8 @@ function renderResult() {
       <div class="stat-grid">
         <div class="stat"><b>${revenue.toLocaleString('fr-FR')}€</b><span>Revenus locatifs</span></div>
         <div class="stat"><b>${conciergerie.toLocaleString('fr-FR')}€</b><span>Conciergerie classique</span></div>
-        <div class="stat"><b>${cleanflowAnnual.toLocaleString('fr-FR')}€</b><span>Avec CleanFlow</span></div>
-        <div class="stat"><b>${economie > 0 ? economie.toLocaleString('fr-FR') + '€' : '—'}</b><span>${economie > 0 ? `Économie (${pct} %)` : 'Avantage croissant'}</span></div>
+        <div class="stat"><b>${cleanflowAnnual.toLocaleString('fr-FR')}€</b><span>Avec Zebramoon</span></div>
+        <div class="stat"><b>${economie > 0 ? economie.toLocaleString('fr-FR') + '€' : ', '}</b><span>${economie > 0 ? `Économie (${pct} %)` : 'Avantage croissant'}</span></div>
       </div>
       <div class="note-box">Hypothèse : commission conciergerie 22 %. Estimation indicative.</div>`;
   } else {
@@ -267,10 +267,10 @@ $('wSubmitBtn').addEventListener('click', async () => {
   let ttc = 0;
   if (quote && !quote.custom) { const fh = quote.total + extrasHT; ttc = fh + Math.round(fh * quote.vatRate); }
   const address = `${$('wAddress').value.trim()}${$('wCity').value.trim() ? ', ' + $('wCity').value.trim() : ''} ${$('wPostal').value.trim()}`.trim();
-  const note = `Devis en ligne — ${l.type}, ${l.surface} m², ${l.beds} lit(s), ${l.bathrooms} sdb, ${l.bedrooms} chambre(s), ${l.guests} voyageur(s). Service ${l.service}. ${extras.length ? 'Suppléments : ' + extras.map(e => `${e.name}×${e.qty}`).join(', ') + '.' : ''} Total ${ttc || 'sur devis'}€ TTC.`;
+  const note = `Devis en ligne, ${l.type}, ${l.surface} m², ${l.beds} lit(s), ${l.bathrooms} sdb, ${l.bedrooms} chambre(s), ${l.guests} voyageur(s). Service ${l.service}. ${extras.length ? 'Suppléments : ' + extras.map(e => `${e.name}×${e.qty}`).join(', ') + '.' : ''} Total ${ttc || 'sur devis'}€ TTC.`;
 
   if (!authOk) {
-    setStatus('Envoi indisponible pour le moment. Écrivez-nous à ' + TEAM_EMAIL + ' — votre devis reste téléchargeable en PDF.', 'error');
+    setStatus('Envoi indisponible pour le moment. Écrivez-nous à ' + TEAM_EMAIL + ', votre devis reste téléchargeable en PDF.', 'error');
     return;
   }
   try {
@@ -280,10 +280,10 @@ $('wSubmitBtn').addEventListener('click', async () => {
     }), 15000));
     queueEmail({
       to: TEAM_EMAIL,
-      subject: `CleanFlow — nouveau devis en ligne · ${name}`,
+      subject: `Zebramoon, nouveau devis en ligne · ${name}`,
       text: `${name} · ${email} · ${$('wPhone').value.trim()}\n${address}\n${note}`,
     });
-    setStatus('Merci ! Votre demande est envoyée. L\'équipe CleanFlow vous recontacte rapidement.', 'success');
+    setStatus('Merci ! Votre demande est envoyée. L\'équipe Zebramoon vous recontacte rapidement.', 'success');
     $('wSubmitBtn').disabled = true;
   } catch (err) {
     setStatus(`Envoi impossible : ${authErrorMessage(err)}`, 'error');

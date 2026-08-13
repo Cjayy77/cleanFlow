@@ -1,4 +1,4 @@
-// CleanFlow — interface prestataire : missions disponibles, photos, incidents.
+// Zebramoon, interface prestataire : missions disponibles, photos, incidents.
 import {
   auth,
   db,
@@ -120,7 +120,7 @@ function countUploadedPhotos() {
 function renderAssignedList() {
   assignedList.innerHTML = '';
   if (assignedBookings.length === 0) {
-    assignedList.innerHTML = '<div class="empty-state">Aucune mission ne vous est assignée pour le moment. L’équipe CleanFlow vous attribue vos missions.</div>';
+    assignedList.innerHTML = '<div class="empty-state">Aucune mission ne vous est assignée pour le moment. L’équipe Zebramoon vous attribue vos missions.</div>';
     return;
   }
   assignedBookings.forEach(booking => {
@@ -167,7 +167,7 @@ function renderRatings() {
   ratingSummary.innerHTML = '';
   ratingList.innerHTML = '';
   if (ratedBookings.length === 0) {
-    ratingSummary.innerHTML = '<div class="empty-state">Aucune évaluation pour le moment. Les clients notent la prestation une fois vérifiée par l’équipe CleanFlow.</div>';
+    ratingSummary.innerHTML = '<div class="empty-state">Aucune évaluation pour le moment. Les clients notent la prestation une fois vérifiée par l’équipe Zebramoon.</div>';
     return;
   }
   const average = ratedBookings.reduce((sum, b) => sum + b.rating, 0) / ratedBookings.length;
@@ -204,7 +204,7 @@ function renderRatings() {
   });
 }
 
-// Compta du prestataire : ce que CleanFlow lui verse par mission (base fixée
+// Compta du prestataire : ce que Zebramoon lui verse par mission (base fixée
 // par l'équipe + bonus/malus). Le paiement effectif se fait hors application.
 function renderMyCompta() {
   if (!myComptaSummary) return;
@@ -226,7 +226,7 @@ function renderMyCompta() {
   myComptaSummary.appendChild(summary);
   const note = document.createElement('div');
   note.className = 'task-meta';
-  note.textContent = 'Rémunération fixée par l’équipe CleanFlow. Le règlement se fait hors application.';
+  note.textContent = 'Rémunération fixée par l’équipe Zebramoon. Le règlement se fait hors application.';
   myComptaSummary.appendChild(note);
 
   if (allMyBookings.length === 0) {
@@ -285,7 +285,7 @@ function renderActiveBooking() {
   if (activeBooking.status === 'rejected' && activeBooking.adminNote) {
     const note = document.createElement('div');
     note.className = 'status-banner';
-    note.textContent = `Dossier renvoyé par CleanFlow : ${activeBooking.adminNote}`;
+    note.textContent = `Dossier renvoyé par Zebramoon : ${activeBooking.adminNote}`;
     activeBookingContainer.appendChild(note);
   }
 
@@ -337,7 +337,7 @@ function renderActiveBooking() {
   button.className = 'btn gold';
   button.type = 'button';
   button.textContent = activeBooking.status === 'submitted'
-    ? 'Dossier envoyé, en attente de vérification CleanFlow'
+    ? 'Dossier envoyé, en attente de vérification Zebramoon'
     : `Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`;
   button.disabled = !canUpload || count < PHOTO_SLOTS.length;
   button.onclick = async () => {
@@ -346,7 +346,7 @@ function renderActiveBooking() {
         withTimeout(updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' }), 15000));
       queueEmail({
         to: TEAM_EMAIL,
-        subject: `CleanFlow — dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+        subject: `Zebramoon, dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
         text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · soumis par ${currentUser.name || currentUser.email}. À contrôler dans /admin/.`,
       });
     } catch (e) {
@@ -390,12 +390,12 @@ function renderActiveBooking() {
           withTimeout(updateDoc(doc(db, 'bookings', declinedId), { status: 'pending', prestataireId: null }), 15000));
         queueEmail({
           to: TEAM_EMAIL,
-          subject: `CleanFlow — mission déclinée · Réf ${declinedId.slice(0, 6).toUpperCase()}`,
+          subject: `Zebramoon, mission déclinée · Réf ${declinedId.slice(0, 6).toUpperCase()}`,
           text: `${declinedRef} · déclinée par ${currentUser.name || currentUser.email}. À réattribuer dans /admin/.`,
         });
-        setWorkStatus('Mission déclinée. L’équipe CleanFlow la réattribuera.', 'success');
+        setWorkStatus('Mission déclinée. L’équipe Zebramoon la réattribuera.', 'success');
       } catch (e) {
-        console.error('Décliner mission — échec:', e);
+        console.error('Décliner mission, échec:', e);
         setWorkStatus(`Impossible de décliner la mission : ${authErrorMessage(e)}`);
       }
     };
@@ -454,17 +454,17 @@ onAuthStateChanged(auth, async user => {
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe CleanFlow. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Zebramoon. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
       await signOut(auth);
       return;
     }
     if (accountStatus === 'suspended') {
-      authNotice = { message: 'Votre accès a été suspendu par l’équipe CleanFlow. Contactez-nous pour en savoir plus.', type: '' };
+      authNotice = { message: 'Votre accès a été suspendu par l’équipe Zebramoon. Contactez-nous pour en savoir plus.', type: '' };
       await signOut(auth);
       return;
     }
     if (accountStatus !== 'approved') {
-      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe CleanFlow si vous pensez qu’il s’agit d’une erreur.', type: '' };
+      authNotice = { message: 'Votre demande d’accès a été refusée. Contactez l’équipe Zebramoon si vous pensez qu’il s’agit d’une erreur.', type: '' };
       await signOut(auth);
       return;
     }
@@ -532,11 +532,11 @@ incidentForm.addEventListener('submit', async event => {
     });
     queueEmail({
       to: TEAM_EMAIL,
-      subject: `CleanFlow — incident signalé · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
-      text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · ${type} — « ${description} » signalé par ${currentUser.name || currentUser.email}.${file ? ' (photo jointe)' : ''} À traiter dans /admin/.`,
+      subject: `Zebramoon, incident signalé · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+      text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · ${type}, « ${description} » signalé par ${currentUser.name || currentUser.email}.${file ? ' (photo jointe)' : ''} À traiter dans /admin/.`,
     });
     incidentForm.reset();
-    setIncidentMessage('Signalement envoyé à l’équipe CleanFlow.', 'success');
+    setIncidentMessage('Signalement envoyé à l’équipe Zebramoon.', 'success');
   } catch (err) {
     setIncidentMessage(`Impossible d’envoyer le signalement : ${storageErrorMessage(err)}`, 'error');
   }
@@ -570,7 +570,7 @@ requestForm.addEventListener('submit', async event => {
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe CleanFlow va la vérifier — vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+    setAuthMessage('Demande envoyée. L’équipe Zebramoon va la vérifier, vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }
