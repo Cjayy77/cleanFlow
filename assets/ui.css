@@ -36,7 +36,6 @@ a{ color:var(--pink); }
 .top-row .btn.ghost:hover:not(:disabled){ background:rgba(255,255,255,0.18); }
 .top-row .btn.ghost:active:not(:disabled){ background:rgba(255,255,255,0.06); }
 .brand{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:26px; letter-spacing:-0.01em; color:var(--white); }
-.brand .k{ color: var(--pink-soft); }
 .role-tag{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:rgba(255,255,255,0.62); margin-top:5px; }
 
 .eyebrow{ display:inline-block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; color:var(--pink); line-height:1; margin-bottom:14px; }
