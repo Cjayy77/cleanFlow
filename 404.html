@@ -17,9 +17,8 @@
   body{ font-family:'Poppins', system-ui, sans-serif; color:var(--ink); background:var(--white);
     min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:32px; line-height:1.6; }
   .card{ max-width:520px; text-align:center; }
-  .brand{ display:inline-flex; align-items:center; gap:10px; font-size:22px; font-weight:800; letter-spacing:-0.01em; margin-bottom:40px; }
+  .brand{ display:inline-flex; align-items:center; gap:10px; font-size:22px; font-weight:800; letter-spacing:-0.01em; margin-bottom:40px; color:var(--pink); }
   .brand img{ width:30px; height:30px; }
-  .brand span{ color:var(--pink); }
   .code{ font-size:96px; font-weight:800; line-height:1; letter-spacing:-0.03em;
     background:linear-gradient(120deg,#E6007E 0%,#8A1DA6 100%); -webkit-background-clip:text; background-clip:text; color:transparent; }
   h1{ font-size:26px; font-weight:700; letter-spacing:-0.02em; margin:18px 0 10px; }
@@ -36,6 +35,7 @@
   @media (prefers-color-scheme: dark){
     body{ background:var(--plum); color:#fff; }
     h1{ color:#fff; }
+    .brand{ color:#fff; }
     .btn.ghost{ background:rgba(255,255,255,.06); color:#fff; border-color:rgba(255,255,255,.14); }
   }
 </style>
