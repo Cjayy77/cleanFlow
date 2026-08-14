@@ -42,6 +42,7 @@
   body{ font-family:'Plus Jakarta Sans', sans-serif; color:var(--ink); background:var(--white); font-size:16px; line-height:1.6; overflow-x:hidden; }
   .wrap{ max-width: 1160px; margin:0 auto; padding: 0 32px; }
   h1,h2,h3,h4{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; letter-spacing:-0.02em; line-height:1.1; color:var(--ink); }
+  h1, .sec-head h2, .verify-grid h3, .sim-outer h3, .cta-card h2{ font-weight:800; letter-spacing:-0.03em; }
   a{ color:inherit; }
   ::selection{ background:var(--pink); color:#fff; }
 
@@ -120,17 +121,28 @@
   .hero-stat b{ display:block; font-size:28px; font-weight:800; color:var(--pink); }
   .hero-stat span{ font-size:13px; color:var(--muted); }
   .hero-feather{ display:flex; justify-content:center; }
-  .hero-feather img{ width:100%; max-width:470px; height:auto; }
-  /* Placé après la règle de base pour bien l'emporter : pas de fan sur mobile/tablette */
+  /* Placé après la règle de base pour bien l'emporter : pas de mockup sur mobile/tablette */
   @media (max-width:920px){ .hero-feather{ display:none !important; } }
   img.mark{ object-fit:contain; }
+
+  /* Aperçu du calendrier de réservation, en écho au vrai composant .cal-day de l'espace client */
+  .hero-mock-card{ width:100%; max-width:340px; background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:26px 24px; box-shadow: 0 20px 40px rgba(18,18,58,.14); transform: rotate(-2deg); }
+  .hero-mock-head{ display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:700; color:var(--ink); margin-bottom:18px; }
+  .hero-mock-head span:last-child{ color:var(--muted); font-weight:600; }
+  .hero-mock-grid{ display:flex; gap:7px; margin-bottom:20px; }
+  .hero-mock-grid span{ flex:1; text-align:center; padding:11px 0; border-radius:8px; font-size:13px; font-weight:700; color:var(--muted); background:var(--soft); }
+  .hero-mock-grid span.on{ background:var(--pink); color:#fff; }
+  .hero-mock-confirm{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1E7A4D; background:#E9F6EF; padding:11px 12px; border-radius:9px; }
 
   @keyframes rise{ from{ opacity:0; transform:translateY(22px); } to{ opacity:1; transform:none; } }
   .hero-kicker, .hero h1, .hero p, .hero .btn-row, .hero-stats{ animation: rise .7s ease-out backwards; }
   .hero h1{ animation-delay:.06s; } .hero p{ animation-delay:.14s; } .hero .btn-row{ animation-delay:.22s; } .hero-stats{ animation-delay:.3s; }
 
-  /* SECTIONS */
-  section{ padding: 100px 0; }
+  /* SECTIONS, rythme volontairement inégal plutôt qu'un padding uniforme partout */
+  section{ padding: 96px 0; }
+  #tarifs{ padding-top:76px; }
+  #linge{ padding-top:108px; padding-bottom:84px; }
+  #cta{ padding-top:60px; padding-bottom:112px; }
   .sec-head{ margin-bottom: 56px; max-width:660px; }
   .sec-head h2{ font-size: clamp(30px,4vw,46px); }
   .sec-head p{ margin-top:16px; color:var(--muted); font-size:17px; line-height:1.7; }
@@ -140,6 +152,10 @@
   html.js .reveal:nth-child(2){ transition-delay:.07s; }
   html.js .reveal:nth-child(3){ transition-delay:.14s; }
   html.js .reveal:nth-child(4){ transition-delay:.21s; }
+
+  /* Icônes maison : traits fins, mêmes proportions, pas de bibliothèque générique */
+  .role-icon, .feature-icon{ width:44px; height:44px; border-radius:12px; background:var(--tint); color:var(--pink); display:flex; align-items:center; justify-content:center; margin-bottom:18px; flex-shrink:0; }
+  .role-icon svg, .feature-icon svg{ width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
 
   /* 01, ROLES */
   .roles-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:24px; }
@@ -300,7 +316,13 @@
       </div>
     </div>
     <div class="hero-feather" aria-hidden="true">
-      <img src="assets/fan-mark.svg" alt="">
+      <div class="hero-mock-card">
+        <div class="hero-mock-head"><span>Choisissez une date</span><span>Septembre</span></div>
+        <div class="hero-mock-grid">
+          <span>10</span><span>11</span><span class="on">12</span><span>13</span><span>14</span>
+        </div>
+        <div class="hero-mock-confirm">✓ Ménage confirmé pour le 12 sept.</div>
+      </div>
     </div>
   </div>
 </header>
@@ -315,21 +337,25 @@
     </div>
     <div class="roles-grid">
       <div class="role-card block reveal">
+        <div class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h4v-5h2v5h4a1 1 0 0 0 1-1v-9"/></svg></div>
         <div class="role-num">Client</div>
         <h4>Le propriétaire</h4>
         <p>Ajoute son bien, réserve sur le calendrier et reçoit la confirmation après contrôle qualité.</p>
       </div>
       <div class="role-card block reveal">
+        <div class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7l1.6-2.5h4.8L16 7"/><circle cx="12" cy="13.5" r="3.3"/></svg></div>
         <div class="role-num">Prestataire</div>
         <h4>L'entreprise de ménage</h4>
         <p>Réalise la mission que Zebramoon lui confie et soumet le jeu de photos imposé, pièce par pièce.</p>
       </div>
       <div class="role-card block reveal">
+        <div class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 15.5V8a1 1 0 0 1 1-1h8v8.5"/><path d="M12 10.5h3.5L19 14v2.5h-2"/><circle cx="7.5" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/><path d="M3 15.5h3M9.5 17H14"/></svg></div>
         <div class="role-num">Livreur</div>
         <h4>Le linge</h4>
         <p>Livre le linge propre et récupère le sale, directement dans l'appartement, au même calendrier.</p>
       </div>
       <div class="role-card block reveal">
+        <div class="role-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5 18.5 6v5c0 4.6-3 7.6-6.5 9-3.5-1.4-6.5-4.4-6.5-9V6L12 3.5Z"/><path d="M9 12l2 2 4-4.2"/></svg></div>
         <div class="role-num">Zebramoon</div>
         <h4>Le contrôle</h4>
         <p>Vérifie les photos, confirme la mission au client et reste le point de contact en cas de problème.</p>
@@ -434,14 +460,17 @@
     </div>
     <div class="feature-grid">
       <div class="feature-card reveal">
+        <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="9.5" width="16" height="10.5" rx="1.4"/><path d="M4 13.2h16"/><path d="M12 9.5v10.5"/><path d="M8.7 9.5c-1.5 0-2.6-.9-2.6-2.1 0-1.1.9-1.7 1.9-1.7 1.6 0 3 1.5 3.8 3.8"/><path d="M15.3 9.5c1.5 0 2.6-.9 2.6-2.1 0-1.1-.9-1.7-1.9-1.7-1.6 0-3 1.5-3.8 3.8"/></svg></div>
         <h4>Kits d'accueil et consommables</h4>
         <p>Kits de bienvenue et consommables réassortis à chaque passage, facturés à part et suivis dans votre espace. Le logement est prêt à recevoir le voyageur.</p>
       </div>
       <div class="feature-card reveal">
+        <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20v-6M9.5 20V6M15 20v-9M20 20v-4"/></svg></div>
         <h4>Compte et suivi</h4>
         <p>Historique des interventions, statut de chaque réservation, vue d'ensemble simple.</p>
       </div>
       <div class="feature-card reveal">
+        <div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 20.5V4"/><path d="M6 4.5h11l-2.6 3.5 2.6 3.5H6"/></svg></div>
         <h4>Incidents déclarés, pas cachés</h4>
         <p>Objet cassé ou perdu ? Le prestataire le déclare immédiatement, photo à l'appui. Notre équipe vous contacte avec les détails.</p>
       </div>
