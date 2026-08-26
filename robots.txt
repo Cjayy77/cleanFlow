@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /admin/
+Disallow: /prestataire/
+Disallow: /livreur/
+Disallow: /welcomer/
+
+Sitemap: https://clean-flow-dun.vercel.app/sitemap.xml

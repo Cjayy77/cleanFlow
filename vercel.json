@@ -2,7 +2,7 @@
   "cleanUrls": true,
   "headers": [
     {
-      "source": "/(admin|prestataire|livreur)/(.*)",
+      "source": "/(admin|app|prestataire|livreur|welcomer)/(.*)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     }
   ]

@@ -1,4 +1,4 @@
-/* Zebramoon — styles partagés des quatre interfaces applicatives.
+/* Zebramoon, styles partagés des quatre interfaces applicatives.
    Thème rose : surfaces douces, ombres légères, coins arrondis (aligné sur la landing). */
 :root{
   --pink: #E6007E;
@@ -167,7 +167,7 @@ textarea{ min-height:110px; resize:vertical; }
 .rating-avg-out{ font-size:15px; color:var(--muted); align-self:flex-end; }
 .rating-avg .stars-static{ margin-top:0; }
 
-/* Onglets console admin — une section à la fois, moins de scroll sur mobile */
+/* Onglets console admin, une section à la fois, moins de scroll sur mobile */
 .tabbar{ position:sticky; top:0; z-index:20; display:flex; gap:26px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; background:var(--soft); padding:6px 0 0; margin-bottom:24px; border-bottom:1px solid var(--line); }
 .tabbar::-webkit-scrollbar{ display:none; }
 .tab{ flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; background:none; color:var(--muted); border:none; border-bottom:2px solid transparent; border-radius:0; box-shadow:none; font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:14px; padding:10px 2px 14px; cursor:pointer; white-space:nowrap; transition: color .12s ease-out, border-color .12s ease-out; }
@@ -318,7 +318,7 @@ textarea{ min-height:110px; resize:vertical; }
 .stat-delta.up{ color:var(--ok-ink); }
 .stat-delta.down{ color:var(--danger-ink); }
 .stat-delta.flat{ color:var(--muted); }
-/* Graphique CA mensuel — barres inline, une seule série (magnitude). */
+/* Graphique CA mensuel, barres inline, une seule série (magnitude). */
 .dash-chart-wrap{ margin-top:26px; }
 .dchart{ display:flex; gap:8px; height:170px; }
 .dchart-col{ flex:1; display:flex; flex-direction:column; }
@@ -345,7 +345,7 @@ textarea{ min-height:110px; resize:vertical; }
 .legal .highlight-box p{ color:var(--pink-deep); margin:0; }
 .legal-footer{ margin-top:44px; padding-top:20px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
 
-/* Suivi de réservation — mini-frise de progression (transparence du process) */
+/* Suivi de réservation, mini-frise de progression (transparence du process) */
 .booking-for{ font-size:12px; font-weight:500; color:var(--muted); margin:-4px 0 14px; }
 .steps{ display:flex; margin-top:16px; }
 .step{ flex:1; text-align:center; font-size:11px; color:var(--muted); position:relative; padding-top:18px; }
