@@ -1,4 +1,4 @@
-/* Zebramoon — styles partagés des quatre interfaces applicatives.
+/* Zebramoon, styles partagés des quatre interfaces applicatives.
    Thème rose : surfaces douces, ombres légères, coins arrondis (aligné sur la landing). */
 :root{
   --pink: #E6007E;
@@ -19,13 +19,15 @@
   --ok-ink: #1E7A4D;
   --radius: 16px;
   --radius-sm: 10px;
-  --shadow: 0 16px 38px rgba(18,18,58,.10);
-  --shadow-sm: 0 8px 20px rgba(18,18,58,.07);
+  --shadow: 0 14px 30px rgba(18,18,58,.12);
+  --shadow-sm: 0 6px 16px rgba(18,18,58,.08);
+  --ease: cubic-bezier(.16,1,.3,1);
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
 body{ font-family:'Plus Jakarta Sans', sans-serif; color:var(--ink); background:var(--soft); min-height:100vh; }
 .app-wrap{ max-width: 1140px; margin:0 auto; padding: 30px 20px 70px 20px; }
 h1,h2,h3{ font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; letter-spacing:-0.02em; margin:0 0 12px; }
+h1{ font-weight:800; letter-spacing:-0.03em; }
 h1{ font-size:34px; }
 h2{ font-size:24px; }
 p{ color:var(--muted); line-height:1.6; }
@@ -40,15 +42,15 @@ a{ color:var(--pink); }
 
 .eyebrow{ display:inline-block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; color:var(--pink); line-height:1; margin-bottom:14px; }
 
-.btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:var(--radius-sm); padding:13px 22px; min-height:44px; font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:14px; cursor:pointer; transition: transform .15s ease-out, background .15s ease-out, box-shadow .15s ease-out; }
-.btn.primary{ background:var(--pink); color:var(--white); box-shadow:0 8px 20px rgba(230,0,126,.22); }
-.btn.primary:hover:not(:disabled){ background:var(--pink-deep); }
+.btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; border-radius:var(--radius-sm); padding:13px 22px; min-height:44px; font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:14px; letter-spacing:-0.01em; cursor:pointer; transition: transform .2s var(--ease), background .18s ease-out, box-shadow .2s var(--ease), border-color .18s ease-out; }
+.btn.primary{ background:var(--pink); color:var(--white); box-shadow:0 8px 18px rgba(230,0,126,.24); }
+.btn.primary:hover:not(:disabled){ background:var(--pink-deep); box-shadow:0 10px 22px rgba(184,0,104,.28); }
 .btn.gold{ background:var(--ink); color:var(--white); }
 .btn.gold:hover:not(:disabled){ background:#25254f; }
 .btn.ghost{ background:var(--white); color:var(--ink); border:1.5px solid var(--line); }
 .btn.ghost:hover:not(:disabled){ border-color:var(--pink); color:var(--pink); }
 .btn:hover:not(:disabled){ transform:translateY(-1px); }
-.btn:active:not(:disabled){ transform:translateY(0); }
+.btn:active:not(:disabled){ transform:translateY(0) scale(.97); }
 .btn:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; }
 .btn.loading{ pointer-events:none; opacity:.85; }
 .btn.loading::before{ content:''; width:14px; height:14px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .6s linear infinite; }
@@ -165,7 +167,7 @@ textarea{ min-height:110px; resize:vertical; }
 .rating-avg-out{ font-size:15px; color:var(--muted); align-self:flex-end; }
 .rating-avg .stars-static{ margin-top:0; }
 
-/* Onglets console admin — une section à la fois, moins de scroll sur mobile */
+/* Onglets console admin, une section à la fois, moins de scroll sur mobile */
 .tabbar{ position:sticky; top:0; z-index:20; display:flex; gap:26px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; background:var(--soft); padding:6px 0 0; margin-bottom:24px; border-bottom:1px solid var(--line); }
 .tabbar::-webkit-scrollbar{ display:none; }
 .tab{ flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; background:none; color:var(--muted); border:none; border-bottom:2px solid transparent; border-radius:0; box-shadow:none; font-family:'Plus Jakarta Sans', sans-serif; font-weight:700; font-size:14px; padding:10px 2px 14px; cursor:pointer; white-space:nowrap; transition: color .12s ease-out, border-color .12s ease-out; }
@@ -316,7 +318,7 @@ textarea{ min-height:110px; resize:vertical; }
 .stat-delta.up{ color:var(--ok-ink); }
 .stat-delta.down{ color:var(--danger-ink); }
 .stat-delta.flat{ color:var(--muted); }
-/* Graphique CA mensuel — barres inline, une seule série (magnitude). */
+/* Graphique CA mensuel, barres inline, une seule série (magnitude). */
 .dash-chart-wrap{ margin-top:26px; }
 .dchart{ display:flex; gap:8px; height:170px; }
 .dchart-col{ flex:1; display:flex; flex-direction:column; }
@@ -343,7 +345,7 @@ textarea{ min-height:110px; resize:vertical; }
 .legal .highlight-box p{ color:var(--pink-deep); margin:0; }
 .legal-footer{ margin-top:44px; padding-top:20px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
 
-/* Suivi de réservation — mini-frise de progression (transparence du process) */
+/* Suivi de réservation, mini-frise de progression (transparence du process) */
 .booking-for{ font-size:12px; font-weight:500; color:var(--muted); margin:-4px 0 14px; }
 .steps{ display:flex; margin-top:16px; }
 .step{ flex:1; text-align:center; font-size:11px; color:var(--muted); position:relative; padding-top:18px; }
