@@ -26,14 +26,16 @@
   --ok-bg: #E9EFDE;
   --ok-ink: #4C6B28;
 
-  /* Type: editorial serif for statements, grotesk for everything operational */
-  --font-display: 'Fraunces', 'Iowan Old Style', 'Georgia', serif;
+  /* Type: one grotesk family, Switzer carries statements and headlines,
+     Manrope carries body copy, UI and data. */
+  --font-display: 'Switzer', 'Manrope', system-ui, -apple-system, sans-serif;
   --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
 
-  /* Geometry, controlled rather than pill-shaped */
-  --radius: 3px;
-  --radius-sm: 2px;
-  --radius-md: 6px;
+  /* Geometry: soft enough to feel tactile, short enough to stay precise.
+     Not a pill, not a right angle. */
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
 
   --shadow: 0 18px 40px rgba(26,22,15,.10);
   --shadow-sm: 0 4px 14px rgba(26,22,15,.08);

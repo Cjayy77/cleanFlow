@@ -1,82 +1,99 @@
-/* Zebramoon, the zebra system. Controlled SVG-free stripe components built
-   from repeating-linear-gradient, reused everywhere the brand needs to show
-   up as more than a color. Use sparingly, see CLAUDE.md Part 11: roughly
-   90% calm editorial design, 10% unmistakable zebra. Do not add stripes to
-   every card, button or background: pick one moment per section. */
+/* Zebramoon, the zebra system. One hand-drawn organic stripe artwork
+   (zebra-organic.svg, irregular tapering paths, not a repeating pattern)
+   reused everywhere via CSS mask: mask-position crops a different region
+   of the same artwork per placement, and background-color recolors it
+   (ink, soft pink, or a near-transparent white) without needing separate
+   files. Use sparingly, see CLAUDE.md Part 11: roughly 90% calm editorial
+   design, 10% unmistakable zebra. Don't add stripes to every card, button
+   or background: pick one moment per section. */
 
-/* ZebraDivider: a short banded seam marking a transition between sections.
-   Deliberately not full-bleed, sits to one side rather than centered. */
+.zebra-mask{
+  -webkit-mask-image: url('zebra-organic.svg');
+  mask-image: url('zebra-organic.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 260% auto;
+  mask-size: 260% auto;
+  background-color: var(--ink);
+}
+.zebra-mask.pink{ background-color: var(--pink-soft); }
+.zebra-mask.ghost{ background-color: rgba(255,255,255,.55); }
+
+/* ZebraDivider: a short irregular band marking a transition between
+   sections. Deliberately not full-bleed, sits to one side rather than
+   centered, and never repeats identically twice. */
 .zebra-divider{
   position:relative;
-  height:30px;
-  width:168px;
+  height:34px;
+  width:190px;
   overflow:hidden;
 }
 .zebra-divider::before{
   content:'';
   position:absolute; inset:0;
-  background:repeating-linear-gradient(58deg,
-    var(--ink) 0 6px, transparent 6px 14px,
-    var(--pink) 14px 19px, transparent 19px 27px);
+  -webkit-mask-image: url('zebra-thin.svg');
+  mask-image: url('zebra-thin.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  background-color: var(--ink);
   transform-origin:left center;
 }
-html.js .zebra-divider::before{ transform:scaleX(0); transition:transform .8s var(--ease); }
+html.js .zebra-divider::before{ transform:scaleX(0); transition:transform .9s var(--ease); }
 html.js .reveal.in .zebra-divider::before{ transform:scaleX(1); }
 
-/* ZebraUnderline: replaces a plain <em> underline under a headline word with
-   a broken stripe rule instead of a solid bar. */
+/* ZebraUnderline: a thin irregular stroke under a headline word instead of
+   a mechanical straight rule. */
 .zebra-underline{ position:relative; z-index:0; display:inline-block; }
 .zebra-underline::after{
   content:'';
-  position:absolute; left:-2%; right:-4%; bottom:-0.1em; height:0.15em;
-  background:repeating-linear-gradient(90deg, var(--pink) 0 0.26em, transparent 0.26em 0.5em);
+  position:absolute; left:-2%; right:-2%; bottom:-0.2em; height:0.34em;
+  -webkit-mask-image: url('zebra-thin.svg');
+  mask-image: url('zebra-thin.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  background-color: var(--pink);
   opacity:.9; z-index:-1;
 }
 
-/* ZebraMarker: a small stripe glyph standing in for a bullet or status dot,
-   used in process lists and portal timelines instead of a plain circle. */
-.zebra-marker{
-  display:inline-block; width:15px; height:9px; flex-shrink:0;
-  background:repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 4px);
-}
-.zebra-marker.pink{ background:repeating-linear-gradient(90deg, var(--pink) 0 2px, transparent 2px 4px); }
-.zebra-marker.on-dark{ background:repeating-linear-gradient(90deg, var(--pink-soft) 0 2px, transparent 2px 4px); }
-
-/* ZebraPattern: very low-opacity texture for a small contained area (a chip,
-   a stat tile corner). Never a full section background. */
-.zebra-pattern{ position:relative; }
-.zebra-pattern::before{
-  content:'';
-  position:absolute; inset:0; opacity:.06; pointer-events:none;
-  background:repeating-linear-gradient(58deg, var(--ink) 0 3px, transparent 3px 9px);
-}
-
-/* ZebraOverlay / ZebraMask: the signature move, a striped block that crosses
-   a photograph and bleeds past its edge so the image keeps going in the gaps
-   between stripes. The parent needs position:relative + overflow:visible;
-   the photo itself stays clipped, this pseudo-element sits alongside it. */
+/* ZebraOverlay: the signature move, an irregular striped shape crossing a
+   photograph and bleeding past its edge so the image keeps going through
+   the gaps. The parent needs position:relative + overflow:visible; the
+   photo itself stays clipped, this pseudo-element sits alongside it. */
 .photo-frame{ position:relative; }
 .photo-frame::after{
   content:'';
   position:absolute;
   pointer-events:none;
   z-index:2;
-  background:repeating-linear-gradient(58deg,
-    var(--ink) 0 9px, transparent 9px 20px,
-    var(--pink) 20px 28px, transparent 28px 40px);
+  -webkit-mask-image: url('zebra-organic.svg');
+  mask-image: url('zebra-organic.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  background-color: var(--ink);
 }
-.photo-frame.zebra-br::after{ width:38%; aspect-ratio:1/2.4; right:-8%; bottom:10%; }
-.photo-frame.zebra-tl::after{ width:34%; aspect-ratio:1/2.2; left:-7%; top:-9%; }
-.photo-frame.zebra-bl::after{ width:34%; aspect-ratio:1/2.2; left:-7%; bottom:-9%; transform:scaleX(-1); }
-.photo-frame.zebra-tr::after{ width:38%; aspect-ratio:1/2.4; right:-8%; top:8%; transform:scaleX(-1); }
+.photo-frame.zebra-br::after{ width:46%; aspect-ratio:2/3; right:-10%; bottom:6%;
+  -webkit-mask-size:190% auto; mask-size:190% auto; -webkit-mask-position:30% 20%; mask-position:30% 20%; }
+.photo-frame.zebra-tl::after{ width:42%; aspect-ratio:2/3; left:-9%; top:-8%;
+  -webkit-mask-size:210% auto; mask-size:210% auto; -webkit-mask-position:60% 55%; mask-position:60% 55%; }
+.photo-frame.zebra-bl::after{ width:42%; aspect-ratio:2/3; left:-9%; bottom:-8%;
+  -webkit-mask-size:200% auto; mask-size:200% auto; -webkit-mask-position:15% 70%; mask-position:15% 70%; transform:scaleX(-1); }
+.photo-frame.zebra-tr::after{ width:46%; aspect-ratio:2/3; right:-10%; top:5%;
+  -webkit-mask-size:180% auto; mask-size:180% auto; -webkit-mask-position:70% 10%; mask-position:70% 10%; transform:scaleX(-1); }
+.photo-frame.zebra-br.pink::after, .photo-frame.zebra-tl.pink::after,
+.photo-frame.zebra-bl.pink::after, .photo-frame.zebra-tr.pink::after{ background-color:var(--pink); }
+.photo-frame.zebra-br.ghost::after, .photo-frame.zebra-tl.ghost::after,
+.photo-frame.zebra-bl.ghost::after, .photo-frame.zebra-tr.ghost::after{ background-color:rgba(255,255,255,.6); }
+
 html.js .photo-frame.zebra-br::after,
 html.js .photo-frame.zebra-tl::after,
 html.js .photo-frame.zebra-bl::after,
-html.js .photo-frame.zebra-tr::after{ opacity:0; transform:translateY(14px); transition:opacity .7s var(--ease), transform .7s var(--ease); }
-html.js .photo-frame.zebra-bl::after{ transform:scaleX(-1) translateY(14px); }
-html.js .photo-frame.zebra-tr::after{ transform:scaleX(-1) translateY(14px); }
-/* the reveal state can sit on an ancestor of .photo-frame, or on
-   .photo-frame itself: cover both wirings. */
+html.js .photo-frame.zebra-tr::after{ opacity:0; transform:translateY(16px); transition:opacity .8s var(--ease), transform .8s var(--ease); }
+html.js .photo-frame.zebra-bl::after{ transform:scaleX(-1) translateY(16px); }
+html.js .photo-frame.zebra-tr::after{ transform:scaleX(-1) translateY(16px); }
 html.js .reveal.in .photo-frame::after,
 html.js .photo-frame.reveal.in::after{ opacity:1; transform:translateY(0); }
 html.js .reveal.in .photo-frame.zebra-bl::after,
@@ -88,10 +105,12 @@ html.js .photo-frame.zebra-tr.reveal.in::after{ transform:scaleX(-1) translateY(
   .photo-frame.zebra-br::after,
   .photo-frame.zebra-tl::after,
   .photo-frame.zebra-bl::after,
-  .photo-frame.zebra-tr::after{ width:26%; }
+  .photo-frame.zebra-tr::after{ width:32%; }
 }
 
 @media (prefers-reduced-motion: reduce){
   .zebra-divider::before,
   .photo-frame::after{ transition:none !important; transform:none !important; opacity:1 !important; }
+  .photo-frame.zebra-bl::after,
+  .photo-frame.zebra-tr::after{ transform:scaleX(-1) !important; }
 }
