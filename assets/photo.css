@@ -1,0 +1,75 @@
+/* Zebramoon, photography system. No network access in this build, so every
+   .photo is a placeholder: a warm documentary-toned block standing in for a
+   real photograph, captioned like a contact sheet so it reads as
+   art-directed rather than broken. Swapping in a real photo later means
+   dropping an <img> inside .photo-media (or setting it as the background)
+   and removing .photo-placeholder, nothing else in the markup changes.
+   See CLAUDE.md Parts 12-15. */
+
+.photo{
+  position:relative;
+  overflow:hidden;
+  background:var(--soft);
+  isolation:isolate;
+}
+.photo-media{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+
+/* Duotone placeholder tones, rotate between sections so the page doesn't
+   read as one repeated block. Real photography would replace these with
+   object-fit:cover images and the tones would come from the photos themselves. */
+.photo.tone-a .photo-placeholder{ background:
+    radial-gradient(120% 140% at 20% 15%, rgba(230,0,126,.16), transparent 55%),
+    linear-gradient(155deg, #EDE3CF 0%, #C9B896 60%, #8C7A5C 100%); }
+.photo.tone-b .photo-placeholder{ background:
+    radial-gradient(120% 140% at 80% 10%, rgba(230,0,126,.14), transparent 55%),
+    linear-gradient(160deg, #2B2517 0%, #1A160F 65%, #100D08 100%); }
+.photo.tone-c .photo-placeholder{ background:
+    radial-gradient(110% 130% at 30% 85%, rgba(230,0,126,.12), transparent 55%),
+    linear-gradient(150deg, #DCD2BC 0%, #AEA07E 55%, #756845 100%); }
+.photo.tone-d .photo-placeholder{ background:
+    radial-gradient(120% 120% at 70% 90%, rgba(255,255,255,.14), transparent 55%),
+    linear-gradient(145deg, #B0862A 0%, #7A5D22 55%, #4C3B18 100%); }
+
+.photo-placeholder{
+  position:absolute; inset:0;
+  display:flex; align-items:flex-end;
+}
+.photo-placeholder::after{
+  /* grain, breaks up the flat gradient so it reads photographic, not vector */
+  content:'';
+  position:absolute; inset:0;
+  opacity:.5;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+.photo-cap{
+  position:relative; z-index:1;
+  margin:0 0 14px 14px;
+  padding:5px 10px;
+  font-family:var(--font-body);
+  font-size:11px; font-weight:700; letter-spacing:.02em;
+  color:var(--ink);
+  background:var(--paper);
+  max-width:calc(100% - 28px);
+}
+.photo.tone-b .photo-cap, .photo.tone-d .photo-cap{ color:var(--paper); background:rgba(255,255,255,.14); backdrop-filter:blur(2px); }
+
+/* Crops, deliberately inconsistent rather than one radius/ratio everywhere */
+.photo.ratio-tall{ aspect-ratio:3/4; }
+.photo.ratio-wide{ aspect-ratio:16/10; }
+.photo.ratio-square{ aspect-ratio:1/1; }
+.photo.ratio-portrait{ aspect-ratio:4/5; }
+.photo.ratio-full{ position:absolute; inset:0; aspect-ratio:auto; }
+.photo.round{ border-radius:var(--radius-md); }
+
+/* Evidence variant: verification photo grid, looks like an operational
+   record rather than ambient documentary photography. */
+.photo.evidence{ background:var(--ink); }
+.photo.evidence .photo-placeholder{ background:
+    repeating-linear-gradient(115deg, #262117 0 3px, #1A160F 3px 7px); }
+.photo.evidence .photo-cap{ background:none; color:var(--pink-soft); font-family:var(--font-body); }
+
+@media (max-width:640px){
+  .photo.ratio-wide{ aspect-ratio:4/3; }
+}

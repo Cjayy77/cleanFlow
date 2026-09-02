@@ -7,45 +7,43 @@
 <title>Page introuvable, Zebramoon</title>
 <link rel="icon" href="/assets/moon-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,440;9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/tokens.css">
 <style>
-  :root{
-    --pink:#E6007E; --pink-deep:#B80068; --ink:#12123A; --muted:#6A6B85;
-    --white:#FFFFFF; --soft:#FAF6FB; --line:#ECEAF3; --plum:#221541;
-    --ease: cubic-bezier(.16,1,.3,1);
-  }
   *{ box-sizing:border-box; margin:0; padding:0; }
-  body{ font-family:'Plus Jakarta Sans', system-ui, sans-serif; color:var(--ink); background:var(--white);
+  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory);
     min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:32px; line-height:1.6; }
   .card{ max-width:520px; text-align:center; }
-  .brand{ display:inline-flex; align-items:center; gap:10px; font-size:22px; font-weight:800; letter-spacing:-0.01em; margin-bottom:40px; color:var(--pink); }
-  .brand img{ width:30px; height:30px; }
-  .code{ font-size:96px; font-weight:800; line-height:1; letter-spacing:-0.03em;
-    background:linear-gradient(120deg,#E6007E 0%,#8A1DA6 100%); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  h1{ font-size:26px; font-weight:700; letter-spacing:-0.02em; margin:18px 0 10px; }
+  .brand{ display:inline-flex; align-items:center; gap:10px; font-family:var(--font-display); font-size:21px; font-weight:600; letter-spacing:-0.005em; margin-bottom:40px; color:var(--ink); }
+  .brand img{ width:28px; height:28px; }
+  .brand .k{ color:var(--pink); }
+  .code{ font-family:var(--font-display); font-size:96px; font-weight:600; line-height:1; letter-spacing:-0.02em; color:var(--pink); }
+  h1{ font-family:var(--font-display); font-size:25px; font-weight:600; letter-spacing:-0.01em; margin:18px 0 10px; }
   p{ color:var(--muted); font-size:16px; margin-bottom:32px; }
   .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-  .btn{ text-decoration:none; font-weight:700; font-size:15px; letter-spacing:-0.01em; padding:12px 22px; border-radius:11px; transition:transform .2s var(--ease), background .18s ease-out; display:inline-block; }
-  .btn.primary{ background:var(--pink); color:#fff; box-shadow:0 8px 18px rgba(230,0,126,.22); }
+  .btn{ text-decoration:none; font-weight:700; font-size:15px; letter-spacing:-0.01em; padding:12px 22px; border-radius:var(--radius); transition:transform .2s var(--ease), background .18s ease-out; display:inline-block; }
+  .btn.primary{ background:var(--pink); color:#fff; }
   .btn.primary:hover{ transform:translateY(-1px); background:var(--pink-deep); }
   .btn.primary:active{ transform:translateY(0) scale(.97); }
-  .btn.ghost{ background:var(--soft); color:var(--ink); border:1px solid var(--line); }
+  .btn.ghost{ background:var(--paper); color:var(--ink); border:1px solid var(--line); }
   .btn.ghost:hover{ transform:translateY(-1px); border-color:var(--pink); }
   .btn.ghost:active{ transform:translateY(0) scale(.97); }
   .links{ margin-top:34px; font-size:13px; color:var(--muted); }
   .links a{ color:var(--pink-deep); text-decoration:none; font-weight:600; }
   .links a:hover{ text-decoration:underline; }
   @media (prefers-color-scheme: dark){
-    body{ background:var(--plum); color:#fff; }
-    h1{ color:#fff; }
-    .brand{ color:#fff; }
-    .btn.ghost{ background:rgba(255,255,255,.06); color:#fff; border-color:rgba(255,255,255,.14); }
+    body{ background:var(--charcoal); color:var(--ivory); }
+    h1{ color:var(--ivory); }
+    .brand{ color:var(--ivory); }
+    p{ color:rgba(245,239,227,.7); }
+    .btn.ghost{ background:rgba(245,239,227,.08); color:var(--ivory); border-color:rgba(245,239,227,.18); }
   }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="brand"><img src="/assets/moon-mark.svg" alt="" aria-hidden="true"><div><span>Zebra</span>moon</div></div>
+    <div class="brand"><img src="/assets/moon-mark.svg" alt="" aria-hidden="true"><div><span class="k">Zebra</span>moon</div></div>
     <div class="code">404</div>
     <h1>Cette page a fait le ménage</h1>
     <p>La page que vous cherchez n’existe pas ou a été déplacée. Vérifiez l’adresse, ou revenez à l’accueil.</p>
