@@ -362,7 +362,7 @@ export function openLogementQr(target) {
   <style>
     @page { margin: 20mm; }
     body { font-family:'Manrope', system-ui, -apple-system, sans-serif; color:#1A160F; text-align:center; padding:32px 24px; }
-    .brand { font-family:'Fraunces', Georgia, serif; font-size:26px; font-weight:600; letter-spacing:-0.01em; }
+    .brand { font-family:'Switzer','Manrope',sans-serif; font-size:26px; font-weight:600; letter-spacing:-0.01em; }
     .brand span { color:#E6007E; }
     .sub { color:#6E6656; margin-top:4px; font-size:14px; }
     .qr { display:inline-block; margin:26px auto 14px; padding:18px; border:1px solid #E4DBC7; border-radius:4px; }

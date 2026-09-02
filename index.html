@@ -26,7 +26,8 @@
 <link rel="icon" href="assets/moon-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,440;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/tokens.css">
 <link rel="stylesheet" href="assets/zebra.css">
 <link rel="stylesheet" href="assets/photo.css">
@@ -35,42 +36,49 @@
   html{ scroll-behavior:smooth; }
   body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; }
   .wrap{ max-width: 1180px; margin:0 auto; padding: 0 32px; }
-  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.08; color:var(--ink); }
+  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
   a{ color:inherit; }
   ::selection{ background:var(--pink); color:#fff; }
   img{ max-width:100%; }
 
-  .eyebrow-lead{ display:inline-block; font-family:var(--font-body); font-size:12px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); line-height:1; }
-
   /* NAV, restrained: brand + hamburger on mobile, everything collapses to a
-     panel rather than a floating pill bar (Part 28). */
-  nav{ position:sticky; top:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); }
+     panel rather than a floating pill bar (Part 28). Inverts to the dark
+     palette while a dark section sits underneath it. */
+  nav{ position:sticky; top:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease; }
+  nav.on-dark{ background: rgba(24,20,14,0.86); border-bottom-color: rgba(245,239,227,0.14); }
+  nav.on-dark .brand{ color:var(--ivory); }
+  nav.on-dark .nav-links{ color:rgba(245,239,227,0.72); }
+  nav.on-dark .nav-links a:hover{ color:var(--ivory); }
+  nav.on-dark .nav-login{ color:var(--ivory) !important; }
+  nav.on-dark .nav-toggle span{ background:var(--ivory); }
   .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:0 32px; max-width:1180px; margin:0 auto; height:64px; gap:20px; }
-  .brand{ display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-weight:600; font-size:21px; letter-spacing:-0.01em; color:var(--ink); flex-shrink:0; text-decoration:none; }
+  .brand{ display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-weight:600; font-size:21px; letter-spacing:-0.01em; color:var(--ink); flex-shrink:0; text-decoration:none; transition: color .3s ease; }
   .brand .k{ color:var(--pink); }
-  .nav-links{ display:flex; align-items:center; gap:26px; font-size:14px; font-weight:600; color: var(--muted); }
+  .nav-links{ display:flex; align-items:center; gap:26px; font-size:14px; font-weight:600; color: var(--muted); transition: color .3s ease; }
   .nav-links a{ text-decoration:none; transition: color .15s ease-out; }
   .nav-links a:hover{ color: var(--ink); }
   .nav-login{ color:var(--ink) !important; }
   .nav-cta{ background: var(--pink); color:#fff; font-family:var(--font-body); font-weight:700; font-size:13.5px; padding: 10px 18px; text-decoration:none; border-radius:var(--radius); transition: background .18s ease-out, transform .15s var(--ease); white-space:nowrap; flex-shrink:0; }
   .nav-cta:hover{ background: var(--pink-deep); transform:translateY(-1px); }
   .nav-toggle{ display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:34px; height:34px; padding:0; border:none; background:none; cursor:pointer; flex-shrink:0; }
-  .nav-toggle span{ display:block; width:21px; height:2px; background:var(--ink); border-radius:2px; transition: transform .2s ease-out, opacity .2s ease-out; }
+  .nav-toggle span{ display:block; width:21px; height:2px; background:var(--ink); border-radius:2px; transition: transform .2s ease-out, opacity .2s ease-out, background-color .3s ease; }
   .nav-toggle[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
   .nav-toggle[aria-expanded="true"] span:nth-child(2){ opacity:0; }
   .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
   @media (max-width:860px){
     .nav-toggle{ display:flex; }
     .nav-links{ position:absolute; top:64px; left:0; right:0; display:none; flex-direction:column; align-items:flex-start; gap:2px; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 22px 18px; }
+    nav.on-dark .nav-links{ background:var(--charcoal); }
     .nav-links.open{ display:flex; }
     .nav-links a{ width:100%; padding:12px 0; border-top:1px solid var(--line); }
+    nav.on-dark .nav-links a{ border-top-color:rgba(245,239,227,0.14); }
     .nav-links a:first-child{ border-top:none; }
     .nav-cta{ width:100%; text-align:center; margin-top:6px; }
   }
 
   :focus-visible{ outline:2px solid var(--pink); outline-offset:2px; }
 
-  /* Buttons, controlled geometry rather than pills (Part 29) */
+  /* Buttons: one settled radius, not a pill, not a sharp corner (Part 29) */
   .btn-a{ display:inline-flex; align-items:center; gap:9px; font-family:var(--font-body); font-weight:700; font-size:15px; letter-spacing:-0.005em; padding:14px 24px; text-decoration:none; border:none; border-radius:var(--radius); cursor:pointer; transition: transform .18s var(--ease), background .18s ease-out; }
   .btn-a:hover{ transform: translateY(-2px); }
   .btn-a:active{ transform: translateY(0) scale(.98); }
@@ -86,21 +94,18 @@
   .hero-grid{ position:relative; z-index:1; display:grid; grid-template-columns: 1.06fr .94fr; gap:52px; align-items:center; width:100%; }
   .hero-grid > *{ min-width:0; }
   @media (max-width:920px){ .hero-grid{ grid-template-columns:1fr; gap:22px; } }
-  .hero-kicker{ display:inline-block; font-family:var(--font-body); font-size:11.5px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--pink-deep); line-height:1; margin-bottom:18px; }
-  .hero h1{ font-size: clamp(32px,4.6vw,54px); margin-bottom:16px; font-weight:600; }
+  .hero h1{ font-size: clamp(34px,4.8vw,58px); margin-bottom:18px; font-weight:600; }
   .hero p{ font-size:17px; line-height:1.6; color: var(--muted); max-width:480px; margin-bottom:26px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
-  .hero-badges{ list-style:none; display:flex; flex-wrap:wrap; gap:8px 24px; margin-top:26px; padding:0; }
-  .hero-badges li{ font-size:13px; font-weight:600; color:var(--ink); display:flex; align-items:center; gap:8px; }
-  .hero-badges li .zebra-marker{ width:12px; height:7px; }
+  .hero-badges{ margin-top:28px; font-size:13.5px; font-weight:600; color:var(--muted); }
   .hero-photo-wrap{ display:flex; justify-content:center; }
   .hero-photo{ width:100%; max-width:420px; max-height:52svh; }
   @media (max-width:920px){ .hero-photo{ max-width:340px; max-height:30svh; margin:0 auto; } }
   @media (max-width:560px){ .hero-photo{ max-height:24svh; } }
 
   @keyframes rise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
-  html.js .hero-kicker, html.js .hero h1, html.js .hero p, html.js .hero .btn-row, html.js .hero-badges{ animation: rise .6s ease-out backwards; }
-  .hero h1{ animation-delay:.05s; } .hero p{ animation-delay:.11s; } .hero .btn-row{ animation-delay:.17s; } .hero-badges{ animation-delay:.23s; }
+  html.js .hero h1, html.js .hero p, html.js .hero .btn-row, html.js .hero-badges{ animation: rise .7s var(--ease) backwards; }
+  .hero p{ animation-delay:.08s; } .hero .btn-row{ animation-delay:.15s; } .hero-badges{ animation-delay:.22s; }
 
   /* SECTIONS, uneven rhythm on purpose rather than one uniform padding */
   section{ padding: 88px 0; }
@@ -109,11 +114,10 @@
   .sec-head h2{ font-size: clamp(28px,3.6vw,42px); font-weight:600; }
   .sec-head p{ margin-top:14px; color:var(--muted); font-size:16.5px; line-height:1.7; }
   .band-dark{ background:var(--charcoal); color:var(--ivory); }
-  .band-dark .eyebrow-lead{ color:rgba(245,239,227,.55); }
   .band-dark h2, .band-dark h3{ color:var(--ivory); }
   .band-dark p{ color:rgba(245,239,227,.78); }
 
-  html.js .reveal{ opacity:0; transform:translateY(20px); transition: opacity .6s ease-out, transform .6s ease-out; }
+  html.js .reveal{ opacity:0; transform:translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
   html.js .reveal.in{ opacity:1; transform:none; }
 
   /* 01, ENTRE DEUX VOYAGEURS : séquence éditoriale, pas six cartes identiques */
@@ -121,12 +125,13 @@
   .tl-wrap{ display:grid; grid-template-columns:1.15fr .85fr; gap:56px; align-items:start; }
   @media (max-width:900px){ .tl-wrap{ grid-template-columns:1fr; gap:36px; } }
   .timeline{ list-style:none; }
-  .timeline li{ display:grid; grid-template-columns:30px 100px 1fr; gap:16px; align-items:baseline; padding:17px 0; border-top:1px solid var(--line); }
+  .timeline li{ display:grid; grid-template-columns:32px 100px 1fr; gap:16px; align-items:baseline; padding:17px 0; border-top:1px solid var(--line); }
   .timeline li:first-child{ border-top:none; }
-  .timeline .tl-mark{ margin-top:6px; }
+  .tl-num{ font-size:12px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:5px; }
+  .timeline li.is-control .tl-num{ color:var(--pink); }
   .timeline .tl-label{ font-family:var(--font-display); font-size:18px; font-weight:600; }
   .timeline .tl-text{ font-size:14.5px; color:var(--muted); line-height:1.6; }
-  @media (max-width:560px){ .timeline li{ grid-template-columns:22px 1fr; row-gap:4px; } .timeline .tl-text{ grid-column:2; } }
+  @media (max-width:560px){ .timeline li{ grid-template-columns:24px 1fr; row-gap:4px; } .timeline .tl-text{ grid-column:2; } }
   .tl-photo{ position:sticky; top:88px; }
   .tl-photo .photo{ width:100%; }
 
@@ -141,7 +146,7 @@
   .verify-outer{ padding: 96px 0; }
   .verify-grid{ display:grid; grid-template-columns: 0.95fr 1.05fr; gap:64px; align-items:center; }
   @media (max-width:900px){ .verify-grid{ grid-template-columns:1fr; gap:40px; } }
-  .record{ background:rgba(255,255,255,0.04); border:1px solid rgba(245,239,227,0.16); padding:26px 28px; }
+  .record{ background:rgba(255,255,255,0.04); border:1px solid rgba(245,239,227,0.16); border-radius:var(--radius-md); padding:26px 28px; }
   .record-head{ font-family:var(--font-body); font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--pink-soft); margin-bottom:4px; }
   .record-sub{ font-size:13.5px; color:rgba(245,239,227,.6); margin-bottom:18px; }
   .record-row{ display:flex; gap:16px; padding:9px 0; border-top:1px solid rgba(245,239,227,0.12); font-size:14px; color:rgba(245,239,227,.85); font-variant-numeric:tabular-nums; }
@@ -157,31 +162,31 @@
 
   /* 05, SERVICES : liste éditoriale, pas quatre cartes SaaS identiques */
   .service-list{ max-width:760px; }
-  .service-row{ display:grid; grid-template-columns:52px 1fr; gap:22px; padding:24px 0; border-top:1px solid var(--line); align-items:start; }
+  .service-row{ display:grid; grid-template-columns:36px 1fr; gap:22px; padding:24px 0; border-top:1px solid var(--line); align-items:start; }
   .service-row:first-child{ border-top:none; }
-  .service-row .zebra-marker{ margin-top:9px; width:22px; height:9px; }
+  .service-num{ font-size:12px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:3px; }
   .service-row h4{ font-size:19px; font-weight:600; margin-bottom:5px; }
   .service-row p{ font-size:14.5px; color:var(--muted); line-height:1.65; max-width:520px; }
 
-  /* 06, ÉCONOMIE : exemple + simulateur, un seul jeu d'hypothèses */
-  .econ-note{ margin-top:20px; font-size:12.5px; color:var(--muted); line-height:1.65; max-width:640px; }
+  /* 06, ÉCONOMIE : exemple + simulateur, centrés, un seul jeu d'hypothèses */
+  .econ-note{ margin-top:20px; font-size:12.5px; color:var(--muted); line-height:1.65; max-width:520px; margin-left:auto; margin-right:auto; }
   .band-dark .econ-note{ color:rgba(245,239,227,.6); }
-  .receipt{ max-width:520px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-  .receipt-head{ font-family:var(--font-body); font-size:12px; font-weight:700; color:var(--muted); padding:16px 0 10px; text-transform:uppercase; letter-spacing:.06em; }
+  .receipt{ max-width:520px; margin:0 auto; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .receipt-head{ font-family:var(--font-body); font-size:13px; color:var(--muted); padding:16px 0 10px; }
   .receipt-row{ display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 0; border-top:1px solid var(--line); font-size:14.5px; color:var(--muted); }
   .receipt-row:first-of-type{ border-top:none; }
   .receipt-row b{ color:var(--ink); font-weight:700; font-size:15.5px; white-space:nowrap; font-family:var(--font-display); }
-  .receipt-save{ padding:20px 0; }
+  .receipt-save{ padding:20px 0; text-align:center; }
   .receipt-save-label{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--pink-deep); }
   .receipt-save-amount{ font-family:var(--font-display); font-size: clamp(30px,4vw,40px); font-weight:600; color:var(--pink); line-height:1.15; margin:6px 0 2px; }
   .receipt-save-pct{ font-size:14px; font-weight:600; color:var(--ink); }
 
   .sim-outer{ background: var(--charcoal); color:var(--ivory); padding: 96px 0; }
-  .sim-grid{ display:grid; grid-template-columns: 0.95fr 1.05fr; gap:56px; align-items:start; }
+  .sim-grid{ display:grid; grid-template-columns: 0.95fr 1.05fr; gap:56px; align-items:start; max-width:980px; margin:0 auto; }
   @media (max-width:860px){ .sim-grid{ grid-template-columns:1fr; gap:36px; } }
   .sim-fields{ display:grid; gap:14px; max-width:400px; margin-top:24px; }
   .sim-fields label{ font-size:13px; font-weight:600; color:rgba(245,239,227,0.85); display:grid; gap:7px; }
-  .sim-input{ display:flex; align-items:center; background:rgba(245,239,227,0.06); border:1px solid rgba(245,239,227,0.22); }
+  .sim-input{ display:flex; align-items:center; background:rgba(245,239,227,0.06); border:1px solid rgba(245,239,227,0.22); border-radius:var(--radius-sm); overflow:hidden; }
   .sim-input input{ flex:1; min-width:0; background:none; border:none; color:var(--ivory); font-size:16px; font-weight:700; padding:11px 13px; font-family:inherit; }
   .sim-input input:focus{ outline:none; }
   .sim-input span{ padding:0 13px; color:rgba(245,239,227,0.5); font-weight:700; }
@@ -196,8 +201,8 @@
   .sim-more{ display:inline-block; margin-top:16px; font-size:13.5px; font-weight:700; color:var(--pink-soft); text-decoration:none; }
   .sim-more:hover{ text-decoration:underline; }
 
-  /* 07, FAQ */
-  .faq-list{ max-width: 780px; }
+  /* 07, FAQ, centrée */
+  .faq-list{ max-width: 700px; margin:0 auto; }
   .faq-list details{ border-bottom:1px solid var(--line); }
   .faq-list summary{ cursor:pointer; padding:20px 0; font-family:var(--font-display); font-weight:600; font-size:18px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; transition: color .15s ease-out; }
   .faq-list summary:hover{ color:var(--pink); }
@@ -205,7 +210,7 @@
   .faq-list summary::after{ content:'+'; color:var(--pink); font-family:var(--font-body); font-size:22px; flex-shrink:0; transition: transform .25s var(--ease); }
   .faq-list details[open] summary{ color:var(--pink); }
   .faq-list details[open] summary::after{ transform: rotate(45deg); }
-  .faq-list details p{ padding:0 40px 22px 0; font-size:14.5px; color:var(--muted); line-height:1.75; max-width:660px; }
+  .faq-list details p{ padding:0 4px 22px 0; font-size:14.5px; color:var(--muted); line-height:1.75; text-align:left; }
 
   /* CTA finale : typographie + photo, pas une grosse carte rose arrondie */
   #cta{ padding-top:24px; padding-bottom:100px; }
@@ -234,7 +239,6 @@
     #entre-deux{ padding-top:52px; }
     .hero{ padding:18px 0; }
     .sec-head{ margin-bottom:28px; }
-    .hero-badges{ flex-direction:column; gap:9px; margin-top:20px; }
     .wrap{ padding:0 20px; }
   }
 
@@ -288,18 +292,13 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div class="hero-content">
-      <div class="hero-kicker">L'alternative simple à la conciergerie</div>
       <h1>Votre logement. Notre équipe <span class="zebra-underline">entre les deux</span>.</h1>
       <p>Zebramoon coordonne le ménage, le linge et le contrôle qualité entre chaque séjour. Vous gardez la main sur vos réservations, sans commission sur vos revenus.</p>
       <div class="btn-row">
         <a href="#economie" class="btn-a pink">Estimer mes économies →</a>
         <a href="#entre-deux" class="btn-outline">Voir comment ça marche</a>
       </div>
-      <ul class="hero-badges">
-        <li><span class="zebra-marker pink" aria-hidden="true"></span>0&nbsp;% de commission sur vos revenus</li>
-        <li><span class="zebra-marker pink" aria-hidden="true"></span>Chaque intervention vérifiée</li>
-        <li><span class="zebra-marker pink" aria-hidden="true"></span>Sans engagement</li>
-      </ul>
+      <p class="hero-badges">0&nbsp;% de commission sur vos revenus · Chaque intervention vérifiée · Sans engagement</p>
     </div>
     <div class="hero-photo-wrap">
       <div class="photo-frame zebra-br hero-photo reveal in">
@@ -318,18 +317,17 @@
 <section id="entre-deux">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="eyebrow-lead">Entre deux voyageurs</div>
-      <h2 style="margin-top:12px;">Il se passe beaucoup de choses entre deux voyageurs.</h2>
+      <h2>Il se passe beaucoup de choses entre deux voyageurs.</h2>
       <p>Le voyageur part, le suivant arrive quelques heures plus tard. Entre les deux, une équipe entière se met en mouvement.</p>
     </div>
     <div class="tl-wrap">
       <ol class="timeline reveal">
-        <li><span class="tl-mark zebra-marker" aria-hidden="true"></span><span class="tl-label">Départ</span><span class="tl-text">Le voyageur quitte le logement, la fenêtre d'intervention commence.</span></li>
-        <li><span class="tl-mark zebra-marker" aria-hidden="true"></span><span class="tl-label">Ménage</span><span class="tl-text">Un prestataire vérifié prépare chaque pièce selon la fiche du logement.</span></li>
-        <li><span class="tl-mark zebra-marker" aria-hidden="true"></span><span class="tl-label">Linge</span><span class="tl-text">Le linge sale repart, un jeu propre est livré si l'option est activée.</span></li>
-        <li><span class="tl-mark zebra-marker pink" aria-hidden="true"></span><span class="tl-label">Contrôle</span><span class="tl-text">Un jeu de photos précis est soumis, puis contrôlé par notre équipe.</span></li>
-        <li><span class="tl-mark zebra-marker" aria-hidden="true"></span><span class="tl-label">Validation</span><span class="tl-text">Le dossier est confirmé, ou renvoyé au prestataire avec une note claire.</span></li>
-        <li><span class="tl-mark zebra-marker" aria-hidden="true"></span><span class="tl-label">Prochaine arrivée</span><span class="tl-text">Le logement est prêt, la confirmation vous est envoyée.</span></li>
+        <li><span class="tl-num" aria-hidden="true">01</span><span class="tl-label">Départ</span><span class="tl-text">Le voyageur quitte le logement, la fenêtre d'intervention commence.</span></li>
+        <li><span class="tl-num" aria-hidden="true">02</span><span class="tl-label">Ménage</span><span class="tl-text">Un prestataire vérifié prépare chaque pièce selon la fiche du logement.</span></li>
+        <li><span class="tl-num" aria-hidden="true">03</span><span class="tl-label">Linge</span><span class="tl-text">Le linge sale repart, un jeu propre est livré si l'option est activée.</span></li>
+        <li class="is-control"><span class="tl-num" aria-hidden="true">04</span><span class="tl-label">Contrôle</span><span class="tl-text">Un jeu de photos précis est soumis, puis contrôlé par notre équipe.</span></li>
+        <li><span class="tl-num" aria-hidden="true">05</span><span class="tl-label">Validation</span><span class="tl-text">Le dossier est confirmé, ou renvoyé au prestataire avec une note claire.</span></li>
+        <li><span class="tl-num" aria-hidden="true">06</span><span class="tl-label">Prochaine arrivée</span><span class="tl-text">Le logement est prêt, la confirmation vous est envoyée.</span></li>
       </ol>
       <div class="tl-photo reveal">
         <div class="photo-frame zebra-tr">
@@ -345,12 +343,11 @@
 <section id="travail-humain">
   <div class="wrap work-grid">
     <div class="reveal">
-      <div class="eyebrow-lead">Le travail humain</div>
-      <h2 style="margin-top:12px; font-size:clamp(26px,3.4vw,38px);">Une intervention n'est pas une case cochée.</h2>
+      <h2 style="font-size:clamp(26px,3.4vw,38px);">Une intervention n'est pas une case cochée.</h2>
       <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75; max-width:440px;">Derrière chaque ménage, une équipe se déplace, refait les lits, change le linge, vérifie chaque pièce une à une. Ce n'est pas un algorithme qui entre dans le logement, c'est quelqu'un.</p>
     </div>
     <div class="work-photos reveal">
-      <div class="photo-frame zebra-bl">
+      <div class="photo-frame zebra-bl ghost">
         <div class="photo tone-b ratio-portrait">
           <div class="photo-placeholder"><span class="photo-cap">Préparation d'une chambre</span></div>
         </div>
@@ -369,8 +366,7 @@
 <div class="verify-outer band-dark" id="verification">
   <div class="wrap verify-grid">
     <div class="reveal">
-      <div class="eyebrow-lead">Notre différence</div>
-      <h3 style="margin-top:14px; font-size:clamp(26px,3.4vw,40px);">Un logement n'est pas prêt parce qu'une case est cochée.</h3>
+      <h3 style="font-size:clamp(26px,3.4vw,40px);">Un logement n'est pas prêt parce qu'une case est cochée.</h3>
       <p style="margin-top:16px; font-size:16px; line-height:1.75; max-width:460px;">Chaque ménage est prouvé par un jeu de photos précis, contrôlé par notre équipe avant toute confirmation. Rien ne part au client sans regard humain.</p>
     </div>
     <div class="reveal">
@@ -395,14 +391,13 @@
 
 <section id="proprietaire">
   <div class="wrap owner-grid">
-    <div class="photo-frame zebra-tl reveal">
+    <div class="photo-frame zebra-tl pink reveal">
       <div class="photo tone-a ratio-wide">
         <div class="photo-placeholder"><span class="photo-cap">Logement prêt, lumière naturelle</span></div>
       </div>
     </div>
     <div class="reveal">
-      <div class="eyebrow-lead">Côté propriétaire</div>
-      <h2 style="margin-top:12px; font-size:clamp(26px,3.4vw,38px);">Vous n'avez pas à tout gérer vous-même.</h2>
+      <h2 style="font-size:clamp(26px,3.4vw,38px);">Vous n'avez pas à tout gérer vous-même.</h2>
       <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75; max-width:440px;">Vous voyez chaque intervention, son statut et sa vérification depuis votre espace. Pas de conciergerie qui prend la main sur vos réservations, pas de surprise sur ce qui a été fait.</p>
     </div>
   </div>
@@ -411,24 +406,23 @@
 <section id="services">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="eyebrow-lead">Ce que couvre Zebramoon</div>
-      <h2 style="margin-top:12px;">Tout ce qu'il faut entre deux voyageurs.</h2>
+      <h2>Tout ce qu'il faut entre deux voyageurs.</h2>
     </div>
     <div class="service-list reveal">
       <div class="service-row">
-        <span class="zebra-marker" aria-hidden="true"></span>
+        <span class="service-num" aria-hidden="true">01</span>
         <div><h4>Ménage professionnel</h4><p>Réalisé par des entreprises de ménage vérifiées, assignées par notre équipe à chaque mission.</p></div>
       </div>
       <div class="service-row">
-        <span class="zebra-marker" aria-hidden="true"></span>
+        <span class="service-num" aria-hidden="true">02</span>
         <div><h4>Linge et consommables</h4><p>Livrés et repris entre chaque séjour par notre service linge, synchronisé avec le calendrier de ménage.</p></div>
       </div>
       <div class="service-row">
-        <span class="zebra-marker pink" aria-hidden="true"></span>
+        <span class="service-num" aria-hidden="true">03</span>
         <div><h4>Welcomer, contrôle sur place</h4><p>En option, un contrôle qualité indépendant avant l'arrivée du voyageur : checklist, photos, validation.</p></div>
       </div>
       <div class="service-row">
-        <span class="zebra-marker" aria-hidden="true"></span>
+        <span class="service-num" aria-hidden="true">04</span>
         <div><h4>Contrôle et suivi</h4><p>Chaque dossier est vérifié par notre équipe, les incidents signalés et suivis directement en ligne.</p></div>
       </div>
     </div>
@@ -437,9 +431,8 @@
 
 <section id="economie">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="eyebrow-lead">La part économique</div>
-      <h2 style="margin-top:12px;">Le calcul, en clair.</h2>
+    <div class="sec-head center reveal">
+      <h2>Le calcul, en clair.</h2>
       <p>Une conciergerie classique prélève une commission sur tous vos revenus locatifs. Zebramoon se paie au ménage.</p>
     </div>
     <div class="receipt reveal">
@@ -460,34 +453,35 @@
 </main>
 
 <div class="sim-outer band-dark" id="simulateur">
-  <div class="wrap sim-grid">
-    <div class="reveal">
-      <div class="eyebrow-lead">Simulateur</div>
-      <h3 style="margin-top:12px; font-family:var(--font-display); font-weight:600; font-size:clamp(26px,3.4vw,38px);">Combien vous fait économiser Zebramoon&nbsp;?</h3>
-      <p style="margin-top:14px; font-size:15.5px; color:rgba(245,239,227,.78); line-height:1.7; max-width:420px;">Mêmes hypothèses que l'exemple ci-dessus. Renseignez vos chiffres pour estimer l'écart sur votre bien.</p>
-      <div class="sim-fields">
-        <label>Prix moyen de la nuit
-          <div class="sim-input"><input id="simNight" type="number" min="0" inputmode="numeric" value="150"><span>€</span></div>
-        </label>
-        <label>Taux d'occupation
-          <div class="sim-input"><input id="simOcc" type="number" min="0" max="100" inputmode="numeric" value="70"><span>%</span></div>
-        </label>
-        <label>Ménages par mois
-          <div class="sim-input"><input id="simBookings" type="number" min="0" inputmode="numeric" value="6"></div>
-        </label>
+  <div class="wrap">
+    <div class="sim-grid">
+      <div class="reveal">
+        <h3 style="font-family:var(--font-display); font-weight:600; font-size:clamp(26px,3.4vw,38px);">Combien vous fait économiser Zebramoon&nbsp;?</h3>
+        <p style="margin-top:14px; font-size:15.5px; color:rgba(245,239,227,.78); line-height:1.7; max-width:420px;">Mêmes hypothèses que l'exemple ci-dessus. Renseignez vos chiffres pour estimer l'écart sur votre bien.</p>
+        <div class="sim-fields">
+          <label>Prix moyen de la nuit
+            <div class="sim-input"><input id="simNight" type="number" min="0" inputmode="numeric" value="150"><span>€</span></div>
+          </label>
+          <label>Taux d'occupation
+            <div class="sim-input"><input id="simOcc" type="number" min="0" max="100" inputmode="numeric" value="70"><span>%</span></div>
+          </label>
+          <label>Ménages par mois
+            <div class="sim-input"><input id="simBookings" type="number" min="0" inputmode="numeric" value="6"></div>
+          </label>
+        </div>
       </div>
-    </div>
-    <div class="sim-result reveal">
-      <div class="sim-row"><span>Revenus locatifs estimés/an</span><b id="simRevenue">…</b></div>
-      <div class="sim-row"><span>Conciergerie classique/an</span><b id="simConcierge">…</b></div>
-      <div class="sim-row"><span>Avec Zebramoon/an</span><b id="simCleanflow">…</b></div>
-      <div class="sim-save">
-        <div class="sim-save-label">Vous économisez/an</div>
-        <div class="sim-save-amount" id="simSavings">…</div>
-        <div class="sim-save-pct" id="simPct"></div>
+      <div class="sim-result reveal">
+        <div class="sim-row"><span>Revenus locatifs estimés/an</span><b id="simRevenue">…</b></div>
+        <div class="sim-row"><span>Conciergerie classique/an</span><b id="simConcierge">…</b></div>
+        <div class="sim-row"><span>Avec Zebramoon/an</span><b id="simCleanflow">…</b></div>
+        <div class="sim-save">
+          <div class="sim-save-label">Vous économisez/an</div>
+          <div class="sim-save-amount" id="simSavings">…</div>
+          <div class="sim-save-pct" id="simPct"></div>
+        </div>
+        <a href="/devis/" class="sim-more">Obtenir un devis détaillé →</a>
+        <p class="econ-note" style="margin-left:0;">Hypothèses : commission conciergerie classique 20&nbsp;% des revenus locatifs. Zebramoon : ménage à 30&nbsp;€/h (durée moyenne 2,5&nbsp;h, selon logement), + 10&nbsp;€ de déplacement et 8&nbsp;€ de commission par intervention, + 10&nbsp;€/mois d'abonnement. Le prix exact dépend de votre logement (surface, lits, salles de bain) et s'affiche avant chaque réservation.</p>
       </div>
-      <a href="/devis/" class="sim-more">Obtenir un devis détaillé →</a>
-      <p class="econ-note">Hypothèses : commission conciergerie classique 20&nbsp;% des revenus locatifs. Zebramoon : ménage à 30&nbsp;€/h (durée moyenne 2,5&nbsp;h, selon logement), + 10&nbsp;€ de déplacement et 8&nbsp;€ de commission par intervention, + 10&nbsp;€/mois d'abonnement. Le prix exact dépend de votre logement (surface, lits, salles de bain) et s'affiche avant chaque réservation.</p>
     </div>
   </div>
 </div>
@@ -496,9 +490,8 @@
 
 <section id="faq">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <div class="eyebrow-lead">Questions fréquentes</div>
-      <h2 style="margin-top:12px;">Ce que les propriétaires nous demandent.</h2>
+    <div class="sec-head center reveal">
+      <h2>Ce que les propriétaires nous demandent.</h2>
     </div>
     <div class="faq-list reveal">
       <details>
@@ -532,13 +525,12 @@
 <section id="cta">
   <div class="wrap cta-grid">
     <div class="reveal">
-      <div class="eyebrow-lead">À vous de jouer</div>
-      <h2 style="margin-top:12px;">Envie de tester Zebramoon sur votre bien&nbsp;?</h2>
+      <h2>Envie de tester Zebramoon sur votre bien&nbsp;?</h2>
       <p>La bêta est ouverte à un petit nombre de propriétaires. Créez votre compte et gardez la main sur vos réservations.</p>
       <a href="/app/" class="btn-a pink">Créer mon compte client →</a>
       <div class="cta-contact">Une question ? Écrivez-nous à <a href="mailto:w.wanecque@gmail.com">w.wanecque@gmail.com</a></div>
     </div>
-    <div class="photo-frame zebra-br reveal">
+    <div class="photo-frame zebra-br pink reveal">
       <div class="photo tone-b ratio-portrait">
         <div class="photo-placeholder"><span class="photo-cap">Prêt pour le prochain voyageur</span></div>
       </div>
@@ -619,6 +611,26 @@
         btn.setAttribute('aria-expanded', 'false');
       });
     });
+  })();
+</script>
+
+<script>
+  // La nav s'inverse quand une bande sombre ("Notre différence", "Simulateur")
+  // passe juste dessous : on observe une bande fine collée sous la nav plutôt
+  // que la section entière, pour réagir au bon moment du scroll.
+  (function () {
+    var nav = document.querySelector('nav');
+    var darkSections = document.querySelectorAll('.band-dark');
+    if (!nav || !darkSections.length || !('IntersectionObserver' in window)) return;
+    var active = new Set();
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) active.add(entry.target);
+        else active.delete(entry.target);
+      });
+      nav.classList.toggle('on-dark', active.size > 0);
+    }, { rootMargin: '-64px 0px -85% 0px', threshold: 0 });
+    darkSections.forEach(function (el) { io.observe(el); });
   })();
 </script>
 
