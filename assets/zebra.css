@@ -75,14 +75,14 @@ html.js .reveal.in .zebra-divider::before{ transform:scaleX(1); }
   mask-repeat: no-repeat;
   background-color: var(--ink);
 }
-.photo-frame.zebra-br::after{ width:46%; aspect-ratio:2/3; right:-10%; bottom:6%;
-  -webkit-mask-size:190% auto; mask-size:190% auto; -webkit-mask-position:30% 20%; mask-position:30% 20%; }
-.photo-frame.zebra-tl::after{ width:42%; aspect-ratio:2/3; left:-9%; top:-8%;
-  -webkit-mask-size:210% auto; mask-size:210% auto; -webkit-mask-position:60% 55%; mask-position:60% 55%; }
-.photo-frame.zebra-bl::after{ width:42%; aspect-ratio:2/3; left:-9%; bottom:-8%;
-  -webkit-mask-size:200% auto; mask-size:200% auto; -webkit-mask-position:15% 70%; mask-position:15% 70%; transform:scaleX(-1); }
-.photo-frame.zebra-tr::after{ width:46%; aspect-ratio:2/3; right:-10%; top:5%;
-  -webkit-mask-size:180% auto; mask-size:180% auto; -webkit-mask-position:70% 10%; mask-position:70% 10%; transform:scaleX(-1); }
+.photo-frame.zebra-br::after{ width:68%; aspect-ratio:2/3; right:-16%; bottom:-4%;
+  -webkit-mask-size:150% auto; mask-size:150% auto; -webkit-mask-position:30% 20%; mask-position:30% 20%; }
+.photo-frame.zebra-tl::after{ width:64%; aspect-ratio:2/3; left:-15%; top:-14%;
+  -webkit-mask-size:160% auto; mask-size:160% auto; -webkit-mask-position:60% 55%; mask-position:60% 55%; }
+.photo-frame.zebra-bl::after{ width:64%; aspect-ratio:2/3; left:-15%; bottom:-14%;
+  -webkit-mask-size:155% auto; mask-size:155% auto; -webkit-mask-position:15% 70%; mask-position:15% 70%; transform:scaleX(-1); }
+.photo-frame.zebra-tr::after{ width:68%; aspect-ratio:2/3; right:-16%; top:-5%;
+  -webkit-mask-size:145% auto; mask-size:145% auto; -webkit-mask-position:70% 10%; mask-position:70% 10%; transform:scaleX(-1); }
 .photo-frame.zebra-br.pink::after, .photo-frame.zebra-tl.pink::after,
 .photo-frame.zebra-bl.pink::after, .photo-frame.zebra-tr.pink::after{ background-color:var(--pink); }
 .photo-frame.zebra-br.ghost::after, .photo-frame.zebra-tl.ghost::after,
@@ -105,12 +105,36 @@ html.js .photo-frame.zebra-tr.reveal.in::after{ transform:scaleX(-1) translateY(
   .photo-frame.zebra-br::after,
   .photo-frame.zebra-tl::after,
   .photo-frame.zebra-bl::after,
-  .photo-frame.zebra-tr::after{ width:32%; }
+  .photo-frame.zebra-tr::after{ width:48%; }
 }
+
+/* ZebraBand: the primary brand device. Large organic bands, hand-positioned
+   per scene (sizes/offsets set where used, in index.html), not a reusable
+   corner widget. Can sit in front of a photo (.front) or partly behind one
+   so it looks like it emerges from underneath (.behind, needs the photo
+   sibling painted after it in source order). */
+.zebra-band{
+  position:absolute;
+  pointer-events:none;
+  -webkit-mask-image: url('zebra-organic.svg');
+  mask-image: url('zebra-organic.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  background-color: var(--ink);
+}
+.zebra-band.pink{ background-color: var(--pink); }
+.zebra-band.ghost{ background-color: rgba(255,255,255,.5); }
+.zebra-band.front{ z-index:3; }
+.zebra-band.behind{ z-index:0; }
+html.js .zebra-band{ opacity:0; transition:opacity 1s var(--ease), transform 1s var(--ease); }
+html.js .reveal.in .zebra-band,
+html.js .zebra-band.reveal.in{ opacity:1; }
+html.js .zebra-band.in-view{ opacity:1; }
 
 @media (prefers-reduced-motion: reduce){
   .zebra-divider::before,
   .photo-frame::after{ transition:none !important; transform:none !important; opacity:1 !important; }
   .photo-frame.zebra-bl::after,
   .photo-frame.zebra-tr::after{ transform:scaleX(-1) !important; }
+  .zebra-band{ transition:none !important; opacity:1 !important; transform:none !important; }
 }

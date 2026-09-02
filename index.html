@@ -36,14 +36,14 @@
   html{ scroll-behavior:smooth; }
   body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; }
   .wrap{ max-width: 1180px; margin:0 auto; padding: 0 32px; }
-  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
+  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.06; color:var(--ink); }
   a{ color:inherit; }
   ::selection{ background:var(--pink); color:#fff; }
   img{ max-width:100%; }
 
   /* NAV, restrained: brand + hamburger on mobile, everything collapses to a
-     panel rather than a floating pill bar (Part 28). Inverts to the dark
-     palette while a dark section sits underneath it. */
+     panel rather than a floating pill bar. Inverts to the dark palette
+     while a dark section sits underneath it. */
   nav{ position:sticky; top:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease; }
   nav.on-dark{ background: rgba(24,20,14,0.86); border-bottom-color: rgba(245,239,227,0.14); }
   nav.on-dark .brand{ color:var(--ivory); }
@@ -78,7 +78,7 @@
 
   :focus-visible{ outline:2px solid var(--pink); outline-offset:2px; }
 
-  /* Buttons: one settled radius, not a pill, not a sharp corner (Part 29) */
+  /* Buttons: one settled radius, not a pill, not a sharp corner */
   .btn-a{ display:inline-flex; align-items:center; gap:9px; font-family:var(--font-body); font-weight:700; font-size:15px; letter-spacing:-0.005em; padding:14px 24px; text-decoration:none; border:none; border-radius:var(--radius); cursor:pointer; transition: transform .18s var(--ease), background .18s ease-out; }
   .btn-a:hover{ transform: translateY(-2px); }
   .btn-a:active{ transform: translateY(0) scale(.98); }
@@ -89,29 +89,39 @@
   .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:15px; padding:14px 2px; text-decoration:none; background:none; color:var(--ink); border:none; border-bottom:1.5px solid var(--ink); border-radius:0; transition: color .18s ease-out, border-color .18s ease-out, gap .18s var(--ease); }
   .btn-outline:hover{ color:var(--pink); border-color:var(--pink); gap:12px; }
 
-  /* HERO, editorial cover, must fit the first viewport (Part 17, hard requirement) */
-  .hero{ position:relative; overflow:hidden; min-height:calc(100svh - 64px); display:flex; align-items:center; padding:32px 0; }
-  .hero-grid{ position:relative; z-index:1; display:grid; grid-template-columns: 1.06fr .94fr; gap:52px; align-items:center; width:100%; }
-  .hero-grid > *{ min-width:0; }
-  @media (max-width:920px){ .hero-grid{ grid-template-columns:1fr; gap:22px; } }
-  .hero h1{ font-size: clamp(34px,4.8vw,58px); margin-bottom:18px; font-weight:600; }
+  /* HERO: the photograph bleeds to the true screen edge (it breaks out of
+     .wrap entirely, positioned against .hero itself), a large zebra band
+     runs from behind it into the text column, and a second band crosses
+     back over its own bottom edge. Must still fit the first viewport. */
+  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 64px); display:flex; align-items:center; padding:30px 0; }
+  .hero-photo-bleed{ position:absolute; top:0; right:0; bottom:0; width:56%; overflow:visible; }
+  .hero-pf{ position:absolute; inset:0; }
+  .hero-band-a{ width:30%; aspect-ratio:1/2.1; left:-2%; top:-8%; opacity:.92;
+    -webkit-mask-size:180% auto; mask-size:180% auto; -webkit-mask-position:35% 20%; mask-position:35% 20%; }
+  .hero-band-b{ width:28%; aspect-ratio:1/1.9; left:3%; bottom:-6%;
+    -webkit-mask-size:185% auto; mask-size:185% auto; -webkit-mask-position:20% 70%; mask-position:20% 70%; }
+  .hero-content{ position:relative; z-index:2; max-width:500px; }
+  @media (max-width:920px){
+    .hero{ flex-direction:column; justify-content:center; gap:0; }
+    .hero-photo-bleed{ position:relative; width:100%; max-width:380px; height:auto; aspect-ratio:3/4; margin:0 auto 26px; overflow:visible; }
+    .hero-pf{ position:relative; inset:auto; width:100%; height:100%; }
+    .hero-content{ max-width:none; }
+  }
+  @media (max-width:560px){ .hero-photo-bleed{ max-width:300px; } }
+  .hero h1{ font-size: clamp(34px,4.8vw,60px); margin-bottom:18px; font-weight:600; }
   .hero p{ font-size:17px; line-height:1.6; color: var(--muted); max-width:480px; margin-bottom:26px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
   .hero-badges{ margin-top:28px; font-size:13.5px; font-weight:600; color:var(--muted); }
-  .hero-photo-wrap{ display:flex; justify-content:center; }
-  .hero-photo{ width:100%; max-width:420px; max-height:52svh; }
-  @media (max-width:920px){ .hero-photo{ max-width:340px; max-height:30svh; margin:0 auto; } }
-  @media (max-width:560px){ .hero-photo{ max-height:24svh; } }
 
   @keyframes rise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
   html.js .hero h1, html.js .hero p, html.js .hero .btn-row, html.js .hero-badges{ animation: rise .7s var(--ease) backwards; }
   .hero p{ animation-delay:.08s; } .hero .btn-row{ animation-delay:.15s; } .hero-badges{ animation-delay:.22s; }
 
-  /* SECTIONS, uneven rhythm on purpose rather than one uniform padding */
+  /* SECTIONS: deliberately uneven rhythm, not one uniform padding value */
   section{ padding: 88px 0; }
   .sec-head{ margin-bottom: 48px; max-width:640px; }
   .sec-head.center{ margin-left:auto; margin-right:auto; text-align:center; }
-  .sec-head h2{ font-size: clamp(28px,3.6vw,42px); font-weight:600; }
+  .sec-head h2{ font-size: clamp(28px,3.6vw,44px); font-weight:600; }
   .sec-head p{ margin-top:14px; color:var(--muted); font-size:16.5px; line-height:1.7; }
   .band-dark{ background:var(--charcoal); color:var(--ivory); }
   .band-dark h2, .band-dark h3{ color:var(--ivory); }
@@ -120,31 +130,40 @@
   html.js .reveal{ opacity:0; transform:translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
   html.js .reveal.in{ opacity:1; transform:none; }
 
-  /* 01, ENTRE DEUX VOYAGEURS : séquence éditoriale, pas six cartes identiques */
-  #entre-deux{ padding-top:96px; }
-  .tl-wrap{ display:grid; grid-template-columns:1.15fr .85fr; gap:56px; align-items:start; }
-  @media (max-width:900px){ .tl-wrap{ grid-template-columns:1fr; gap:36px; } }
-  .timeline{ list-style:none; }
+  /* 01, ENTRE DEUX VOYAGEURS */
+  #entre-deux{ padding-top:100px; padding-bottom:64px; }
+  .tl-wrap{ display:grid; grid-template-columns:1.1fr .9fr; gap:64px; align-items:start; position:relative; }
+  @media (max-width:900px){ .tl-wrap{ grid-template-columns:1fr; gap:40px; } }
+  .timeline{ list-style:none; position:relative; z-index:1; }
   .timeline li{ display:grid; grid-template-columns:32px 100px 1fr; gap:16px; align-items:baseline; padding:17px 0; border-top:1px solid var(--line); }
   .timeline li:first-child{ border-top:none; }
   .tl-num{ font-size:12px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:5px; }
   .timeline li.is-control .tl-num{ color:var(--pink); }
-  .timeline .tl-label{ font-family:var(--font-display); font-size:18px; font-weight:600; }
+  .timeline .tl-label{ font-family:var(--font-display); font-size:19px; font-weight:600; }
   .timeline .tl-text{ font-size:14.5px; color:var(--muted); line-height:1.6; }
   @media (max-width:560px){ .timeline li{ grid-template-columns:24px 1fr; row-gap:4px; } .timeline .tl-text{ grid-column:2; } }
-  .tl-photo{ position:sticky; top:88px; }
-  .tl-photo .photo{ width:100%; }
+  .tl-photo-wrap{ position:sticky; top:88px; }
+  .tl-photo{ width:100%; }
+  .tl-band{ width:56%; aspect-ratio:1/2.3; right:-20%; top:-14%;
+    -webkit-mask-size:175% auto; mask-size:175% auto; -webkit-mask-position:55% 15%; mask-position:55% 15%; }
 
   /* 02, LE TRAVAIL HUMAIN */
-  .work-grid{ display:grid; grid-template-columns: 0.9fr 1.1fr; gap:56px; align-items:center; }
-  @media (max-width:900px){ .work-grid{ grid-template-columns:1fr; gap:32px; } }
-  .work-photos{ display:grid; grid-template-columns:1.2fr .8fr; gap:16px; align-items:end; }
-  .work-photos .photo:first-child{ align-self:start; }
-  @media (max-width:560px){ .work-photos{ grid-template-columns:1fr; } .work-photos .photo:last-child{ max-width:62%; margin-left:auto; } }
+  #travail-humain{ padding-top:20px; }
+  .work-grid{ display:grid; grid-template-columns: 0.85fr 1.15fr; gap:56px; align-items:center; }
+  @media (max-width:900px){ .work-grid{ grid-template-columns:1fr; gap:36px; } }
+  .work-photos{ position:relative; display:grid; grid-template-columns:1.3fr .7fr; gap:0; align-items:end; }
+  .work-photo-main{ position:relative; z-index:1; }
+  .work-photo-small{ margin:0 0 -28px -46px; position:relative; z-index:2; box-shadow:0 20px 40px rgba(26,22,15,.22); }
+  .work-band{ width:38%; aspect-ratio:1/2.1; left:-9%; bottom:-8%; opacity:.94;
+    -webkit-mask-size:165% auto; mask-size:165% auto; -webkit-mask-position:20% 60%; mask-position:20% 60%; }
+  @media (max-width:640px){
+    .work-photos{ grid-template-columns:1fr; }
+    .work-photo-small{ max-width:58%; margin:-40px 0 0 auto; }
+  }
 
-  /* 03, VÉRIFICATION : bande sombre, dossier opérationnel plutôt qu'un mockup marketing */
-  .verify-outer{ padding: 96px 0; }
-  .verify-grid{ display:grid; grid-template-columns: 0.95fr 1.05fr; gap:64px; align-items:center; }
+  /* 03, VÉRIFICATION : bande sombre, dossier opérationnel */
+  .verify-outer{ padding: 100px 0; position:relative; overflow:hidden; }
+  .verify-grid{ display:grid; grid-template-columns: 0.9fr 1.1fr; gap:64px; align-items:center; position:relative; z-index:1; }
   @media (max-width:900px){ .verify-grid{ grid-template-columns:1fr; gap:40px; } }
   .record{ background:rgba(255,255,255,0.04); border:1px solid rgba(245,239,227,0.16); border-radius:var(--radius-md); padding:26px 28px; }
   .record-head{ font-family:var(--font-body); font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--pink-soft); margin-bottom:4px; }
@@ -153,14 +172,22 @@
   .record-row:first-of-type{ border-top:none; }
   .record-row time{ color:rgba(245,239,227,.5); width:44px; flex-shrink:0; }
   .record-status{ margin-top:16px; padding-top:16px; border-top:1px solid rgba(245,239,227,0.16); display:flex; align-items:center; gap:10px; font-weight:700; color:var(--pink-soft); font-size:14px; }
-  .evidence-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; }
-  @media (max-width:480px){ .evidence-grid{ grid-template-columns:repeat(2,1fr); } }
+  .evidence-grid{ display:grid; grid-template-columns:1.3fr .7fr; grid-template-rows:1fr 1fr; gap:8px; margin-top:18px; height:280px; }
+  .evidence-grid .photo:first-child{ grid-row:1/3; height:100%; }
+  @media (max-width:560px){ .evidence-grid{ grid-template-columns:1fr 1fr; grid-template-rows:auto auto; height:auto; } .evidence-grid .photo:first-child{ grid-row:1/2; grid-column:1/3; aspect-ratio:16/10; } }
+  .verify-band{ width:26vw; aspect-ratio:1/1.6; left:-4vw; bottom:-8%;
+    -webkit-mask-size:220% auto; mask-size:220% auto; -webkit-mask-position:65% 40%; mask-position:65% 40%; }
 
-  /* 04, CÔTÉ PROPRIÉTAIRE */
-  .owner-grid{ display:grid; grid-template-columns: 1.05fr .95fr; gap:56px; align-items:center; }
-  @media (max-width:900px){ .owner-grid{ grid-template-columns:1fr; gap:32px; } .owner-grid .photo-frame{ order:-1; } }
+  /* 04, CÔTÉ PROPRIÉTAIRE : la photo occupe tout le module, pas une colonne */
+  #proprietaire{ padding:72px 0; }
+  .owner-photo{ position:relative; aspect-ratio:21/9; margin-bottom:44px; }
+  @media (max-width:760px){ .owner-photo{ aspect-ratio:4/3; } }
+  .owner-band{ width:22vw; aspect-ratio:1/2; right:6vw; top:-16%;
+    -webkit-mask-size:190% auto; mask-size:190% auto; -webkit-mask-position:45% 60%; mask-position:45% 60%; }
+  .owner-text{ max-width:560px; }
+  .owner-text h2{ font-size:clamp(26px,3.4vw,40px); }
 
-  /* 05, SERVICES : liste éditoriale, pas quatre cartes SaaS identiques */
+  /* 05, SERVICES : liste éditoriale */
   .service-list{ max-width:760px; }
   .service-row{ display:grid; grid-template-columns:36px 1fr; gap:22px; padding:24px 0; border-top:1px solid var(--line); align-items:start; }
   .service-row:first-child{ border-top:none; }
@@ -169,6 +196,7 @@
   .service-row p{ font-size:14.5px; color:var(--muted); line-height:1.65; max-width:520px; }
 
   /* 06, ÉCONOMIE : exemple + simulateur, centrés, un seul jeu d'hypothèses */
+  #economie{ padding-top:120px; }
   .econ-note{ margin-top:20px; font-size:12.5px; color:var(--muted); line-height:1.65; max-width:520px; margin-left:auto; margin-right:auto; }
   .band-dark .econ-note{ color:rgba(245,239,227,.6); }
   .receipt{ max-width:520px; margin:0 auto; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
@@ -201,7 +229,8 @@
   .sim-more{ display:inline-block; margin-top:16px; font-size:13.5px; font-weight:700; color:var(--pink-soft); text-decoration:none; }
   .sim-more:hover{ text-decoration:underline; }
 
-  /* 07, FAQ, centrée */
+  /* 07, FAQ, centrée, section resserrée */
+  #faq{ padding:64px 0; }
   .faq-list{ max-width: 700px; margin:0 auto; }
   .faq-list details{ border-bottom:1px solid var(--line); }
   .faq-list summary{ cursor:pointer; padding:20px 0; font-family:var(--font-display); font-weight:600; font-size:18px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; transition: color .15s ease-out; }
@@ -212,14 +241,17 @@
   .faq-list details[open] summary::after{ transform: rotate(45deg); }
   .faq-list details p{ padding:0 4px 22px 0; font-size:14.5px; color:var(--muted); line-height:1.75; text-align:left; }
 
-  /* CTA finale : typographie + photo, pas une grosse carte rose arrondie */
-  #cta{ padding-top:24px; padding-bottom:100px; }
-  .cta-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; }
+  /* CTA finale : grand bandeau, zebra en fond, typographie + photo */
+  #cta{ padding:130px 0 120px; position:relative; overflow:hidden; }
+  .cta-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; position:relative; z-index:1; }
   @media (max-width:860px){ .cta-grid{ grid-template-columns:1fr; gap:28px; } }
-  .cta-grid h2{ font-size: clamp(30px,4.2vw,48px); margin-bottom:16px; }
+  .cta-grid h2{ font-size: clamp(32px,4.6vw,54px); margin-bottom:16px; }
   .cta-grid p{ color: var(--muted); max-width:440px; margin-bottom:26px; font-size:16px; line-height:1.7; }
   .cta-contact{ margin-top:22px; font-size:13.5px; color:var(--muted); }
   .cta-contact a{ color:var(--pink); font-weight:600; }
+  .cta-band{ width:19vw; aspect-ratio:1/2.2; right:5vw; top:-8%;
+    -webkit-mask-size:190% auto; mask-size:190% auto; -webkit-mask-position:30% 50%; mask-position:30% 50%; opacity:.4; }
+  @media (max-width:860px){ .cta-band{ display:none; } }
 
   /* FOOTER */
   footer{ padding: 64px 0 30px; background: var(--charcoal); color: rgba(245,239,227,0.6); }
@@ -237,6 +269,8 @@
   @media (max-width:640px){
     section{ padding:52px 0; }
     #entre-deux{ padding-top:52px; }
+    #economie{ padding-top:52px; }
+    #cta{ padding:64px 0 72px; }
     .hero{ padding:18px 0; }
     .sec-head{ margin-bottom:28px; }
     .wrap{ padding:0 20px; }
@@ -290,7 +324,18 @@
 </nav>
 
 <header class="hero">
-  <div class="wrap hero-grid">
+  <div class="hero-photo-bleed">
+    <div class="zebra-band hero-band-a in-view"></div>
+    <div class="photo-frame hero-pf" data-depth="0.05">
+      <div class="photo tone-a ratio-full">
+        <div class="photo-placeholder">
+          <span class="photo-cap">Un logement, entre deux séjours</span>
+        </div>
+      </div>
+    </div>
+    <div class="zebra-band hero-band-b in-view"></div>
+  </div>
+  <div class="wrap">
     <div class="hero-content">
       <h1>Votre logement. Notre équipe <span class="zebra-underline">entre les deux</span>.</h1>
       <p>Zebramoon coordonne le ménage, le linge et le contrôle qualité entre chaque séjour. Vous gardez la main sur vos réservations, sans commission sur vos revenus.</p>
@@ -299,15 +344,6 @@
         <a href="#entre-deux" class="btn-outline">Voir comment ça marche</a>
       </div>
       <p class="hero-badges">0&nbsp;% de commission sur vos revenus · Chaque intervention vérifiée · Sans engagement</p>
-    </div>
-    <div class="hero-photo-wrap">
-      <div class="photo-frame zebra-br hero-photo reveal in">
-        <div class="photo tone-a ratio-portrait">
-          <div class="photo-placeholder">
-            <span class="photo-cap">Un logement, entre deux séjours</span>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </header>
@@ -329,8 +365,9 @@
         <li><span class="tl-num" aria-hidden="true">05</span><span class="tl-label">Validation</span><span class="tl-text">Le dossier est confirmé, ou renvoyé au prestataire avec une note claire.</span></li>
         <li><span class="tl-num" aria-hidden="true">06</span><span class="tl-label">Prochaine arrivée</span><span class="tl-text">Le logement est prêt, la confirmation vous est envoyée.</span></li>
       </ol>
-      <div class="tl-photo reveal">
-        <div class="photo-frame zebra-tr">
+      <div class="tl-photo-wrap reveal">
+        <div class="zebra-band tl-band ghost"></div>
+        <div class="photo-frame tl-photo tilt-r">
           <div class="photo tone-c ratio-tall">
             <div class="photo-placeholder"><span class="photo-cap">Linge préparé avant livraison</span></div>
           </div>
@@ -343,16 +380,17 @@
 <section id="travail-humain">
   <div class="wrap work-grid">
     <div class="reveal">
-      <h2 style="font-size:clamp(26px,3.4vw,38px);">Une intervention n'est pas une case cochée.</h2>
+      <h2 style="font-size:clamp(26px,3.4vw,40px);">Une intervention n'est pas une case cochée.</h2>
       <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75; max-width:440px;">Derrière chaque ménage, une équipe se déplace, refait les lits, change le linge, vérifie chaque pièce une à une. Ce n'est pas un algorithme qui entre dans le logement, c'est quelqu'un.</p>
     </div>
     <div class="work-photos reveal">
-      <div class="photo-frame zebra-bl ghost">
+      <div class="zebra-band work-band"></div>
+      <div class="photo-frame work-photo-main bleed-r" data-depth="0.05">
         <div class="photo tone-b ratio-portrait">
           <div class="photo-placeholder"><span class="photo-cap">Préparation d'une chambre</span></div>
         </div>
       </div>
-      <div class="photo">
+      <div class="work-photo-small tilt-l">
         <div class="photo tone-d ratio-square">
           <div class="photo-placeholder"><span class="photo-cap">Linge changé</span></div>
         </div>
@@ -364,9 +402,10 @@
 </main>
 
 <div class="verify-outer band-dark" id="verification">
+  <div class="zebra-band verify-band ghost"></div>
   <div class="wrap verify-grid">
     <div class="reveal">
-      <h3 style="font-size:clamp(26px,3.4vw,40px);">Un logement n'est pas prêt parce qu'une case est cochée.</h3>
+      <h3 style="font-size:clamp(28px,3.8vw,46px);">Un logement n'est pas prêt parce qu'une case est cochée.</h3>
       <p style="margin-top:16px; font-size:16px; line-height:1.75; max-width:460px;">Chaque ménage est prouvé par un jeu de photos précis, contrôlé par notre équipe avant toute confirmation. Rien ne part au client sans regard humain.</p>
     </div>
     <div class="reveal">
@@ -390,15 +429,18 @@
 <main>
 
 <section id="proprietaire">
-  <div class="wrap owner-grid">
-    <div class="photo-frame zebra-tl pink reveal">
-      <div class="photo tone-a ratio-wide">
-        <div class="photo-placeholder"><span class="photo-cap">Logement prêt, lumière naturelle</span></div>
+  <div class="wrap">
+    <div class="owner-photo reveal">
+      <div class="zebra-band owner-band pink"></div>
+      <div class="photo-frame" style="position:absolute; inset:0;" data-depth="0.04">
+        <div class="photo tone-a ratio-full">
+          <div class="photo-placeholder"><span class="photo-cap">Logement prêt, lumière naturelle</span></div>
+        </div>
       </div>
     </div>
-    <div class="reveal">
-      <h2 style="font-size:clamp(26px,3.4vw,38px);">Vous n'avez pas à tout gérer vous-même.</h2>
-      <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75; max-width:440px;">Vous voyez chaque intervention, son statut et sa vérification depuis votre espace. Pas de conciergerie qui prend la main sur vos réservations, pas de surprise sur ce qui a été fait.</p>
+    <div class="owner-text reveal">
+      <h2>Vous n'avez pas à tout gérer vous-même.</h2>
+      <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75;">Vous voyez chaque intervention, son statut et sa vérification depuis votre espace. Pas de conciergerie qui prend la main sur vos réservations, pas de surprise sur ce qui a été fait.</p>
     </div>
   </div>
 </section>
@@ -523,6 +565,7 @@
 </section>
 
 <section id="cta">
+  <div class="zebra-band cta-band"></div>
   <div class="wrap cta-grid">
     <div class="reveal">
       <h2>Envie de tester Zebramoon sur votre bien&nbsp;?</h2>
@@ -631,6 +674,35 @@
       nav.classList.toggle('on-dark', active.size > 0);
     }, { rootMargin: '-64px 0px -85% 0px', threshold: 0 });
     darkSections.forEach(function (el) { io.observe(el); });
+  })();
+</script>
+
+<script>
+  // Profondeur : les photographies dérivent un peu plus lentement que le
+  // reste au scroll, un mouvement léger plutôt qu'un décor animé. Chaque
+  // élément porte son propre facteur (data-depth), désactivé si l'utilisateur
+  // préfère moins de mouvement.
+  (function () {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var els = Array.prototype.slice.call(document.querySelectorAll('[data-depth]'));
+    if (!els.length) return;
+    var ticking = false;
+    function update() {
+      var vh = window.innerHeight;
+      els.forEach(function (el) {
+        var depth = parseFloat(el.getAttribute('data-depth')) || 0;
+        var rect = el.getBoundingClientRect();
+        var center = rect.top + rect.height / 2 - vh / 2;
+        el.style.transform = 'translateY(' + Math.max(-40, Math.min(40, center * -depth)) + 'px)';
+      });
+      ticking = false;
+    }
+    function onScroll() {
+      if (!ticking) { requestAnimationFrame(update); ticking = true; }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    update();
   })();
 </script>
 
