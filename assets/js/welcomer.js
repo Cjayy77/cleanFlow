@@ -296,7 +296,7 @@ function buildValidationForm(booking) {
   const sgHead = document.createElement('div'); sgHead.className = 'eyebrow'; sgHead.style.marginTop = '16px'; sgHead.textContent = 'Signature';
   form.appendChild(sgHead);
   const canvas = document.createElement('canvas'); canvas.className = 'wc-sign'; canvas.width = 360; canvas.height = 140;
-  const ctx = canvas.getContext('2d'); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#12123A';
+  const ctx = canvas.getContext('2d'); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#1A160F';
   let drawing = false; let signed = false;
   const pos = e => { const r = canvas.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return { x: (t.clientX - r.left) * (canvas.width / r.width), y: (t.clientY - r.top) * (canvas.height / r.height) }; };
   const start = e => { drawing = true; signed = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };

@@ -1,37 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-        <linearGradient data-dc-tpl="8" id="fanG1" gradientUnits="userSpaceOnUse" x1="56" y1="332" x2="148.71" y2="46.68">
-          <stop data-dc-tpl="9" offset="0" stop-color="#3a1152"></stop>
-          <stop data-dc-tpl="10" offset="0.55" stop-color="#20103c"></stop>
-          <stop data-dc-tpl="11" offset="1" stop-color="#100a26"></stop>
-        </linearGradient>
-        <linearGradient data-dc-tpl="12" id="fanG2" gradientUnits="userSpaceOnUse" x1="56" y1="332" x2="213.92" y2="88.84">
-          <stop data-dc-tpl="13" offset="0" stop-color="#4b1160"></stop>
-          <stop data-dc-tpl="14" offset="0.55" stop-color="#2a1245"></stop>
-          <stop data-dc-tpl="15" offset="1" stop-color="#181033"></stop>
-        </linearGradient>
-        <linearGradient data-dc-tpl="16" id="fanG3" gradientUnits="userSpaceOnUse" x1="56" y1="332" x2="267.83" y2="141.3">
-          <stop data-dc-tpl="17" offset="0" stop-color="#7d1470"></stop>
-          <stop data-dc-tpl="18" offset="0.5" stop-color="#4d1461"></stop>
-          <stop data-dc-tpl="19" offset="1" stop-color="#2b1247"></stop>
-        </linearGradient>
-        <linearGradient data-dc-tpl="20" id="fanG4" gradientUnits="userSpaceOnUse" x1="56" y1="332" x2="330.07" y2="209.97">
-          <stop data-dc-tpl="21" offset="0" stop-color="#a3186f"></stop>
-          <stop data-dc-tpl="22" offset="0.55" stop-color="#d42d80"></stop>
-          <stop data-dc-tpl="23" offset="1" stop-color="#ee3a8b"></stop>
-        </linearGradient>
-        <linearGradient data-dc-tpl="24" id="fanG5" gradientUnits="userSpaceOnUse" x1="56" y1="332" x2="363.69" y2="294.22">
-          <stop data-dc-tpl="25" offset="0" stop-color="#b81c6d"></stop>
-          <stop data-dc-tpl="26" offset="0.55" stop-color="#e5327f"></stop>
-          <stop data-dc-tpl="27" offset="1" stop-color="#fb4193"></stop>
-        </linearGradient>
-        <filter data-dc-tpl="28" id="fanShadow" x="-15%" y="-15%" width="140%" height="140%" color-interpolation-filters="sRGB">
-          <feDropShadow data-dc-tpl="29" dx="4" dy="8" stdDeviation="7" flood-color="#3d0f3a" flood-opacity="0.3"></feDropShadow>
-        </filter>
-        <g data-dc-tpl="30" filter="url(#fanShadow)">
-        <path data-dc-tpl="31" d="M56 332 Q116.4 194.7 127.42 41.45 A22 22 0 1 1 169.02 54.97 Q137.2 201.5 56 332 Z" fill="url(#fanG1)"></path>
-        <path data-dc-tpl="32" d="M56 332 Q144.9 218.0 193.63 77.81 A23 23 0 1 1 232.29 102.88 Q164.3 230.5 56 332 Z" fill="url(#fanG2)"></path>
-        <path data-dc-tpl="33" d="M56 332 Q166.5 243.3 250.25 124.83 A24 24 0 1 1 282.26 160.40 Q182.5 261.1 56 332 Z" fill="url(#fanG3)"></path>
-        <path data-dc-tpl="34" d="M56 332 Q192.7 272.8 318.04 188.07 A25 25 0 1 1 338.31 233.58 Q202.9 295.6 56 332 Z" fill="url(#fanG4)"></path>
-        <path data-dc-tpl="35" d="M56 332 Q208.3 309.3 358.36 268.77 A26 26 0 1 1 364.68 320.21 Q211.4 335.0 56 332 Z" fill="url(#fanG5)"></path>
-        </g>
-      </svg>
+  <!-- Placeholder mark, not final: a fan of zebra stripes. See CLAUDE.md
+       Part 41, the real logo is designed separately later. -->
+  <g fill="#1A160F">
+    <path d="M56 332 Q116.4 194.7 127.42 41.45 A22 22 0 1 1 169.02 54.97 Q137.2 201.5 56 332 Z"/>
+    <path d="M56 332 Q144.9 218.0 193.63 77.81 A23 23 0 1 1 232.29 102.88 Q164.3 230.5 56 332 Z" fill="#E6007E"/>
+    <path d="M56 332 Q166.5 243.3 250.25 124.83 A24 24 0 1 1 282.26 160.40 Q182.5 261.1 56 332 Z"/>
+    <path d="M56 332 Q192.7 272.8 318.04 188.07 A25 25 0 1 1 338.31 233.58 Q202.9 295.6 56 332 Z" fill="#E6007E"/>
+    <path d="M56 332 Q208.3 309.3 358.36 268.77 A26 26 0 1 1 364.68 320.21 Q211.4 335.0 56 332 Z"/>
+  </g>
+</svg>

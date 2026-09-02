@@ -254,32 +254,32 @@ export function openDevisDocument(booking, client) {
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis ${ref}, Zebramoon</title>
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
-  body{ font-family:'Helvetica Neue',Arial,sans-serif; color:#12123A; padding:40px 46px; font-size:14px; }
+  body{ font-family:'Manrope','Helvetica Neue',Arial,sans-serif; color:#1A160F; padding:40px 46px; font-size:14px; }
   .top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px; }
   .brand{ display:flex; align-items:center; gap:12px; font-size:24px; font-weight:800; }
   .brand .k{ color:#E6007E; }
   .doc-meta{ text-align:right; font-size:13px; color:#555; }
-  .doc-meta h1{ font-size:22px; letter-spacing:2px; color:#12123A; margin-bottom:6px; }
+  .doc-meta h1{ font-size:22px; letter-spacing:2px; color:#1A160F; margin-bottom:6px; }
   .parties{ display:flex; justify-content:space-between; gap:30px; margin-bottom:26px; }
   .parties h3{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#E6007E; margin-bottom:6px; }
   .parties div{ font-size:13px; line-height:1.5; color:#333; }
   table{ width:100%; border-collapse:collapse; margin-bottom:20px; }
-  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#888; border-bottom:2px solid #12123A; padding:8px 0; }
+  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#888; border-bottom:2px solid #1A160F; padding:8px 0; }
   th.amt, td.amt{ text-align:right; white-space:nowrap; }
-  td{ padding:11px 0; border-bottom:1px solid #ECEAF3; }
+  td{ padding:11px 0; border-bottom:1px solid #E4DBC7; }
   .totals{ margin-left:auto; width:280px; }
   .totals .row{ display:flex; justify-content:space-between; padding:7px 0; font-size:14px; }
-  .totals .ttc{ border-top:2px solid #12123A; margin-top:4px; padding-top:12px; font-size:18px; font-weight:800; color:#E6007E; }
-  .foot{ margin-top:38px; font-size:11px; color:#888; line-height:1.6; border-top:1px solid #ECEAF3; padding-top:16px; }
+  .totals .ttc{ border-top:2px solid #1A160F; margin-top:4px; padding-top:12px; font-size:18px; font-weight:800; color:#E6007E; }
+  .foot{ margin-top:38px; font-size:11px; color:#888; line-height:1.6; border-top:1px solid #E4DBC7; padding-top:16px; }
   svg{ width:34px; height:34px; }
   @media print{ body{ padding:24px; } .noprint{ display:none; } }
   .noprint{ margin-top:26px; }
-  .noprint button{ background:#E6007E; color:#fff; border:none; border-radius:8px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; }
+  .noprint button{ background:#E6007E; color:#fff; border:none; border-radius:4px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; }
 </style></head><body>
   <div class="top">
     <div class="brand">
-      <svg viewBox="0 0 400 400"><g fill="#E6007E"><path d="M56 332 Q116.4 194.7 127.42 41.45 A22 22 0 1 1 169.02 54.97 Q137.2 201.5 56 332 Z" opacity=".55"/><path d="M56 332 Q144.9 218.0 193.63 77.81 A23 23 0 1 1 232.29 102.88 Q164.3 230.5 56 332 Z" opacity=".7"/><path d="M56 332 Q166.5 243.3 250.25 124.83 A24 24 0 1 1 282.26 160.40 Q182.5 261.1 56 332 Z" opacity=".82"/><path d="M56 332 Q192.7 272.8 318.04 188.07 A25 25 0 1 1 338.31 233.58 Q202.9 295.6 56 332 Z" opacity=".92"/><path d="M56 332 Q208.3 309.3 358.36 268.77 A26 26 0 1 1 364.68 320.21 Q211.4 335.0 56 332 Z"/></g></svg>
-      <span><span class="k">Clean</span>Flow</span>
+      <svg viewBox="0 0 400 400"><g fill="#1A160F"><path d="M56 332 Q116.4 194.7 127.42 41.45 A22 22 0 1 1 169.02 54.97 Q137.2 201.5 56 332 Z"/><path d="M56 332 Q144.9 218.0 193.63 77.81 A23 23 0 1 1 232.29 102.88 Q164.3 230.5 56 332 Z" fill="#E6007E"/><path d="M56 332 Q166.5 243.3 250.25 124.83 A24 24 0 1 1 282.26 160.40 Q182.5 261.1 56 332 Z"/><path d="M56 332 Q192.7 272.8 318.04 188.07 A25 25 0 1 1 338.31 233.58 Q202.9 295.6 56 332 Z" fill="#E6007E"/><path d="M56 332 Q208.3 309.3 358.36 268.77 A26 26 0 1 1 364.68 320.21 Q211.4 335.0 56 332 Z"/></g></svg>
+      <span><span class="k">Zebra</span>moon</span>
     </div>
     <div class="doc-meta">
       <h1>DEVIS</h1>
@@ -361,20 +361,20 @@ export function openLogementQr(target) {
   <title>QR logement · ${escapeHtml(ref6)}</title>
   <style>
     @page { margin: 20mm; }
-    body { font-family:'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; color:#221541; text-align:center; padding:32px 24px; }
-    .brand { font-size:26px; font-weight:800; letter-spacing:-0.01em; }
+    body { font-family:'Manrope', system-ui, -apple-system, sans-serif; color:#1A160F; text-align:center; padding:32px 24px; }
+    .brand { font-family:'Fraunces', Georgia, serif; font-size:26px; font-weight:600; letter-spacing:-0.01em; }
     .brand span { color:#E6007E; }
-    .sub { color:#6B6480; margin-top:4px; font-size:14px; }
-    .qr { display:inline-block; margin:26px auto 14px; padding:18px; border:1px solid #eadff0; border-radius:16px; }
+    .sub { color:#6E6656; margin-top:4px; font-size:14px; }
+    .qr { display:inline-block; margin:26px auto 14px; padding:18px; border:1px solid #E4DBC7; border-radius:4px; }
     .qr svg { width:280px; height:280px; display:block; }
     .ref { font-weight:700; font-size:18px; letter-spacing:0.04em; }
-    .addr { color:#6B6480; margin-top:6px; font-size:14px; }
-    .hint { max-width:340px; margin:22px auto 0; color:#221541; font-size:14px; line-height:1.5; }
-    .noprint button { margin-top:24px; padding:10px 16px; border:0; border-radius:10px; background:#E6007E; color:#fff; font-weight:700; cursor:pointer; }
+    .addr { color:#6E6656; margin-top:6px; font-size:14px; }
+    .hint { max-width:340px; margin:22px auto 0; color:#1A160F; font-size:14px; line-height:1.5; }
+    .noprint button { margin-top:24px; padding:10px 16px; border:0; border-radius:4px; background:#E6007E; color:#fff; font-weight:700; cursor:pointer; }
     @media print { .noprint { display:none; } }
   </style></head>
   <body>
-    <div class="brand"><span>Clean</span>Flow</div>
+    <div class="brand"><span>Zebra</span>moon</div>
     <div class="sub">Contrôle qualité, logement</div>
     <div class="qr">${svg}</div>
     <div class="ref">Réf ${escapeHtml(ref6)}</div>

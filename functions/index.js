@@ -76,19 +76,19 @@ function buildDevisPdf(booking, client, vatRate) {
     const ref = `CF-${String(booking.id || '').slice(0, 6).toUpperCase()}`;
 
     doc.fontSize(22).fillColor('#E6007E').text('Zebramoon', { continued: false });
-    doc.moveDown(0.2).fontSize(18).fillColor('#12123A').text('DEVIS');
+    doc.moveDown(0.2).fontSize(18).fillColor('#1A160F').text('DEVIS');
     doc.fontSize(10).fillColor('#555')
       .text(`N° ${ref}`)
       .text(`Date : ${new Date().toLocaleDateString('fr-FR')}`);
     doc.moveDown();
-    doc.fontSize(11).fillColor('#12123A')
+    doc.fontSize(11).fillColor('#1A160F')
       .text(`Client : ${(client && client.email) || ''}`)
       .text(`Logement : ${booking.propertyAddress || ''}${booking.surface ? `, ${booking.surface} m²` : ''}`);
     doc.moveDown();
 
     items.forEach((it) => {
-      doc.fontSize(11).fillColor('#12123A').text(it.label, { continued: true })
-        .fillColor('#12123A').text(`   ${it.amount} EUR HT`, { align: 'right' });
+      doc.fontSize(11).fillColor('#1A160F').text(it.label, { continued: true })
+        .fillColor('#1A160F').text(`   ${it.amount} EUR HT`, { align: 'right' });
     });
     doc.moveDown();
     doc.fontSize(11).text(`Total HT : ${totalHT} EUR`);
