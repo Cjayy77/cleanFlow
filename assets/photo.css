@@ -73,3 +73,15 @@
 @media (max-width:640px){
   .photo.ratio-wide{ aspect-ratio:4/3; }
 }
+
+/* Composition utilities: let a photograph escape the text grid instead of
+   sitting inside a uniform container every time (CLAUDE.md "the container
+   is a structural aid, not a prison"). */
+.bleed-r{ margin-right:calc(50% - 50vw); }
+.bleed-l{ margin-left:calc(50% - 50vw); }
+.bleed-x{ margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); }
+.tilt-l{ transform:rotate(-1.6deg); }
+.tilt-r{ transform:rotate(1.4deg); }
+@media (max-width:760px){
+  .tilt-l, .tilt-r{ transform:none; }
+}
