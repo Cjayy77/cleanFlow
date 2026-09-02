@@ -41,9 +41,10 @@
   ::selection{ background:var(--pink); color:#fff; }
   img{ max-width:100%; }
 
-  /* NAV, restrained: brand + hamburger on mobile, everything collapses to a
-     panel rather than a floating pill bar. Inverts to the dark palette
-     while a dark section sits underneath it. */
+  /* NAV: two rows on desktop, brand centered above a links row, so the
+     wordmark reads as the anchor rather than one more item in a bar.
+     Mobile keeps the original compact single row + dropdown untouched.
+     Inverts to the dark palette while a dark section sits underneath it. */
   nav{ position:sticky; top:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease; }
   nav.on-dark{ background: rgba(24,20,14,0.86); border-bottom-color: rgba(245,239,227,0.14); }
   nav.on-dark .brand{ color:var(--ivory); }
@@ -54,7 +55,9 @@
   .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:0 32px; max-width:1180px; margin:0 auto; height:64px; gap:20px; }
   .brand{ display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-weight:600; font-size:21px; letter-spacing:-0.01em; color:var(--ink); flex-shrink:0; text-decoration:none; transition: color .3s ease; }
   .brand .k{ color:var(--pink); }
-  .nav-links{ display:flex; align-items:center; gap:26px; font-size:14px; font-weight:600; color: var(--muted); transition: color .3s ease; }
+  .nav-links{ display:flex; align-items:center; gap:26px; font-size:14px; font-weight:600; color: var(--muted); transition: color .3s ease, border-color .35s ease; }
+  .nav-link-group{ display:flex; align-items:center; gap:26px; }
+  .nav-actions{ display:flex; align-items:center; gap:18px; }
   .nav-links a{ text-decoration:none; transition: color .15s ease-out; }
   .nav-links a:hover{ color: var(--ink); }
   .nav-login{ color:var(--ink) !important; }
@@ -65,14 +68,23 @@
   .nav-toggle[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
   .nav-toggle[aria-expanded="true"] span:nth-child(2){ opacity:0; }
   .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
+
+  @media (min-width:861px){
+    .nav-inner{ flex-direction:column; height:auto; padding:0; gap:0; }
+    .brand{ margin:0 auto; padding:15px 0 13px; }
+    .nav-links{ display:grid; grid-template-columns:1fr auto 1fr; width:100%; max-width:1180px; margin:0 auto; box-sizing:border-box; padding:13px 32px; border-top:1px solid var(--line); }
+    .nav-link-group{ grid-column:2; justify-self:center; }
+    .nav-actions{ grid-column:3; justify-self:end; }
+  }
   @media (max-width:860px){
     .nav-toggle{ display:flex; }
-    .nav-links{ position:absolute; top:64px; left:0; right:0; display:none; flex-direction:column; align-items:flex-start; gap:2px; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 22px 18px; }
+    .nav-links{ position:absolute; top:64px; left:0; right:0; display:none; flex-direction:column; align-items:stretch; gap:0; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 22px 18px; }
     nav.on-dark .nav-links{ background:var(--charcoal); }
     .nav-links.open{ display:flex; }
+    .nav-link-group, .nav-actions{ flex-direction:column; align-items:stretch; width:100%; gap:0; }
     .nav-links a{ width:100%; padding:12px 0; border-top:1px solid var(--line); }
     nav.on-dark .nav-links a{ border-top-color:rgba(245,239,227,0.14); }
-    .nav-links a:first-child{ border-top:none; }
+    .nav-link-group a:first-child{ border-top:none; }
     .nav-cta{ width:100%; text-align:center; margin-top:6px; }
   }
 
@@ -89,33 +101,35 @@
   .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:15px; padding:14px 2px; text-decoration:none; background:none; color:var(--ink); border:none; border-bottom:1.5px solid var(--ink); border-radius:0; transition: color .18s ease-out, border-color .18s ease-out, gap .18s var(--ease); }
   .btn-outline:hover{ color:var(--pink); border-color:var(--pink); gap:12px; }
 
-  /* HERO: the photograph bleeds to the true screen edge (it breaks out of
-     .wrap entirely, positioned against .hero itself), a large zebra band
-     runs from behind it into the text column, and a second band crosses
-     back over its own bottom edge. Must still fit the first viewport. */
-  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 64px); display:flex; align-items:center; padding:30px 0; }
-  .hero-photo-bleed{ position:absolute; top:0; right:0; bottom:0; width:56%; overflow:visible; }
-  .hero-pf{ position:absolute; inset:0; }
-  .hero-band-a{ width:30%; aspect-ratio:1/2.1; left:-2%; top:-8%; opacity:.92;
-    -webkit-mask-size:180% auto; mask-size:180% auto; -webkit-mask-position:35% 20%; mask-position:35% 20%; }
-  .hero-band-b{ width:28%; aspect-ratio:1/1.9; left:3%; bottom:-6%;
-    -webkit-mask-size:185% auto; mask-size:185% auto; -webkit-mask-position:20% 70%; mask-position:20% 70%; }
-  .hero-content{ position:relative; z-index:2; max-width:500px; }
-  @media (max-width:920px){
-    .hero{ flex-direction:column; justify-content:center; gap:0; }
-    .hero-photo-bleed{ position:relative; width:100%; max-width:380px; height:auto; aspect-ratio:3/4; margin:0 auto 26px; overflow:visible; }
-    .hero-pf{ position:relative; inset:auto; width:100%; height:100%; }
-    .hero-content{ max-width:none; }
-  }
-  @media (max-width:560px){ .hero-photo-bleed{ max-width:300px; } }
-  .hero h1{ font-size: clamp(34px,4.8vw,60px); margin-bottom:18px; font-weight:600; }
-  .hero p{ font-size:17px; line-height:1.6; color: var(--muted); max-width:480px; margin-bottom:26px; }
+  /* HERO: a real photograph fills the whole hero (not a panel, not a card),
+     with a scrim so the left-aligned text stays legible over whatever the
+     photo shows. One small zebra sits bottom-right, opposite the text, and
+     bleeds past the hero's own bottom edge into the next section. Must
+     still fit the first viewport, on a two-row nav on desktop. */
+  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 64px); display:flex; align-items:center; padding:40px 0; }
+  @media (min-width:861px){ .hero{ min-height:calc(100svh - 100px); } }
+  .hero-bg{ position:absolute; inset:0; overflow:hidden; z-index:0; }
+  .hero-bg .photo{ position:absolute; inset:0; }
+  .hero-scrim{ position:absolute; inset:0; z-index:1; pointer-events:none;
+    background:linear-gradient(100deg, rgba(20,17,11,.88) 0%, rgba(20,17,11,.62) 28%, rgba(20,17,11,.22) 52%, transparent 72%); }
+  .hero-zebra{ width:14vw; aspect-ratio:1/1.7; right:4vw; bottom:-9%; z-index:2;
+    -webkit-mask-size:220% auto; mask-size:220% auto; -webkit-mask-position:35% 55%; mask-position:35% 55%; }
+  .hero-content{ position:relative; z-index:3; max-width:520px; }
+  .hero h1{ font-size: clamp(34px,4.8vw,60px); margin-bottom:18px; font-weight:600; color:var(--ivory); }
+  .hero p{ font-size:17px; line-height:1.6; color: rgba(245,239,227,.82); max-width:480px; margin-bottom:26px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
-  .hero-badges{ margin-top:28px; font-size:13.5px; font-weight:600; color:var(--muted); }
+  .hero .btn-outline{ color:var(--ivory); border-bottom-color:rgba(245,239,227,.55); }
+  .hero .btn-outline:hover{ color:var(--pink-soft); border-color:var(--pink-soft); }
+  @media (max-width:860px){
+    .hero{ align-items:flex-end; padding:34px 0 42px; }
+    .hero-scrim{ background:linear-gradient(190deg, rgba(20,17,11,.12) 0%, rgba(20,17,11,.72) 58%, rgba(20,17,11,.9) 100%); }
+    .hero-zebra{ width:24vw; right:6vw; bottom:-5%; }
+    .hero-bg .photo-cap{ display:none; }
+  }
 
   @keyframes rise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
-  html.js .hero h1, html.js .hero p, html.js .hero .btn-row, html.js .hero-badges{ animation: rise .7s var(--ease) backwards; }
-  .hero p{ animation-delay:.08s; } .hero .btn-row{ animation-delay:.15s; } .hero-badges{ animation-delay:.22s; }
+  html.js .hero h1, html.js .hero p, html.js .hero .btn-row{ animation: rise .7s var(--ease) backwards; }
+  .hero p{ animation-delay:.08s; } .hero .btn-row{ animation-delay:.15s; }
 
   /* SECTIONS: deliberately uneven rhythm, not one uniform padding value */
   section{ padding: 88px 0; }
@@ -129,19 +143,23 @@
 
   html.js .reveal{ opacity:0; transform:translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
   html.js .reveal.in{ opacity:1; transform:none; }
+  /* Motion variants: not every block enters the same way */
+  html.js .reveal-side{ opacity:0; transform:translateX(-26px); transition: opacity .75s var(--ease), transform .75s var(--ease); }
+  html.js .reveal-side.in{ opacity:1; transform:none; }
+  html.js .reveal-wide{ opacity:0; transform:scaleX(.92); transform-origin:left center; transition: opacity .8s var(--ease), transform .8s var(--ease); }
+  html.js .reveal-wide.in{ opacity:1; transform:none; }
+  html.js .reveal-soft{ opacity:0; transition: opacity 1s var(--ease); }
+  html.js .reveal-soft.in{ opacity:1; }
 
   /* 01, ENTRE DEUX VOYAGEURS */
   #entre-deux{ padding-top:100px; padding-bottom:64px; }
   .tl-wrap{ display:grid; grid-template-columns:1.1fr .9fr; gap:64px; align-items:start; position:relative; }
   @media (max-width:900px){ .tl-wrap{ grid-template-columns:1fr; gap:40px; } }
-  .timeline{ list-style:none; position:relative; z-index:1; }
-  .timeline li{ display:grid; grid-template-columns:32px 100px 1fr; gap:16px; align-items:baseline; padding:17px 0; border-top:1px solid var(--line); }
-  .timeline li:first-child{ border-top:none; }
-  .tl-num{ font-size:12px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:5px; }
-  .timeline li.is-control .tl-num{ color:var(--pink); }
-  .timeline .tl-label{ font-family:var(--font-display); font-size:19px; font-weight:600; }
-  .timeline .tl-text{ font-size:14.5px; color:var(--muted); line-height:1.6; }
-  @media (max-width:560px){ .timeline li{ grid-template-columns:24px 1fr; row-gap:4px; } .timeline .tl-text{ grid-column:2; } }
+  .flow-line{ position:relative; z-index:1; font-family:var(--font-display); font-weight:600;
+    font-size:clamp(23px,3.1vw,37px); line-height:1.6; letter-spacing:-0.01em; }
+  .flow-line .arrow{ display:inline-block; margin:0 9px; color:var(--muted); font-weight:400; font-size:.62em; vertical-align:middle; }
+  .flow-line .is-control{ color:var(--pink); }
+  .flow-note{ margin-top:26px; max-width:440px; color:var(--muted); font-size:15.5px; line-height:1.75; position:relative; z-index:1; }
   .tl-photo-wrap{ position:sticky; top:88px; }
   .tl-photo{ width:100%; }
   .tl-band{ width:56%; aspect-ratio:1/2.3; right:-20%; top:-14%;
@@ -158,7 +176,7 @@
     -webkit-mask-size:165% auto; mask-size:165% auto; -webkit-mask-position:20% 60%; mask-position:20% 60%; }
   @media (max-width:640px){
     .work-photos{ grid-template-columns:1fr; }
-    .work-photo-small{ max-width:58%; margin:-40px 0 0 auto; }
+    .work-photo-small{ width:58%; margin:-40px 0 0 auto; }
   }
 
   /* 03, VÉRIFICATION : bande sombre, dossier opérationnel */
@@ -187,13 +205,21 @@
   .owner-text{ max-width:560px; }
   .owner-text h2{ font-size:clamp(26px,3.4vw,40px); }
 
-  /* 05, SERVICES : liste éditoriale */
-  .service-list{ max-width:760px; }
-  .service-row{ display:grid; grid-template-columns:36px 1fr; gap:22px; padding:24px 0; border-top:1px solid var(--line); align-items:start; }
+  /* 05, SERVICES : liste éditoriale ancrée par une photographie */
+  .services-grid{ display:grid; grid-template-columns:1.25fr .85fr; gap:56px; align-items:start; }
+  .services-grid .sec-head{ grid-column:1/-1; }
+  @media (max-width:900px){
+    .services-grid{ grid-template-columns:1fr; gap:32px; }
+    .services-grid .service-photo{ order:-1; max-width:320px; }
+  }
+  .service-list{ max-width:520px; }
+  .service-row{ padding:22px 0; border-top:1px solid var(--line); }
   .service-row:first-child{ border-top:none; }
-  .service-num{ font-size:12px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; margin-top:3px; }
   .service-row h4{ font-size:19px; font-weight:600; margin-bottom:5px; }
-  .service-row p{ font-size:14.5px; color:var(--muted); line-height:1.65; max-width:520px; }
+  .service-row p{ font-size:14.5px; color:var(--muted); line-height:1.65; }
+  .service-photo{ position:relative; }
+  .service-band{ width:40%; aspect-ratio:1/1.9; right:-13%; bottom:-10%;
+    -webkit-mask-size:200% auto; mask-size:200% auto; -webkit-mask-position:65% 75%; mask-position:65% 75%; transform:scaleX(-1); }
 
   /* 06, ÉCONOMIE : exemple + simulateur, centrés, un seul jeu d'hypothèses */
   #economie{ padding-top:120px; }
@@ -279,7 +305,7 @@
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
     html{ scroll-behavior:auto; }
-    html.js .reveal{ opacity:1; transform:none; }
+    html.js .reveal, html.js .reveal-side, html.js .reveal-wide, html.js .reveal-soft{ opacity:1; transform:none; }
   }
 </style>
 <script type="application/ld+json">
@@ -312,29 +338,31 @@
       <span></span><span></span><span></span>
     </button>
     <div class="nav-links" id="navLinks">
-      <a href="#entre-deux">Fonctionnement</a>
-      <a href="#verification">Vérification</a>
-      <a href="#services">Services</a>
-      <a href="#economie">Tarifs</a>
-      <a href="#faq">FAQ</a>
-      <a href="/app/" class="nav-login">Connexion</a>
-      <a href="/app/" class="nav-cta">Créer mon compte</a>
+      <div class="nav-link-group">
+        <a href="#entre-deux">Fonctionnement</a>
+        <a href="#verification">Vérification</a>
+        <a href="#services">Services</a>
+        <a href="#economie">Tarifs</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="nav-actions">
+        <a href="/app/" class="nav-login">Connexion</a>
+        <a href="/app/" class="nav-cta">Créer mon compte</a>
+      </div>
     </div>
   </div>
 </nav>
 
 <header class="hero">
-  <div class="hero-photo-bleed">
-    <div class="zebra-band hero-band-a in-view"></div>
-    <div class="photo-frame hero-pf" data-depth="0.05">
-      <div class="photo tone-a ratio-full">
-        <div class="photo-placeholder">
-          <span class="photo-cap">Un logement, entre deux séjours</span>
-        </div>
+  <div class="hero-bg" data-depth="0.06">
+    <div class="photo tone-a ratio-full">
+      <div class="photo-placeholder">
+        <span class="photo-cap">Un logement, entre deux séjours</span>
       </div>
     </div>
-    <div class="zebra-band hero-band-b in-view"></div>
   </div>
+  <div class="hero-scrim"></div>
+  <div class="zebra-band hero-zebra ghost in-view" data-depth="-0.1"></div>
   <div class="wrap">
     <div class="hero-content">
       <h1>Votre logement. Notre équipe <span class="zebra-underline">entre les deux</span>.</h1>
@@ -343,7 +371,6 @@
         <a href="#economie" class="btn-a pink">Estimer mes économies →</a>
         <a href="#entre-deux" class="btn-outline">Voir comment ça marche</a>
       </div>
-      <p class="hero-badges">0&nbsp;% de commission sur vos revenus · Chaque intervention vérifiée · Sans engagement</p>
     </div>
   </div>
 </header>
@@ -357,14 +384,17 @@
       <p>Le voyageur part, le suivant arrive quelques heures plus tard. Entre les deux, une équipe entière se met en mouvement.</p>
     </div>
     <div class="tl-wrap">
-      <ol class="timeline reveal">
-        <li><span class="tl-num" aria-hidden="true">01</span><span class="tl-label">Départ</span><span class="tl-text">Le voyageur quitte le logement, la fenêtre d'intervention commence.</span></li>
-        <li><span class="tl-num" aria-hidden="true">02</span><span class="tl-label">Ménage</span><span class="tl-text">Un prestataire vérifié prépare chaque pièce selon la fiche du logement.</span></li>
-        <li><span class="tl-num" aria-hidden="true">03</span><span class="tl-label">Linge</span><span class="tl-text">Le linge sale repart, un jeu propre est livré si l'option est activée.</span></li>
-        <li class="is-control"><span class="tl-num" aria-hidden="true">04</span><span class="tl-label">Contrôle</span><span class="tl-text">Un jeu de photos précis est soumis, puis contrôlé par notre équipe.</span></li>
-        <li><span class="tl-num" aria-hidden="true">05</span><span class="tl-label">Validation</span><span class="tl-text">Le dossier est confirmé, ou renvoyé au prestataire avec une note claire.</span></li>
-        <li><span class="tl-num" aria-hidden="true">06</span><span class="tl-label">Prochaine arrivée</span><span class="tl-text">Le logement est prêt, la confirmation vous est envoyée.</span></li>
-      </ol>
+      <div>
+        <p class="flow-line reveal-side">
+          <span>Départ</span><span class="arrow" aria-hidden="true">→</span>
+          <span>Ménage</span><span class="arrow" aria-hidden="true">→</span>
+          <span>Linge</span><span class="arrow" aria-hidden="true">→</span>
+          <span class="is-control">Contrôle</span><span class="arrow" aria-hidden="true">→</span>
+          <span>Validation</span><span class="arrow" aria-hidden="true">→</span>
+          <span>Prochaine arrivée</span>
+        </p>
+        <p class="flow-note reveal">Un prestataire vérifié prépare chaque pièce, le linge repart et un jeu propre est livré. Avant toute confirmation, un jeu de photos précis est soumis et contrôlé par notre équipe.</p>
+      </div>
       <div class="tl-photo-wrap reveal">
         <div class="zebra-band tl-band ghost"></div>
         <div class="photo-frame tl-photo tilt-r">
@@ -379,13 +409,13 @@
 
 <section id="travail-humain">
   <div class="wrap work-grid">
-    <div class="reveal">
+    <div class="reveal-side">
       <h2 style="font-size:clamp(26px,3.4vw,40px);">Une intervention n'est pas une case cochée.</h2>
       <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75; max-width:440px;">Derrière chaque ménage, une équipe se déplace, refait les lits, change le linge, vérifie chaque pièce une à une. Ce n'est pas un algorithme qui entre dans le logement, c'est quelqu'un.</p>
     </div>
     <div class="work-photos reveal">
       <div class="zebra-band work-band"></div>
-      <div class="photo-frame work-photo-main bleed-r" data-depth="0.05">
+      <div class="photo-frame work-photo-main bleed-r" data-depth="0.07">
         <div class="photo tone-b ratio-portrait">
           <div class="photo-placeholder"><span class="photo-cap">Préparation d'une chambre</span></div>
         </div>
@@ -432,7 +462,7 @@
   <div class="wrap">
     <div class="owner-photo reveal">
       <div class="zebra-band owner-band pink"></div>
-      <div class="photo-frame" style="position:absolute; inset:0;" data-depth="0.04">
+      <div class="photo-frame" style="position:absolute; inset:0;" data-depth="0.06">
         <div class="photo tone-a ratio-full">
           <div class="photo-placeholder"><span class="photo-cap">Logement prêt, lumière naturelle</span></div>
         </div>
@@ -446,26 +476,30 @@
 </section>
 
 <section id="services">
-  <div class="wrap">
+  <div class="wrap services-grid">
     <div class="sec-head reveal">
       <h2>Tout ce qu'il faut entre deux voyageurs.</h2>
     </div>
-    <div class="service-list reveal">
+    <div class="service-list reveal-wide">
       <div class="service-row">
-        <span class="service-num" aria-hidden="true">01</span>
-        <div><h4>Ménage professionnel</h4><p>Réalisé par des entreprises de ménage vérifiées, assignées par notre équipe à chaque mission.</p></div>
+        <h4>Ménage professionnel</h4><p>Réalisé par des entreprises de ménage vérifiées, assignées par notre équipe à chaque mission.</p>
       </div>
       <div class="service-row">
-        <span class="service-num" aria-hidden="true">02</span>
-        <div><h4>Linge et consommables</h4><p>Livrés et repris entre chaque séjour par notre service linge, synchronisé avec le calendrier de ménage.</p></div>
+        <h4>Linge et consommables</h4><p>Livrés et repris entre chaque séjour par notre service linge, synchronisé avec le calendrier de ménage.</p>
       </div>
       <div class="service-row">
-        <span class="service-num" aria-hidden="true">03</span>
-        <div><h4>Welcomer, contrôle sur place</h4><p>En option, un contrôle qualité indépendant avant l'arrivée du voyageur : checklist, photos, validation.</p></div>
+        <h4>Welcomer, contrôle sur place</h4><p>En option, un contrôle qualité indépendant avant l'arrivée du voyageur : checklist, photos, validation.</p>
       </div>
       <div class="service-row">
-        <span class="service-num" aria-hidden="true">04</span>
-        <div><h4>Contrôle et suivi</h4><p>Chaque dossier est vérifié par notre équipe, les incidents signalés et suivis directement en ligne.</p></div>
+        <h4>Contrôle et suivi</h4><p>Chaque dossier est vérifié par notre équipe, les incidents signalés et suivis directement en ligne.</p>
+      </div>
+    </div>
+    <div class="service-photo reveal">
+      <div class="zebra-band service-band"></div>
+      <div class="photo-frame tilt-l">
+        <div class="photo tone-d ratio-tall">
+          <div class="photo-placeholder"><span class="photo-cap">Avant la remise des clés</span></div>
+        </div>
       </div>
     </div>
   </div>
@@ -621,7 +655,7 @@
 
 <script>
   (function () {
-    var els = document.querySelectorAll('.reveal');
+    var els = document.querySelectorAll('.reveal, .reveal-side, .reveal-wide, .reveal-soft');
     if (!('IntersectionObserver' in window)) {
       els.forEach(function (el) { el.classList.add('in'); });
       return;
@@ -693,7 +727,7 @@
         var depth = parseFloat(el.getAttribute('data-depth')) || 0;
         var rect = el.getBoundingClientRect();
         var center = rect.top + rect.height / 2 - vh / 2;
-        el.style.transform = 'translateY(' + Math.max(-40, Math.min(40, center * -depth)) + 'px)';
+        el.style.transform = 'translateY(' + Math.max(-56, Math.min(56, center * -depth)) + 'px)';
       });
       ticking = false;
     }
