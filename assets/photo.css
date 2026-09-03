@@ -80,8 +80,3 @@
 .bleed-r{ margin-right:clamp(-90px, calc(50% - 50vw), 0px); }
 .bleed-l{ margin-left:calc(50% - 50vw); }
 .bleed-x{ margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); }
-.tilt-l{ transform:rotate(-1.6deg); }
-.tilt-r{ transform:rotate(1.4deg); }
-@media (max-width:760px){
-  .tilt-l, .tilt-r{ transform:none; }
-}
