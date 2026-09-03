@@ -26,9 +26,9 @@
   --ok-bg: #E9EFDE;
   --ok-ink: #4C6B28;
 
-  /* Type: one grotesk family, Switzer carries statements and headlines,
-     Manrope carries body copy, UI and data. */
-  --font-display: 'Switzer', 'Manrope', system-ui, -apple-system, sans-serif;
+  /* Type: one grotesk family, Plus Jakarta Sans carries statements and
+     headlines, Manrope carries body copy, UI and data. */
+  --font-display: 'Plus Jakarta Sans', 'Manrope', system-ui, -apple-system, sans-serif;
   --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
 
   /* Geometry: soft enough to feel tactile, short enough to stay precise.
