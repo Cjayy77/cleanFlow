@@ -26,8 +26,7 @@
 <link rel="icon" href="assets/moon-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/tokens.css">
 <link rel="stylesheet" href="assets/zebra.css">
 <link rel="stylesheet" href="assets/photo.css">
@@ -46,7 +45,8 @@
      wordmark reads as the anchor rather than one more item in a bar.
      Mobile keeps the original compact single row + dropdown untouched.
      Inverts to the dark palette while a dark section sits underneath it. */
-  nav{ position:sticky; top:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease; }
+  nav{ position:sticky; top:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease, transform .35s var(--ease); }
+  nav.nav-hidden{ transform:translateY(-100%); }
   nav.on-dark{ background: rgba(24,20,14,0.86); border-bottom-color: rgba(245,239,227,0.14); }
   nav.on-dark .brand{ color:var(--ivory); }
   nav.on-dark .nav-links{ color:rgba(245,239,227,0.72); }
@@ -113,7 +113,9 @@
   .hero-bg{ position:absolute; inset:0; overflow:hidden; z-index:0; }
   .hero-bg .photo{ position:absolute; inset:0; }
   .hero-scrim{ position:absolute; inset:0; z-index:1; pointer-events:none;
-    background:linear-gradient(45deg, rgba(20,17,11,.92) 0%, rgba(20,17,11,.6) 32%, rgba(20,17,11,.2) 58%, transparent 78%); }
+    background:
+      linear-gradient(100deg, rgba(12,10,7,.92) 0%, rgba(12,10,7,.8) 34%, rgba(12,10,7,.4) 54%, transparent 70%),
+      linear-gradient(0deg, rgba(12,10,7,.6) 0%, transparent 42%); }
   .hero-zebra{ width:9vw; aspect-ratio:1/2.8; right:0; bottom:-5%; z-index:2;
     -webkit-mask-size:180% auto; mask-size:180% auto; -webkit-mask-position:50% 30%; mask-position:50% 30%; }
   .hero-content{ position:relative; z-index:3; max-width:520px; }
@@ -358,10 +360,8 @@
 
 <header class="hero">
   <div class="hero-bg" data-depth="0.06">
-    <div class="photo tone-a ratio-full">
-      <div class="photo-placeholder">
-        <span class="photo-cap">Un logement, entre deux séjours</span>
-      </div>
+    <div class="photo ratio-full">
+      <img class="photo-media" src="assets/hero.jpg" alt="Un logement, entre deux séjours" fetchpriority="high">
     </div>
   </div>
   <div class="hero-scrim"></div>
@@ -419,13 +419,13 @@
     <div class="work-photos reveal">
       <div class="zebra-band work-band"></div>
       <div class="photo-frame work-photo-main bleed-r" data-depth="0.07">
-        <div class="photo tone-b ratio-portrait">
-          <div class="photo-placeholder"><span class="photo-cap">Préparation d'une chambre</span></div>
+        <div class="photo ratio-portrait">
+          <img class="photo-media" src="assets/preparation.jpg" alt="Préparation d'une chambre" loading="lazy">
         </div>
       </div>
       <div class="work-photo-small">
-        <div class="photo tone-d ratio-square">
-          <div class="photo-placeholder"><span class="photo-cap">Linge changé</span></div>
+        <div class="photo ratio-square">
+          <img class="photo-media" src="assets/linge.jpeg" alt="Linge changé" loading="lazy">
         </div>
       </div>
     </div>
@@ -453,7 +453,7 @@
       <div class="evidence-grid">
         <div class="photo evidence ratio-square"><div class="photo-placeholder"><span class="photo-cap">Cuisine</span></div></div>
         <div class="photo evidence ratio-square"><div class="photo-placeholder"><span class="photo-cap">Salle de bain</span></div></div>
-        <div class="photo evidence ratio-square"><div class="photo-placeholder"><span class="photo-cap">Chambre</span></div></div>
+        <div class="photo evidence ratio-square"><img class="photo-media" src="assets/room.jpg" alt="Chambre" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -466,8 +466,8 @@
     <div class="owner-photo reveal">
       <div class="zebra-band owner-band pink"></div>
       <div class="photo-frame" style="position:absolute; inset:0;" data-depth="0.06">
-        <div class="photo tone-a ratio-full">
-          <div class="photo-placeholder"><span class="photo-cap">Logement prêt, lumière naturelle</span></div>
+        <div class="photo ratio-full">
+          <img class="photo-media" src="assets/keys_exchange.jpg" alt="Logement prêt, lumière naturelle" loading="lazy">
         </div>
       </div>
     </div>
@@ -500,8 +500,8 @@
     <div class="service-photo reveal">
       <div class="zebra-band service-band"></div>
       <div class="photo-frame">
-        <div class="photo tone-d ratio-tall">
-          <div class="photo-placeholder"><span class="photo-cap">Avant la remise des clés</span></div>
+        <div class="photo ratio-tall">
+          <img class="photo-media" src="assets/control.jpg" alt="Avant la remise des clés" loading="lazy">
         </div>
       </div>
     </div>
@@ -610,9 +610,9 @@
       <a href="/app/" class="btn-a pink">Créer mon compte client →</a>
       <div class="cta-contact">Une question ? Écrivez-nous à <a href="mailto:w.wanecque@gmail.com">w.wanecque@gmail.com</a></div>
     </div>
-    <div class="photo-frame zebra-br pink reveal">
-      <div class="photo tone-b ratio-portrait">
-        <div class="photo-placeholder"><span class="photo-cap">Prêt pour le prochain voyageur</span></div>
+    <div class="photo-frame zebra-br zebra-behind reveal">
+      <div class="photo ratio-portrait">
+        <img class="photo-media" src="assets/open_door.jpg" alt="Prêt pour le prochain voyageur" loading="lazy">
       </div>
     </div>
   </div>
@@ -711,6 +711,30 @@
       nav.classList.toggle('on-dark', active.size > 0);
     }, { rootMargin: '-64px 0px -85% 0px', threshold: 0 });
     darkSections.forEach(function (el) { io.observe(el); });
+  })();
+</script>
+
+<script>
+  // La nav se retire au scroll vers le bas, revient dès qu'on remonte.
+  (function () {
+    var nav = document.querySelector('nav');
+    var panel = document.getElementById('navLinks');
+    if (!nav) return;
+    var lastY = window.scrollY;
+    var ticking = false;
+    function update() {
+      var y = Math.max(0, window.scrollY);
+      var menuOpen = panel && panel.classList.contains('open');
+      if (!menuOpen) {
+        if (y > lastY && y > 120) nav.classList.add('nav-hidden');
+        else if (y < lastY) nav.classList.remove('nav-hidden');
+      }
+      lastY = y;
+      ticking = false;
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) { requestAnimationFrame(update); ticking = true; }
+    }, { passive: true });
   })();
 </script>
 

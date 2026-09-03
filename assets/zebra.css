@@ -108,6 +108,13 @@ html.js .photo-frame.zebra-tr.reveal.in::after{ transform:scaleX(-1) translateY(
   .photo-frame.zebra-tr::after{ width:48%; }
 }
 
+/* ZebraBehind: a quieter variant, tucked behind the photo instead of
+   crossing in front of it, and dialled down so it reads as a hint of
+   pattern peeking out from the edges rather than the main event. */
+.photo-frame.zebra-behind::after{ z-index:-1; }
+html.js .reveal.in .photo-frame.zebra-behind::after,
+html.js .photo-frame.zebra-behind.reveal.in::after{ opacity:.3; }
+
 /* ZebraBand: the primary brand device. Large organic bands, hand-positioned
    per scene (sizes/offsets set where used, in index.html), not a reusable
    corner widget. Can sit in front of a photo (.front) or partly behind one
@@ -137,4 +144,5 @@ html.js .zebra-band.in-view{ opacity:1; }
   .photo-frame.zebra-bl::after,
   .photo-frame.zebra-tr::after{ transform:scaleX(-1) !important; }
   .zebra-band{ transition:none !important; opacity:1 !important; transform:none !important; }
+  .photo-frame.zebra-behind::after{ opacity:.3 !important; }
 }
