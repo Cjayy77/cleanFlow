@@ -34,7 +34,8 @@
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; scroll-padding-top:84px; overflow-x:hidden; }
   @media (min-width:861px){ html{ scroll-padding-top:148px; } }
-  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; }
+  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; padding-top:65px; }
+  @media (min-width:861px){ body{ padding-top:131px; } }
   .wrap{ max-width: 1180px; margin:0 auto; padding: 0 32px; }
   h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.06; color:var(--ink); }
   a{ color:inherit; }
@@ -45,7 +46,7 @@
      wordmark reads as the anchor rather than one more item in a bar.
      Mobile keeps the original compact single row + dropdown untouched.
      Inverts to the dark palette while a dark section sits underneath it. */
-  nav{ position:sticky; top:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease, transform .35s var(--ease); }
+  nav{ position:fixed; top:0; left:0; right:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease, transform .35s var(--ease); }
   nav.nav-hidden{ transform:translateY(-100%); }
   nav.on-dark{ background: rgba(24,20,14,0.86); border-bottom-color: rgba(245,239,227,0.14); }
   nav.on-dark .brand{ color:var(--ivory); }
@@ -108,8 +109,8 @@
      runs full-bleed behind it. One small zebra runs up the right edge,
      bleeding past the hero's own bottom edge into the next section. Must
      still fit the first viewport, on a two-row nav on desktop. */
-  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 64px); display:flex; align-items:flex-end; padding:40px 0 56px; }
-  @media (min-width:861px){ .hero{ min-height:calc(100svh - 100px); padding-bottom:72px; } }
+  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 65px); display:flex; align-items:flex-end; padding:40px 0 56px; }
+  @media (min-width:861px){ .hero{ min-height:calc(100svh - 131px); padding-bottom:72px; } }
   .hero-bg{ position:absolute; inset:0; overflow:hidden; z-index:0; }
   .hero-bg .photo{ position:absolute; inset:0; }
   .hero-scrim{ position:absolute; inset:0; z-index:1; pointer-events:none;
