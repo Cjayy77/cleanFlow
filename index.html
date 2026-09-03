@@ -32,7 +32,7 @@
 <link rel="stylesheet" href="assets/photo.css">
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
-  html{ scroll-behavior:smooth; scroll-padding-top:84px; }
+  html{ scroll-behavior:smooth; scroll-padding-top:84px; overflow-x:hidden; }
   @media (min-width:861px){ html{ scroll-padding-top:148px; } }
   body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; }
   .wrap{ max-width: 1180px; margin:0 auto; padding: 0 32px; }
@@ -193,9 +193,7 @@
   .record-row:first-of-type{ border-top:none; }
   .record-row time{ color:rgba(245,239,227,.5); width:44px; flex-shrink:0; }
   .record-status{ margin-top:16px; padding-top:16px; border-top:1px solid rgba(245,239,227,0.16); display:flex; align-items:center; gap:10px; font-weight:700; color:var(--pink-soft); font-size:14px; }
-  .evidence-grid{ display:grid; grid-template-columns:1.3fr .7fr; grid-template-rows:1fr 1fr; gap:8px; margin-top:18px; height:280px; }
-  .evidence-grid .photo:first-child{ grid-row:1/3; height:100%; }
-  @media (max-width:560px){ .evidence-grid{ grid-template-columns:1fr 1fr; grid-template-rows:auto auto; height:auto; } .evidence-grid .photo:first-child{ grid-row:1/2; grid-column:1/3; aspect-ratio:16/10; } }
+  .evidence-grid{ margin-top:18px; max-width:220px; }
   .verify-band{ width:26vw; aspect-ratio:1/1.6; left:-4vw; bottom:-8%;
     -webkit-mask-size:220% auto; mask-size:220% auto; -webkit-mask-position:65% 40%; mask-position:65% 40%; }
 
@@ -363,8 +361,8 @@
     <div class="photo ratio-full">
       <img class="photo-media" src="assets/hero.jpg" alt="Un logement, entre deux séjours" fetchpriority="high">
     </div>
+    <div class="hero-scrim"></div>
   </div>
-  <div class="hero-scrim"></div>
   <div class="zebra-band hero-zebra ghost in-view" data-depth="-0.1"></div>
   <div class="wrap">
     <div class="hero-content">
@@ -401,8 +399,8 @@
       <div class="tl-photo-wrap reveal">
         <div class="zebra-band tl-band ghost"></div>
         <div class="photo-frame tl-photo">
-          <div class="photo tone-c ratio-tall">
-            <div class="photo-placeholder"><span class="photo-cap">Linge préparé avant livraison</span></div>
+          <div class="photo ratio-tall">
+            <img class="photo-media" src="assets/room.jpg" alt="Linge préparé avant livraison" loading="lazy">
           </div>
         </div>
       </div>
@@ -452,8 +450,6 @@
       </div>
       <div class="evidence-grid">
         <div class="photo evidence ratio-square"><div class="photo-placeholder"><span class="photo-cap">Cuisine</span></div></div>
-        <div class="photo evidence ratio-square"><div class="photo-placeholder"><span class="photo-cap">Salle de bain</span></div></div>
-        <div class="photo evidence ratio-square"><img class="photo-media" src="assets/room.jpg" alt="Chambre" loading="lazy"></div>
       </div>
     </div>
   </div>
