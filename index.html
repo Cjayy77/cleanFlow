@@ -33,7 +33,8 @@
 <link rel="stylesheet" href="assets/photo.css">
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
-  html{ scroll-behavior:smooth; }
+  html{ scroll-behavior:smooth; scroll-padding-top:84px; }
+  @media (min-width:861px){ html{ scroll-padding-top:148px; } }
   body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; }
   .wrap{ max-width: 1180px; margin:0 auto; padding: 0 32px; }
   h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.06; color:var(--ink); }
@@ -102,18 +103,19 @@
   .btn-outline:hover{ color:var(--pink); border-color:var(--pink); gap:12px; }
 
   /* HERO: a real photograph fills the whole hero (not a panel, not a card),
-     with a scrim so the left-aligned text stays legible over whatever the
-     photo shows. One small zebra sits bottom-right, opposite the text, and
-     bleeds past the hero's own bottom edge into the next section. Must
+     with a scrim so the text stays legible over whatever the photo shows.
+     One committed anchor on every size: text sits bottom-left, the photo
+     runs full-bleed behind it. One small zebra runs up the right edge,
+     bleeding past the hero's own bottom edge into the next section. Must
      still fit the first viewport, on a two-row nav on desktop. */
-  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 64px); display:flex; align-items:center; padding:40px 0; }
-  @media (min-width:861px){ .hero{ min-height:calc(100svh - 100px); } }
+  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 64px); display:flex; align-items:flex-end; padding:40px 0 56px; }
+  @media (min-width:861px){ .hero{ min-height:calc(100svh - 100px); padding-bottom:72px; } }
   .hero-bg{ position:absolute; inset:0; overflow:hidden; z-index:0; }
   .hero-bg .photo{ position:absolute; inset:0; }
   .hero-scrim{ position:absolute; inset:0; z-index:1; pointer-events:none;
-    background:linear-gradient(100deg, rgba(20,17,11,.88) 0%, rgba(20,17,11,.62) 28%, rgba(20,17,11,.22) 52%, transparent 72%); }
-  .hero-zebra{ width:14vw; aspect-ratio:1/1.7; right:4vw; bottom:-9%; z-index:2;
-    -webkit-mask-size:220% auto; mask-size:220% auto; -webkit-mask-position:35% 55%; mask-position:35% 55%; }
+    background:linear-gradient(45deg, rgba(20,17,11,.92) 0%, rgba(20,17,11,.6) 32%, rgba(20,17,11,.2) 58%, transparent 78%); }
+  .hero-zebra{ width:9vw; aspect-ratio:1/2.8; right:0; bottom:-5%; z-index:2;
+    -webkit-mask-size:180% auto; mask-size:180% auto; -webkit-mask-position:50% 30%; mask-position:50% 30%; }
   .hero-content{ position:relative; z-index:3; max-width:520px; }
   .hero h1{ font-size: clamp(34px,4.8vw,60px); margin-bottom:18px; font-weight:600; color:var(--ivory); }
   .hero p{ font-size:17px; line-height:1.6; color: rgba(245,239,227,.82); max-width:480px; margin-bottom:26px; }
@@ -121,9 +123,8 @@
   .hero .btn-outline{ color:var(--ivory); border-bottom-color:rgba(245,239,227,.55); }
   .hero .btn-outline:hover{ color:var(--pink-soft); border-color:var(--pink-soft); }
   @media (max-width:860px){
-    .hero{ align-items:flex-end; padding:34px 0 42px; }
-    .hero-scrim{ background:linear-gradient(190deg, rgba(20,17,11,.12) 0%, rgba(20,17,11,.72) 58%, rgba(20,17,11,.9) 100%); }
-    .hero-zebra{ width:24vw; right:6vw; bottom:-5%; }
+    .hero{ padding:34px 0 42px; }
+    .hero-zebra{ width:16vw; aspect-ratio:1/2.4; right:5vw; bottom:-4%; }
     .hero-bg .photo-cap{ display:none; }
   }
 
@@ -196,13 +197,15 @@
   .verify-band{ width:26vw; aspect-ratio:1/1.6; left:-4vw; bottom:-8%;
     -webkit-mask-size:220% auto; mask-size:220% auto; -webkit-mask-position:65% 40%; mask-position:65% 40%; }
 
-  /* 04, CÔTÉ PROPRIÉTAIRE : la photo occupe tout le module, pas une colonne */
+  /* 04, CÔTÉ PROPRIÉTAIRE : photo et texte côte à côte, jamais l'un au-dessus de l'autre */
   #proprietaire{ padding:72px 0; }
-  .owner-photo{ position:relative; aspect-ratio:21/9; margin-bottom:44px; }
+  .owner-grid{ display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center; }
+  @media (max-width:760px){ .owner-grid{ grid-template-columns:1fr; gap:32px; } }
+  .owner-photo{ position:relative; aspect-ratio:4/5; }
   @media (max-width:760px){ .owner-photo{ aspect-ratio:4/3; } }
-  .owner-band{ width:22vw; aspect-ratio:1/2; right:6vw; top:-16%;
+  .owner-band{ width:34%; aspect-ratio:1/2; right:-11%; top:-10%;
     -webkit-mask-size:190% auto; mask-size:190% auto; -webkit-mask-position:45% 60%; mask-position:45% 60%; }
-  .owner-text{ max-width:560px; }
+  .owner-text{ max-width:480px; }
   .owner-text h2{ font-size:clamp(26px,3.4vw,40px); }
 
   /* 05, SERVICES : liste éditoriale ancrée par une photographie */
@@ -365,7 +368,7 @@
   <div class="zebra-band hero-zebra ghost in-view" data-depth="-0.1"></div>
   <div class="wrap">
     <div class="hero-content">
-      <h1>Votre logement. Notre équipe <span class="zebra-underline">entre les deux</span>.</h1>
+      <h1>Votre logement. Notre équipe entre les deux.</h1>
       <p>Zebramoon coordonne le ménage, le linge et le contrôle qualité entre chaque séjour. Vous gardez la main sur vos réservations, sans commission sur vos revenus.</p>
       <div class="btn-row">
         <a href="#economie" class="btn-a pink">Estimer mes économies →</a>
@@ -397,7 +400,7 @@
       </div>
       <div class="tl-photo-wrap reveal">
         <div class="zebra-band tl-band ghost"></div>
-        <div class="photo-frame tl-photo tilt-r">
+        <div class="photo-frame tl-photo">
           <div class="photo tone-c ratio-tall">
             <div class="photo-placeholder"><span class="photo-cap">Linge préparé avant livraison</span></div>
           </div>
@@ -420,7 +423,7 @@
           <div class="photo-placeholder"><span class="photo-cap">Préparation d'une chambre</span></div>
         </div>
       </div>
-      <div class="work-photo-small tilt-l">
+      <div class="work-photo-small">
         <div class="photo tone-d ratio-square">
           <div class="photo-placeholder"><span class="photo-cap">Linge changé</span></div>
         </div>
@@ -459,7 +462,7 @@
 <main>
 
 <section id="proprietaire">
-  <div class="wrap">
+  <div class="wrap owner-grid">
     <div class="owner-photo reveal">
       <div class="zebra-band owner-band pink"></div>
       <div class="photo-frame" style="position:absolute; inset:0;" data-depth="0.06">
@@ -496,7 +499,7 @@
     </div>
     <div class="service-photo reveal">
       <div class="zebra-band service-band"></div>
-      <div class="photo-frame tilt-l">
+      <div class="photo-frame">
         <div class="photo tone-d ratio-tall">
           <div class="photo-placeholder"><span class="photo-cap">Avant la remise des clés</span></div>
         </div>
