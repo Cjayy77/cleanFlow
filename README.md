@@ -4,7 +4,7 @@ Le ménage vérifié pour les locations saisonnières à Paris. Réservation par
 calendrier, dossier photo obligatoire, contrôle humain par l'équipe Zebramoon
 avant toute confirmation au client.
 
-## Structure
+## Structure 
 
 ```
 index.html            Site vitrine public
