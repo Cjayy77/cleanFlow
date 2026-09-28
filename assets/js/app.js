@@ -1,16 +1,15 @@
-// Zebramoon, espace client : biens, calendrier de réservation, historique.
+// Zebramoon, espace client : prochain ménage, biens, historique. La
+// réservation elle-même (questions, date, extras, prix) vit dans
+// booking-flow.js, monté ici pour « réserver un autre ménage » et pour
+// terminer une réservation commencée sur la page d'accueil avant connexion.
 import {
   auth,
   db,
   ROLE_CLIENT,
   loadUserDoc,
   registerClient,
-  computeBookingPrice,
-  setPricing,
   openDevisDocument,
   openLogementQr,
-  WELCOMER_TIERS,
-  welcomerTier,
   ZONES,
   zoneLabel,
   formatShortDate,
@@ -39,6 +38,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { mount as mountBookingFlow, reset as resetBookingFlow } from './booking-flow.js';
 
 const loadingScreen = document.getElementById('loadingScreen');
 const authScreen = document.getElementById('authScreen');
@@ -52,14 +52,6 @@ const switchToSignIn = document.getElementById('switchToSignIn');
 const signOutBtn = document.getElementById('signOutBtn');
 const userNameLabel = document.getElementById('userNameLabel');
 const propertyList = document.getElementById('propertyList');
-const calendarGrid = document.getElementById('calendarGrid');
-const calMonthLabel = document.getElementById('calMonthLabel');
-const calPrev = document.getElementById('calPrev');
-const calNext = document.getElementById('calNext');
-const selectedDateLabel = document.getElementById('selectedDateLabel');
-const serviceRadios = document.querySelectorAll('input[name="serviceType"]');
-const priceValue = document.getElementById('priceValue');
-const bookBtn = document.getElementById('bookBtn');
 const bookingsWrap = document.getElementById('bookingsWrap');
 const propertyForm = document.getElementById('propertyForm');
 const propertyStreet = document.getElementById('propertyStreet');
@@ -67,6 +59,10 @@ const propertyCity = document.getElementById('propertyCity');
 const propertyPostal = document.getElementById('propertyPostal');
 const propertySurface = document.getElementById('propertySurface');
 const propertyZone = document.getElementById('propertyZone');
+const propertyTypeField = document.getElementById('propertyTypeField');
+const propertyBedrooms = document.getElementById('propertyBedrooms');
+const propertyBathrooms = document.getElementById('propertyBathrooms');
+const propertyBeds = document.getElementById('propertyBeds');
 const propertyNotes = document.getElementById('propertyNotes');
 const propertyKeyAccess = document.getElementById('propertyKeyAccess');
 const propertyFormTitle = document.getElementById('propertyFormTitle');
@@ -74,26 +70,13 @@ const propertySubmitBtn = document.getElementById('propertySubmitBtn');
 const cancelEditWrap = document.getElementById('cancelEditWrap');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
 const propertyFormCard = document.getElementById('propertyFormCard');
-const bedroomsInput = document.getElementById('bedrooms');
-const bedsInput = document.getElementById('beds');
-const bathroomsInput = document.getElementById('bathrooms');
-const guestsInput = document.getElementById('guests');
-const propertyTypeInput = document.getElementById('propertyType');
-const supplementsCard = document.getElementById('supplementsCard');
-const supplementsList = document.getElementById('supplementsList');
-const welcomerSelect = document.getElementById('welcomerService');
-if (welcomerSelect) {
-  welcomerSelect.innerHTML = '<option value="">Sans Welcomer</option>'
-    + WELCOMER_TIERS.map(t => `<option value="${t.key}">${t.label}, ${t.fee}€ HT</option>`).join('');
-}
-
-const CATALOG_LABELS = { service: 'Prestations', kit: "Kits d'accueil", consumable: 'Consommables', linen: 'Location de linge' };
-const priceBreakdown = document.getElementById('priceBreakdown');
 const appStatus = document.getElementById('appStatus');
 const welcomeText = document.getElementById('welcomeText');
-const bookingCard = document.getElementById('bookingCard');
 const historyCard = document.getElementById('historyCard');
-const bookingFor = document.getElementById('bookingFor');
+const nextCleaningBody = document.getElementById('nextCleaningBody');
+const bookingFlowSection = document.getElementById('bookingFlowSection');
+const bookingFlowRoot = document.getElementById('bookingFlowRoot');
+const newBookingBtn = document.getElementById('newBookingBtn');
 
 // Étapes affichées au client, la transparence du process est la promesse
 // centrale de Zebramoon.
@@ -101,26 +84,12 @@ const BOOKING_STEPS = ['Réservée', 'Prise en charge', 'Ménage + photos', 'Con
 const STATUS_STEP = { pending: 0, accepted: 1, submitted: 2, rejected: 2, verified: 3 };
 
 let currentUser = null;
-let selectedPropertyId = null;
-let selectedDate = null;
-let selectedServiceType = 'normal';
-let welcomerService = '';
-let beds = 1;
-let bathrooms = 1;
-let guests = 0;
-let propertyType = 'appartement';
-let bedrooms = 0;
 let properties = [];
 let bookings = [];
 let propertiesUnsub = null;
 let bookingsUnsub = null;
-let pricingUnsub = null;
-let catalogUnsub = null;
-let catalog = [];
-let selectedExtras = {}; // { itemId: quantité }
 let authNotice = null;
 let editingPropertyId = null;
-let calendarMonth = startOfMonth(new Date());
 
 // Une réservation encore en cours bloque la suppression du bien concerné.
 const ACTIVE_BOOKING_STATUSES = ['pending', 'accepted', 'submitted', 'rejected'];
@@ -138,24 +107,24 @@ function populateZones() {
 function setPropertyFormMode(property = null) {
   editingPropertyId = property ? property.id : null;
   propertyFormCard.open = !!property || properties.length === 0;
-  propertyFormTitle.textContent = property ? 'Modifier la propriété' : 'Ajouter une propriété';
-  propertySubmitBtn.textContent = property ? 'Enregistrer les modifications' : 'Enregistrer le bien';
+  propertyFormTitle.textContent = property ? 'Modifier le logement' : 'Ajouter un logement';
+  propertySubmitBtn.textContent = property ? 'Enregistrer les modifications' : 'Enregistrer le logement';
   cancelEditWrap.classList.toggle('hidden', !property);
   propertyStreet.value = property ? property.street : '';
   propertyCity.value = property ? property.city : '';
   propertyPostal.value = property ? property.postalCode : '';
   propertySurface.value = property && property.surface ? property.surface : '';
   propertyZone.value = property && property.zone ? property.zone : (ZONES[0] ? ZONES[0].value : '');
+  propertyTypeField.value = property && property.propertyType ? property.propertyType : 'appartement';
+  propertyBedrooms.value = property && property.bedrooms != null ? property.bedrooms : '';
+  propertyBathrooms.value = property && property.bathrooms != null ? property.bathrooms : '';
+  propertyBeds.value = property && property.beds != null ? property.beds : '';
   propertyNotes.value = property ? (property.notes || '') : '';
   if (propertyKeyAccess) propertyKeyAccess.value = property ? (property.keyAccess || '') : '';
   if (property) {
     propertyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
     propertyStreet.focus();
   }
-}
-
-function startOfMonth(date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
 function showAuth(mode = 'signin', message = '') {
@@ -190,136 +159,54 @@ function setAppStatus(text, type = 'info') {
   appStatus.className = `status-banner ${type}` + (text ? '' : ' hidden');
 }
 
-// Détail de prix courant, recalculé à chaque changement (bien, service, kits).
-let currentQuote = null;
-
-function updateBookingBar() {
-  const property = properties.find(p => p.id === selectedPropertyId);
-  bookingFor.textContent = property ? `Pour : ${property.street}, ${property.city}` : '';
-  currentQuote = property
-    ? computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bathrooms, bedrooms, zone: property.zone })
-    : null;
-
-  // Bien sans surface renseignée (ancien bien) : inviter à compléter.
-  if (property && !currentQuote) {
-    priceBreakdown.classList.remove('hidden');
-    priceBreakdown.innerHTML = '<div class="pb-line pb-warn">Renseignez la surface de ce bien (Modifier) pour calculer le prix.</div>';
-    priceValue.textContent = ', ';
-    bookBtn.textContent = 'Surface du bien manquante';
-    bookBtn.disabled = true;
-    return;
-  }
-
-  // Surface > 250 m² : tarif sur-mesure, on propose une demande de devis.
-  if (currentQuote && currentQuote.custom) {
-    priceBreakdown.classList.remove('hidden');
-    priceBreakdown.innerHTML = '<div class="pb-line pb-warn">Surface supérieure à 250&nbsp;m² : tarif sur-mesure. Demandez un devis à l’équipe.</div>';
-    priceValue.textContent = 'Sur devis';
-    bookBtn.textContent = selectedDate ? 'Demander un devis' : 'Choisir une date pour le devis';
-    bookBtn.disabled = !selectedDate;
-    return;
-  }
-
-  const extras = currentQuote ? selectedExtrasList() : [];
-  const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
-  const wf = welcomerFeeValue();
-  renderPriceBreakdown(currentQuote, extras, wf);
-  let ttc = null;
-  if (currentQuote) {
-    const finalHT = currentQuote.total + extrasHT + wf;
-    ttc = finalHT + Math.round(finalHT * currentQuote.vatRate);
-  }
-  priceValue.textContent = ttc != null ? `${ttc}€` : ', ';
-  bookBtn.textContent = selectedDate && ttc != null
-    ? `Réserver le ${formatShortDate(selectedDate)} · ${ttc}€`
-    : 'Choisir une date pour réserver';
-  bookBtn.disabled = !selectedPropertyId || !selectedDate || ttc == null;
-}
-
-function welcomerFeeValue() {
-  const t = welcomerTier(welcomerService);
-  return t ? t.fee : 0;
-}
-
-function renderPriceBreakdown(quote, extras, welcomerFee) {
-  if (!quote || quote.custom) { priceBreakdown.classList.add('hidden'); return; }
-  extras = extras || [];
-  welcomerFee = welcomerFee || 0;
-  const extrasHT = extras.reduce((s, e) => s + e.lineHT, 0);
-  const finalHT = quote.total + extrasHT + welcomerFee;
-  const vat = Math.round(finalHT * quote.vatRate);
-  const h = String(quote.hours).replace('.', ',');
-  const rows = [
-    [`Ménage ${quote.serviceType === 'deep' ? 'approfondi' : 'standard'} · ${h} h × ${quote.hourlyRate}€/h`, `${quote.prestation}€`, ''],
-  ];
-  if (quote.kitCount > 0) rows.push([`Kits de bienvenue · ${quote.kitCount} chambre${quote.kitCount > 1 ? 's' : ''}`, `${quote.kitsTotal}€`, '']);
-  extras.forEach(e => rows.push([`${e.name}${e.qty > 1 ? ` × ${e.qty}` : ''}`, `${e.lineHT}€`, '']));
-  if (welcomerFee) { const t = welcomerTier(welcomerService); rows.push([`Welcomer · ${t ? t.label : 'validation'}`, `${welcomerFee}€`, '']); }
-  if (quote.commission) rows.push(['Commission Zebramoon', `${quote.commission}€`, '']);
-  rows.push(['Frais de déplacement', `${quote.travel}€`, '']);
-  rows.push(['Total HT', `${finalHT}€`, 'pb-total']);
-  rows.push([`TVA (${Math.round(quote.vatRate * 100)} %)`, `${vat}€`, '']);
-  priceBreakdown.classList.remove('hidden');
-  priceBreakdown.innerHTML = rows
-    .map(([label, value, cls]) => `<div class="pb-line ${cls}"><span></span><b>${value}</b></div>`)
-    .join('');
-  // Remplit les libellés en texte (évite l'injection HTML depuis les données).
-  priceBreakdown.querySelectorAll('.pb-line span').forEach((span, index) => {
-    span.textContent = rows[index][0];
-  });
-}
-
 // Divulgation progressive : tant qu'aucun bien n'est enregistré, on ne montre
 // que l'étape utile (ajouter un bien) au lieu de tout l'écran d'un coup.
 function updateOnboardingState() {
   const hasProperties = properties.length > 0;
   const hasBookings = bookings.length > 0;
-  bookingCard.classList.toggle('hidden', !hasProperties);
-  historyCard.classList.toggle('hidden', !hasProperties && !hasBookings);
+  historyCard.classList.toggle('hidden', !hasBookings);
   if (!hasProperties) propertyFormCard.open = true;
   if (!hasProperties) {
-    welcomeText.textContent = 'Bienvenue ! Première étape : enregistrez votre bien ci-dessous. Vous pourrez ensuite réserver votre premier ménage sur son calendrier.';
+    welcomeText.textContent = 'Bienvenue ! Réservez votre premier ménage, on vous demandera votre logement au fil des questions.';
   } else if (!hasBookings) {
-    welcomeText.textContent = 'Votre bien est enregistré. Choisissez une date sur le calendrier, le prix est affiché avant confirmation.';
+    welcomeText.textContent = 'Votre logement est enregistré. Réservez un ménage quand vous voulez, le prix s’affiche avant confirmation.';
   } else {
     welcomeText.textContent = 'Réservez un ménage, suivez sa vérification par l’équipe Zebramoon, et recevez la confirmation une fois le contrôle photo effectué.';
   }
 }
 
+function propertyMetaText(prop) {
+  return [
+    prop.postalCode,
+    prop.surface ? `${prop.surface} m²` : null,
+    prop.bedrooms != null ? `${prop.bedrooms} chambre${prop.bedrooms > 1 ? 's' : ''}` : null,
+    zoneLabel(prop.zone),
+  ].filter(Boolean).join(' · ');
+}
+
 function renderPropertyButtons() {
   propertyList.innerHTML = '';
   if (properties.length === 0) {
-    propertyList.innerHTML = '<div class="empty-state">Ajoutez un bien pour commencer.</div>';
-    selectedPropertyId = null;
+    propertyList.innerHTML = '<div class="empty-state">Ajoutez un logement pour commencer, ou laissez la réservation le faire pour vous.</div>';
     return;
   }
   properties.forEach(prop => {
     const row = document.createElement('div');
-    row.className = 'property-card' + (selectedPropertyId === prop.id ? ' selected' : '');
+    row.className = 'property-card';
 
-    const selectBtn = document.createElement('button');
-    selectBtn.className = 'property-select';
-    selectBtn.type = 'button';
+    const info = document.createElement('div');
+    info.className = 'property-select';
+    info.style.cursor = 'default';
     const name = document.createElement('div');
     name.className = 'p-name';
     name.textContent = `${prop.street}, ${prop.city}`;
     const meta = document.createElement('div');
     meta.className = 'p-meta';
-    meta.textContent = [prop.postalCode, prop.surface ? `${prop.surface} m²` : null, zoneLabel(prop.zone)]
-      .filter(Boolean).join(' · ');
+    meta.textContent = propertyMetaText(prop);
     const text = document.createElement('div');
     text.appendChild(name);
     text.appendChild(meta);
-    selectBtn.appendChild(text);
-    selectBtn.setAttribute('aria-label', `Sélectionner ${prop.street}, ${prop.city}`);
-    selectBtn.onclick = () => {
-      selectedPropertyId = prop.id;
-      selectedDate = null;
-      selectedDateLabel.value = 'Aucune date';
-      renderCalendar();
-      updateBookingBar();
-      renderPropertyButtons();
-    };
+    info.appendChild(text);
 
     const actions = document.createElement('div');
     actions.className = 'property-actions';
@@ -337,20 +224,15 @@ function renderPropertyButtons() {
     armInlineConfirm(deleteBtn, 'Confirmer la suppression', async () => {
       try {
         await withTimeout(deleteDoc(doc(db, 'properties', prop.id)), 15000);
-        if (selectedPropertyId === prop.id) {
-          selectedPropertyId = null;
-          selectedDate = null;
-          selectedDateLabel.value = 'Aucune date';
-        }
         if (editingPropertyId === prop.id) setPropertyFormMode(null);
-        setAppStatus('Bien supprimé.', 'success');
+        setAppStatus('Logement supprimé.', 'success');
       } catch (err) {
-        setAppStatus(`Impossible de supprimer le bien : ${authErrorMessage(err)}`, 'error');
+        setAppStatus(`Impossible de supprimer le logement : ${authErrorMessage(err)}`, 'error');
       }
     }, () => {
       const hasActiveBooking = bookings.some(b => b.propertyId === prop.id && ACTIVE_BOOKING_STATUSES.includes(b.status));
       if (hasActiveBooking) {
-        setAppStatus('Impossible de supprimer ce bien : une réservation est en cours. Annulez-la d’abord ou attendez sa confirmation.', 'error');
+        setAppStatus('Impossible de supprimer ce logement : une réservation est en cours. Annulez-la d’abord ou attendez sa confirmation.', 'error');
         return false;
       }
       return true;
@@ -366,80 +248,73 @@ function renderPropertyButtons() {
     actions.appendChild(qrBtn);
     actions.appendChild(deleteBtn);
 
-    row.appendChild(selectBtn);
+    row.appendChild(info);
     row.appendChild(actions);
     propertyList.appendChild(row);
   });
 }
 
-function renderCalendar() {
-  calendarGrid.innerHTML = '';
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const currentMonth = startOfMonth(today);
-  if (calendarMonth < currentMonth) calendarMonth = currentMonth;
-
-  const monthLabel = calendarMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  calMonthLabel.textContent = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
-  calPrev.disabled = calendarMonth.getTime() === currentMonth.getTime();
-
-  ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(label => {
-    const div = document.createElement('div');
-    div.className = 'cal-day-label';
-    div.textContent = label;
-    calendarGrid.appendChild(div);
-  });
-
-  const takenDates = bookings
-    .filter(b => b.propertyId === selectedPropertyId && !['rejected', 'cancelled'].includes(b.status))
-    .map(b => b.scheduledDate);
-
-  // Semaine française : lundi en première colonne.
-  const mondayOffset = (calendarMonth.getDay() + 6) % 7;
-  for (let i = 0; i < mondayOffset; i += 1) {
-    const filler = document.createElement('div');
-    filler.className = 'cal-day empty';
-    filler.setAttribute('aria-hidden', 'true');
-    calendarGrid.appendChild(filler);
-  }
-
-  const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
-  for (let dayNum = 1; dayNum <= daysInMonth; dayNum += 1) {
-    const day = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), dayNum);
-    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-    const isPast = day < today;
-    const isBooked = takenDates.includes(iso);
-    const el = document.createElement('button');
-    el.type = 'button';
-    el.className = 'cal-day'
-      + (isPast ? ' past' : '')
-      + (isBooked ? ' booked' : '')
-      + (selectedDate === iso ? ' selected' : '')
-      + (day.getTime() === today.getTime() ? ' today' : '');
-    el.textContent = dayNum;
-    el.disabled = isPast || isBooked;
-    el.setAttribute('aria-label', formatShortDate(iso) + (isBooked ? ', déjà réservé' : ''));
-    if (!el.disabled) {
-      el.onclick = () => {
-        selectedDate = iso;
-        selectedDateLabel.value = formatShortDate(iso);
-        renderCalendar();
-        updateBookingBar();
-      };
-    }
-    calendarGrid.appendChild(el);
-  }
+function upcomingBooking() {
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return bookings
+    .filter(b => b.status !== 'cancelled' && b.scheduledDate >= todayIso)
+    .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))[0] || null;
 }
 
-calPrev.addEventListener('click', () => {
-  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
-  renderCalendar();
-});
+function renderNextCleaning() {
+  const booking = upcomingBooking();
+  if (!booking) {
+    nextCleaningBody.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'next-clean-empty';
+    const p = document.createElement('p');
+    p.textContent = 'Aucun ménage prévu pour le moment.';
+    wrap.appendChild(p);
+    nextCleaningBody.appendChild(wrap);
+    return;
+  }
+  const property = properties.find(p => p.id === booking.propertyId);
+  const address = property ? `${property.street}, ${property.city}` : (booking.propertyAddress || 'Logement supprimé');
+  nextCleaningBody.innerHTML = '';
 
-calNext.addEventListener('click', () => {
-  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
-  renderCalendar();
-});
+  const addr = document.createElement('div');
+  addr.className = 'next-clean-addr';
+  addr.textContent = address;
+  const meta = document.createElement('div');
+  meta.className = 'next-clean-meta';
+  meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}`;
+  nextCleaningBody.appendChild(addr);
+  nextCleaningBody.appendChild(meta);
+
+  const stage = STATUS_STEP[booking.status] ?? 0;
+  const steps = document.createElement('div');
+  steps.className = 'steps';
+  steps.setAttribute('role', 'img');
+  steps.setAttribute('aria-label', `Étape ${Math.min(stage + 1, BOOKING_STEPS.length)} sur ${BOOKING_STEPS.length} : ${BOOKING_STEPS[Math.min(stage, BOOKING_STEPS.length - 1)]}`);
+  BOOKING_STEPS.forEach((label, index) => {
+    const step = document.createElement('div');
+    const isDone = booking.status === 'verified' ? true : index < stage;
+    const isCurrent = booking.status !== 'verified' && index === stage;
+    step.className = 'step' + (isDone ? ' done' : '') + (isCurrent ? ' current' : '');
+    step.textContent = label;
+    steps.appendChild(step);
+  });
+  nextCleaningBody.appendChild(steps);
+
+  const foot = document.createElement('div');
+  foot.className = 'next-clean-foot';
+  const price = document.createElement('div');
+  price.className = 'next-clean-price';
+  price.textContent = `${booking.price}€`;
+  const link = document.createElement('a');
+  link.className = 'btn ghost';
+  link.href = `#booking-${booking.id}`;
+  link.textContent = 'Voir la réservation';
+  foot.appendChild(price);
+  foot.appendChild(link);
+  nextCleaningBody.appendChild(foot);
+}
 
 function renderBookings() {
   bookingsWrap.innerHTML = '';
@@ -459,6 +334,7 @@ function renderBookings() {
     const property = properties.find(p => p.id === booking.propertyId);
     const address = property ? `${property.street}, ${property.city}` : (booking.propertyAddress || 'Bien supprimé');
     const card = document.createElement('div');
+    card.id = `booking-${booking.id}`;
     card.className = 'dossier' + (booking.status === 'cancelled' ? ' cancelled' : '');
     card.innerHTML = `
       <div class="dossier-top">
@@ -628,116 +504,6 @@ function buildContactTeam(booking, address) {
   return wrap;
 }
 
-// Charge la grille tarifaire définie par l'admin (back-office). En cas d'absence
-// ou d'erreur, le calcul retombe sur les valeurs par défaut (setPricing est
-// défensif). Live : une modification admin recalcule le prix affiché.
-function subscribePricing() {
-  if (pricingUnsub) pricingUnsub();
-  pricingUnsub = onSnapshot(doc(db, 'settings', 'pricing'), snap => {
-    if (snap.exists()) setPricing(snap.data());
-    updateBookingBar();
-  }, () => { /* défauts déjà en place */ });
-}
-
-// Catalogue (kits, consommables, linge) proposé en supplément à la réservation.
-function subscribeCatalog() {
-  if (catalogUnsub) catalogUnsub();
-  catalogUnsub = onSnapshot(collection(db, 'catalog'), snap => {
-    catalog = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(i => i.active !== false);
-    renderSupplements();
-    updateBookingBar();
-  }, () => { /* catalogue indisponible : on masque simplement les suppléments */ });
-}
-
-// Liste des suppléments sélectionnés (quantité > 0), avec le détail de ligne.
-function selectedExtrasList() {
-  return catalog
-    .filter(i => (selectedExtras[i.id] || 0) > 0)
-    .map(i => {
-      const qty = selectedExtras[i.id];
-      const priceHT = Number(i.priceHT) || 0;
-      return { id: i.id, name: i.name || '', type: i.type || '', priceHT, priceTTC: Number(i.priceTTC) || 0, qty, lineHT: priceHT * qty };
-    });
-}
-
-function renderSupplements() {
-  if (!supplementsCard || !supplementsList) return;
-  if (!catalog.length) { supplementsCard.classList.add('hidden'); return; }
-  supplementsCard.classList.remove('hidden');
-  supplementsList.innerHTML = '';
-  ['service', 'kit', 'consumable', 'linen'].forEach(type => {
-    const items = catalog.filter(i => i.type === type).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    if (!items.length) return;
-    const head = document.createElement('div');
-    head.className = 'p-meta';
-    head.style.cssText = 'text-transform:uppercase;letter-spacing:0.06em;margin:12px 0 4px;';
-    head.textContent = CATALOG_LABELS[type] || type;
-    supplementsList.appendChild(head);
-    items.forEach(item => supplementsList.appendChild(supplementRow(item)));
-  });
-}
-
-function supplementRow(item) {
-  const row = document.createElement('div');
-  row.className = 'supp-row';
-  const info = document.createElement('div');
-  const name = document.createElement('div');
-  name.className = 'supp-name';
-  name.textContent = item.name || '(sans nom)';
-  const auto = item.unit === 'bed' || item.unit === 'guest';
-  const per = item.unit === 'bed' ? 'lit' : 'voyageur';
-  const basis = item.unit === 'bed' ? beds : guests;
-  const meta = document.createElement('div');
-  meta.className = 'p-meta';
-  meta.textContent = `${Number(item.priceTTC) || 0}€ TTC / ${auto ? per : 'unité'}`;
-  info.append(name, meta);
-
-  if (auto) {
-    // Quantité calculée automatiquement selon le nombre de lits / voyageurs.
-    const wrap = document.createElement('label');
-    wrap.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap;';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.style.cssText = 'width:auto;';
-    cb.checked = (selectedExtras[item.id] || 0) > 0;
-    const hint = document.createElement('span');
-    hint.textContent = `× ${basis} ${per}${basis > 1 ? 's' : ''}`;
-    cb.addEventListener('change', () => {
-      if (cb.checked && basis > 0) selectedExtras[item.id] = basis; else delete selectedExtras[item.id];
-      updateBookingBar();
-    });
-    wrap.append(cb, hint);
-    row.append(info, wrap);
-  } else {
-    const qty = document.createElement('input');
-    qty.type = 'number';
-    qty.min = '0';
-    qty.step = '1';
-    qty.className = 'supp-qty';
-    qty.value = selectedExtras[item.id] || 0;
-    qty.setAttribute('aria-label', `Quantité, ${item.name || ''}`);
-    qty.addEventListener('input', () => {
-      const n = Math.max(0, Math.floor(Number(qty.value) || 0));
-      if (n > 0) selectedExtras[item.id] = n; else delete selectedExtras[item.id];
-      updateBookingBar();
-    });
-    row.append(info, qty);
-  }
-  return row;
-}
-
-// Recalcule la quantité des suppléments « par lit / par voyageur » cochés.
-function resyncAutoExtras() {
-  catalog.forEach(i => {
-    if ((i.unit === 'bed' || i.unit === 'guest') && (selectedExtras[i.id] || 0) > 0) {
-      const basis = i.unit === 'bed' ? beds : guests;
-      if (basis > 0) selectedExtras[i.id] = basis; else delete selectedExtras[i.id];
-    }
-  });
-}
-
 function subscribeData() {
   if (propertiesUnsub) propertiesUnsub();
   if (bookingsUnsub) bookingsUnsub();
@@ -748,15 +514,11 @@ function subscribeData() {
     properties = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .sort((a, b) => a.street.localeCompare(b.street));
-    if (!selectedPropertyId && properties.length > 0) {
-      selectedPropertyId = properties[0].id;
-    }
     renderPropertyButtons();
-    renderCalendar();
-    updateBookingBar();
     updateOnboardingState();
     renderBookings();
-  }, error => setAppStatus(`Impossible de charger vos biens : ${authErrorMessage(error)}`, 'error'));
+    renderNextCleaning();
+  }, error => setAppStatus(`Impossible de charger vos logements : ${authErrorMessage(error)}`, 'error'));
 
   const bookingsQuery = query(collection(db, 'bookings'), where('clientId', '==', currentUser.uid));
   bookingsUnsub = onSnapshot(bookingsQuery, snapshot => {
@@ -764,18 +526,41 @@ function subscribeData() {
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
     renderBookings();
-    renderCalendar();
     updateOnboardingState();
+    renderNextCleaning();
   }, error => setAppStatus(`Impossible de charger vos réservations : ${authErrorMessage(error)}`, 'error'));
 }
+
+// Le widget de réservation gère lui-même son état (auth, brouillon,
+// abonnements Firestore) : on le monte une fois, en le gardant masqué tant
+// que le client n'a pas cliqué sur « Réserver » ou qu'aucun brouillon en
+// attente d'authentification n'a besoin d'être terminé ici.
+function draftAwaitingSubmit() {
+  try {
+    const raw = sessionStorage.getItem('zm_booking_draft');
+    if (!raw) return false;
+    return !!JSON.parse(raw).readyToSubmit;
+  } catch { return false; }
+}
+
+function showBookingFlow() {
+  bookingFlowSection.classList.remove('hidden');
+  bookingFlowSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+mountBookingFlow(bookingFlowRoot, {});
+if (draftAwaitingSubmit()) showBookingFlow();
+
+newBookingBtn.addEventListener('click', () => {
+  resetBookingFlow();
+  showBookingFlow();
+});
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
     currentUser = null;
     if (propertiesUnsub) propertiesUnsub();
     if (bookingsUnsub) bookingsUnsub();
-    if (pricingUnsub) pricingUnsub();
-    if (catalogUnsub) catalogUnsub();
     if (authNotice) {
       showAuth(authNotice.mode, authNotice.message);
       authNotice = null;
@@ -798,8 +583,6 @@ onAuthStateChanged(auth, async user => {
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
-    subscribePricing();
-    subscribeCatalog();
     subscribeData();
   } catch (error) {
     authNotice = { mode: 'signin', message: authErrorMessage(error) };
@@ -862,53 +645,8 @@ registerForm.addEventListener('submit', async event => {
 
 signOutBtn.addEventListener('click', async () => {
   await signOut(auth);
-  selectedPropertyId = null;
-  selectedDate = null;
-  bedrooms = 0;
   properties = [];
   bookings = [];
-});
-
-serviceRadios.forEach(radio => {
-  radio.addEventListener('change', () => {
-    selectedServiceType = radio.value;
-    updateBookingBar();
-  });
-});
-
-bedroomsInput.addEventListener('input', () => {
-  bedrooms = Math.max(0, Math.floor(Number(bedroomsInput.value) || 0));
-  updateBookingBar();
-});
-
-if (welcomerSelect) {
-  welcomerSelect.addEventListener('change', () => {
-    welcomerService = welcomerSelect.value;
-    updateBookingBar();
-  });
-}
-
-bedsInput.addEventListener('input', () => {
-  beds = Math.max(1, Math.floor(Number(bedsInput.value) || 1));
-  resyncAutoExtras();
-  renderSupplements();
-  updateBookingBar();
-});
-
-bathroomsInput.addEventListener('input', () => {
-  bathrooms = Math.max(1, Math.floor(Number(bathroomsInput.value) || 1));
-  updateBookingBar();
-});
-
-guestsInput.addEventListener('input', () => {
-  guests = Math.max(0, Math.floor(Number(guestsInput.value) || 0));
-  resyncAutoExtras();
-  renderSupplements();
-  updateBookingBar();
-});
-
-propertyTypeInput.addEventListener('change', () => {
-  propertyType = propertyTypeInput.value;
 });
 
 propertyForm.addEventListener('submit', async event => {
@@ -919,20 +657,25 @@ propertyForm.addEventListener('submit', async event => {
   const postalCode = propertyPostal.value.trim();
   const surface = Math.floor(Number(propertySurface.value) || 0);
   const zone = propertyZone.value;
+  const propertyType = propertyTypeField.value;
+  const bedrooms = propertyBedrooms.value === '' ? null : Math.max(0, Math.floor(Number(propertyBedrooms.value) || 0));
+  const bathrooms = propertyBathrooms.value === '' ? null : Math.max(0, Math.floor(Number(propertyBathrooms.value) || 0));
+  const beds = propertyBeds.value === '' ? null : Math.max(0, Math.floor(Number(propertyBeds.value) || 0));
   const notes = propertyNotes.value.trim();
   const keyAccess = propertyKeyAccess ? propertyKeyAccess.value.trim() : '';
   if (!street || !city || !postalCode) {
-    setAppStatus('Veuillez renseigner l’adresse complète du bien.', 'error');
+    setAppStatus('Veuillez renseigner l’adresse complète du logement.', 'error');
     return;
   }
   if (!surface || surface <= 0) {
-    setAppStatus('Indiquez la surface du bien (en m²) : elle détermine le tarif.', 'error');
+    setAppStatus('Indiquez la surface du logement (en m²) : elle détermine le tarif.', 'error');
     return;
   }
   if (!zone) {
-    setAppStatus('Sélectionnez la zone du bien.', 'error');
+    setAppStatus('Sélectionnez la zone du logement.', 'error');
     return;
   }
+  const fields = { street, city, postalCode, surface, zone, propertyType, bedrooms, bathrooms, beds, notes, keyAccess };
   try {
     if (editingPropertyId) {
       const propertyId = editingPropertyId;
@@ -941,33 +684,27 @@ propertyForm.addEventListener('submit', async event => {
       // pour que prestataire et livreur ne voient jamais l'ancienne.
       const affected = bookings.filter(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));
       await withButtonLoading(propertySubmitBtn, () => withTimeout((async () => {
-        await updateDoc(doc(db, 'properties', propertyId), { street, city, postalCode, surface, zone, notes, keyAccess });
+        await updateDoc(doc(db, 'properties', propertyId), fields);
         await Promise.all(affected.map(b =>
           updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress, keyAccess })));
       })(), 20000));
       setPropertyFormMode(null);
       setAppStatus(affected.length
-        ? 'Bien modifié. Les réservations en cours ont été mises à jour.'
-        : 'Bien modifié.', 'success');
+        ? 'Logement modifié. Les réservations en cours ont été mises à jour.'
+        : 'Logement modifié.', 'success');
     } else {
       await withButtonLoading(propertySubmitBtn, () =>
         withTimeout(addDoc(collection(db, 'properties'), {
           ownerId: currentUser.uid,
-          street,
-          city,
-          postalCode,
-          surface,
-          zone,
-          notes,
-          keyAccess,
+          ...fields,
           createdAt: serverTimestamp(),
         }), 15000));
       propertyForm.reset();
       propertyFormCard.open = false;
-      setAppStatus('Bien ajouté. Vous pouvez réserver maintenant.', 'success');
+      setAppStatus('Logement ajouté. Vous pouvez réserver maintenant.', 'success');
     }
   } catch (err) {
-    setAppStatus(`Impossible d’enregistrer le bien : ${authErrorMessage(err)}`, 'error');
+    setAppStatus(`Impossible d’enregistrer le logement : ${authErrorMessage(err)}`, 'error');
   }
 });
 
@@ -976,115 +713,4 @@ cancelEditBtn.addEventListener('click', event => {
   setPropertyFormMode(null);
 });
 
-bookBtn.addEventListener('click', async () => {
-  if (!currentUser || !selectedPropertyId || !selectedDate) return;
-  const property = properties.find(p => p.id === selectedPropertyId);
-  if (!property) return;
-  const bookedDate = selectedDate;
-  const quote = computeBookingPrice({ surface: property.surface, serviceType: selectedServiceType, beds, bathrooms, bedrooms, zone: property.zone });
-  if (!quote) {
-    setAppStatus('Renseignez la surface de ce bien avant de réserver.', 'error');
-    return;
-  }
-
-  // Sur-mesure (> 250 m²) : pas de réservation directe, on envoie une demande
-  // de devis à l'équipe qui reviendra vers le client avec un prix.
-  if (quote.custom) {
-    const address = `${property.street}, ${property.city}`;
-    const devisText = `Demande de devis (sur-mesure, > 250 m²), ${address} · ${property.surface} m² · ${selectedServiceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${beds} lit(s) · ${bedrooms} chambre(s) · zone ${zoneLabel(property.zone)} · date souhaitée : ${formatShortDate(bookedDate)}.`;
-    try {
-      // Trace la demande côté équipe (onglet Messages de l'admin) en plus de l'email.
-      await withButtonLoading(bookBtn, () =>
-        withTimeout(addDoc(collection(db, 'messages'), {
-          bookingId: '',
-          clientId: currentUser.uid,
-          clientEmail: currentUser.email,
-          clientName: currentUser.name || '',
-          propertyAddress: address,
-          text: devisText,
-          status: 'open',
-          createdAt: serverTimestamp(),
-        }), 15000));
-      queueEmail({
-        to: TEAM_EMAIL,
-        subject: `Zebramoon, demande de devis · ${address}`,
-        text: `${devisText} Client : ${currentUser.name || currentUser.email} (${currentUser.email}).`,
-      });
-      setAppStatus('Demande de devis envoyée à l’équipe Zebramoon. Vous serez recontacté avec un tarif sur-mesure.', 'success');
-    } catch (err) {
-      setAppStatus(`Impossible d’envoyer la demande de devis : ${authErrorMessage(err)}`, 'error');
-    }
-    return;
-  }
-
-  // Suppléments choisis (kits, consommables, linge) : ajoutés au total HT.
-  const extras = selectedExtrasList().map(e => ({
-    id: e.id, name: e.name, type: e.type, priceHT: e.priceHT, priceTTC: e.priceTTC, qty: e.qty,
-  }));
-  const extrasHT = extras.reduce((s, e) => s + e.priceHT * e.qty, 0);
-  const wFee = welcomerFeeValue();
-  const finalHT = quote.total + extrasHT + wFee;
-
-  try {
-    await withButtonLoading(bookBtn, () =>
-      withTimeout(addDoc(collection(db, 'bookings'), {
-        clientId: currentUser.uid,
-        propertyId: selectedPropertyId,
-        propertyAddress: `${property.street}, ${property.city}`,
-        keyAccess: property.keyAccess || '',
-        prestataireId: null,
-        livreurId: null,
-        serviceType: quote.serviceType,
-        surface: Number(property.surface),
-        zone: property.zone || '',
-        propertyType,
-        beds: quote.beds,
-        bathrooms: quote.bathrooms,
-        guests,
-        hours: quote.hours,
-        bedrooms: quote.bedrooms,
-        kitCount: quote.kitCount,
-        prestationPrice: quote.prestation,
-        amenitiesPrice: quote.amenitiesTotal,
-        travelFee: quote.travel,
-        commission: quote.commission,
-        extras,
-        extrasHT,
-        welcomerService: welcomerService || '',
-        welcomerFee: wFee,
-        welcomerId: null,
-        price: finalHT,
-        scheduledDate: selectedDate,
-        status: 'pending',
-        linenRequested: quote.kitCount > 0,
-        createdAt: serverTimestamp(),
-      }), 15000));
-    queueEmail({
-      to: TEAM_EMAIL,
-      subject: `Zebramoon, nouvelle réservation · ${property.street}, ${property.city}`,
-      text: `${formatShortDate(bookedDate)} · ${quote.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'} · ${property.surface} m² · ${quote.kitCount} chambre(s)/kit(s) · total ${quote.total}€ · zone ${zoneLabel(property.zone)} · client : ${currentUser.email}`,
-    });
-    setAppStatus('Réservation enregistrée. Vous serez notifié par email une fois le ménage vérifié par l’équipe Zebramoon.', 'success');
-    selectedDate = null;
-    selectedDateLabel.value = 'Aucune date';
-    bedrooms = 0;
-    if (bedroomsInput) bedroomsInput.value = '0';
-    beds = 1;
-    if (bedsInput) bedsInput.value = '1';
-    bathrooms = 1;
-    if (bathroomsInput) bathroomsInput.value = '1';
-    guests = 0;
-    if (guestsInput) guestsInput.value = '0';
-    welcomerService = '';
-    if (welcomerSelect) welcomerSelect.value = '';
-    selectedExtras = {};
-    renderSupplements();
-    renderCalendar();
-    updateBookingBar();
-  } catch (err) {
-    setAppStatus(`Impossible d’enregistrer la réservation : ${authErrorMessage(err)}`, 'error');
-  }
-});
-
 populateZones();
-updateBookingBar();
