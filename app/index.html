@@ -10,9 +10,18 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/tokens.css">
-<link rel="stylesheet" href="../assets/zebra.css">
-<link rel="stylesheet" href="../assets/photo.css">
 <link rel="stylesheet" href="../assets/ui.css">
+<link rel="stylesheet" href="../assets/booking.css">
+<style>
+  .next-clean-empty{ padding:6px 0 4px; }
+  .next-clean-empty p{ color:var(--muted); font-size:14.5px; margin-bottom:16px; }
+  .next-clean-addr{ font-family:var(--font-display); font-weight:600; font-size:20px; margin-bottom:4px; }
+  .next-clean-meta{ font-size:13.5px; color:var(--muted); margin-bottom:14px; }
+  .next-clean-foot{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+  .next-clean-price{ font-family:var(--font-display); font-weight:600; font-size:22px; color:var(--ink); }
+  .booking-trigger-row{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .places-head, .history-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+</style>
 </head>
 <body>
 <div class="app-wrap">
@@ -61,108 +70,73 @@
       <div class="beta-note">Le prix est calculé selon la surface de votre bien et affiché avant chaque réservation. Pendant la bêta, le règlement se fait directement avec l’équipe Zebramoon, aucun paiement en ligne.</div>
     </div>
 
-    <div class="grid2">
-      <div>
-        <div class="card">
-          <div class="eyebrow">Vos biens</div>
-          <h2>Biens enregistrés</h2>
-          <div id="propertyList"></div>
-        </div>
-        <details class="card" id="propertyFormCard">
-          <summary>
-            <div>
-              <div class="eyebrow">Nouveau bien</div>
-              <h2 id="propertyFormTitle">Ajouter une propriété</h2>
-            </div>
-          </summary>
-          <div class="collapse-body">
-          <form id="propertyForm">
-            <div class="form-row"><label for="propertyStreet">Rue et numéro</label><input id="propertyStreet" required></div>
-            <div class="form-cols">
-              <div class="form-row"><label for="propertyCity">Ville</label><input id="propertyCity" required></div>
-              <div class="form-row"><label for="propertyPostal">Code postal</label><input id="propertyPostal" required></div>
-            </div>
-            <div class="form-cols">
-              <div class="form-row"><label for="propertySurface">Surface (m²)</label><input id="propertySurface" type="number" min="1" step="1" inputmode="numeric" required></div>
-              <div class="form-row"><label for="propertyZone">Zone</label><select id="propertyZone" required></select></div>
-            </div>
-            <div class="form-row"><label for="propertyKeyAccess">Accès & emplacement des clés</label><textarea id="propertyKeyAccess" placeholder="Ex. boîte à clés à gauche de la porte, code 1234 · ou : gardien au rez-de-chaussée · ou digicode 45B12"></textarea><div class="field-hint">Visible par le prestataire et le welcomer une fois la mission assignée, indiquez précisément comment récupérer les clés.</div></div>
-            <div class="form-row"><label for="propertyNotes">Autres notes / consignes</label><textarea id="propertyNotes"></textarea></div>
-            <button class="btn primary" type="submit" id="propertySubmitBtn">Enregistrer le bien</button>
-            <div class="note-box hidden" id="cancelEditWrap"><a href="#" id="cancelEditBtn">Annuler la modification</a></div>
-          </form>
-          </div>
-        </details>
+    <div class="card" id="nextCleaningCard">
+      <div class="booking-trigger-row" style="margin-bottom:6px;">
+        <div class="eyebrow" style="margin-bottom:0;">Prochain ménage</div>
+        <button class="btn primary" id="newBookingBtn" type="button">Réserver un ménage</button>
       </div>
-      <div class="card" id="bookingCard">
-        <div class="eyebrow">Réservation</div>
-        <h2>Choisir une date</h2>
-        <p class="booking-for" id="bookingFor"></p>
-        <div class="form-row">
-          <label>Service</label>
-          <label class="service-option"><input type="radio" name="serviceType" value="normal" checked> Nettoyage normal</label>
-          <label class="service-option"><input type="radio" name="serviceType" value="deep"> Nettoyage en profondeur</label>
+      <div id="nextCleaningBody"></div>
+    </div>
+
+    <div class="card hidden" id="bookingFlowSection">
+      <div class="eyebrow">Réservation</div>
+      <div id="bookingFlowRoot"></div>
+    </div>
+
+    <div class="card">
+      <div class="places-head">
+        <div>
+          <div class="eyebrow">Vos places</div>
+          <h2>Vos logements</h2>
         </div>
-        <div class="form-row">
-          <label for="propertyType">Type de logement</label>
-          <select id="propertyType">
-            <option value="studio">Studio</option>
-            <option value="appartement" selected>Appartement</option>
-            <option value="maison">Maison</option>
-          </select>
-        </div>
-        <div class="form-cols">
-          <div class="form-row">
-            <label for="beds">Nombre de lits</label>
-            <input id="beds" type="number" min="1" step="1" value="1" inputmode="numeric">
-            <div class="note-box">Avec la surface et les salles de bain, détermine la durée (et le tarif).</div>
-          </div>
-          <div class="form-row">
-            <label for="bathrooms">Nombre de salles de bain</label>
-            <input id="bathrooms" type="number" min="1" step="1" value="1" inputmode="numeric">
-          </div>
-        </div>
-        <div class="form-cols">
-          <div class="form-row">
-            <label for="bedrooms">Nombre de chambres</label>
-            <input id="bedrooms" type="number" min="0" step="1" value="0" inputmode="numeric">
-            <div class="note-box">Un kit de bienvenue par chambre.</div>
-          </div>
-          <div class="form-row">
-            <label for="guests">Nombre de voyageurs (max.)</label>
-            <input id="guests" type="number" min="0" step="1" value="0" inputmode="numeric">
-          </div>
-        </div>
-        <details id="supplementsCard" class="hidden" style="margin:4px 0 16px;">
-          <summary style="cursor:pointer;font-weight:600;font-size:14px;">Suppléments, kits, consommables, linge</summary>
-          <div id="supplementsList" style="margin-top:12px;"></div>
-        </details>
-        <div class="form-row">
-          <label for="welcomerService">Welcomer, contrôle qualité sur place (optionnel)</label>
-          <select id="welcomerService"></select>
-          <div class="note-box">Un partenaire indépendant vérifie le logement après le ménage : checklist, photos horodatées, validation envoyée avant l'arrivée du voyageur.</div>
-        </div>
-        <div class="form-row"><label>Date sélectionnée</label><input id="selectedDateLabel" type="text" readonly value="Aucune date"></div>
-        <div class="cal-header">
-          <button class="btn ghost cal-nav" id="calPrev" type="button" aria-label="Mois précédent">‹</button>
-          <div class="cal-month" id="calMonthLabel" aria-live="polite"></div>
-          <button class="btn ghost cal-nav" id="calNext" type="button" aria-label="Mois suivant">›</button>
-        </div>
-        <div class="cal-grid" id="calendarGrid"></div>
-        <div id="priceBreakdown" class="price-breakdown hidden"></div>
-        <div class="form-footer">
+      </div>
+      <div id="propertyList"></div>
+      <details class="card" id="propertyFormCard" style="background:var(--soft); margin-top:16px; margin-bottom:0;">
+        <summary>
           <div>
-            <div class="price-label">Total à payer (TTC)</div>
-            <div class="price-value" id="priceValue">…</div>
+            <div class="eyebrow">Nouveau logement</div>
+            <h2 id="propertyFormTitle">Ajouter un logement</h2>
           </div>
-          <button class="btn gold" id="bookBtn" type="button" disabled>Choisir une date pour réserver</button>
+        </summary>
+        <div class="collapse-body">
+        <form id="propertyForm">
+          <div class="form-row"><label for="propertyStreet">Rue et numéro</label><input id="propertyStreet" required></div>
+          <div class="form-cols">
+            <div class="form-row"><label for="propertyCity">Ville</label><input id="propertyCity" required></div>
+            <div class="form-row"><label for="propertyPostal">Code postal</label><input id="propertyPostal" required></div>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label for="propertySurface">Surface (m²)</label><input id="propertySurface" type="number" min="1" step="1" inputmode="numeric" required></div>
+            <div class="form-row"><label for="propertyZone">Zone</label><select id="propertyZone" required></select></div>
+          </div>
+          <div class="form-row"><label for="propertyTypeField">Type de logement</label>
+            <select id="propertyTypeField">
+              <option value="studio">Studio</option>
+              <option value="appartement" selected>Appartement</option>
+              <option value="maison">Maison</option>
+            </select>
+          </div>
+          <div class="form-cols">
+            <div class="form-row"><label for="propertyBedrooms">Chambres</label><input id="propertyBedrooms" type="number" min="0" step="1" inputmode="numeric"></div>
+            <div class="form-row"><label for="propertyBathrooms">Salles de bain</label><input id="propertyBathrooms" type="number" min="0" step="1" inputmode="numeric"></div>
+          </div>
+          <div class="form-row"><label for="propertyBeds">Lits</label><input id="propertyBeds" type="number" min="0" step="1" inputmode="numeric"></div>
+          <div class="form-row"><label for="propertyKeyAccess">Accès & emplacement des clés</label><textarea id="propertyKeyAccess" placeholder="Ex. boîte à clés à gauche de la porte, code 1234 · ou : gardien au rez-de-chaussée · ou digicode 45B12"></textarea><div class="field-hint">Visible par le prestataire et le welcomer une fois la mission assignée, indiquez précisément comment récupérer les clés.</div></div>
+          <div class="form-row"><label for="propertyNotes">Autres notes / consignes</label><textarea id="propertyNotes"></textarea></div>
+          <button class="btn primary" type="submit" id="propertySubmitBtn">Enregistrer le logement</button>
+          <div class="note-box hidden" id="cancelEditWrap"><a href="#" id="cancelEditBtn">Annuler la modification</a></div>
+        </form>
         </div>
-      </div>
+      </details>
     </div>
 
     <div class="card" id="historyCard">
-      <div class="eyebrow">Suivi</div>
-      <h2>Vos réservations</h2>
+      <div class="history-head">
+        <div>
+          <div class="eyebrow">Suivi</div>
+          <h2>Réservations récentes</h2>
+        </div>
+      </div>
       <div id="bookingsWrap"></div>
     </div>
 

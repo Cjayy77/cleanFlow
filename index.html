@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Zebramoon, l'alternative simple à la conciergerie : ménage, linge et contrôle qualité entre chaque séjour, sans commission sur vos revenus.">
-<title>Zebramoon, l'alternative simple à la conciergerie</title>
+<meta name="description" content="Zebramoon organise le ménage, le linge et le contrôle qualité de votre logement entre chaque séjour. Répondez à quelques questions, voyez le prix, réservez en ligne.">
+<title>Zebramoon, réservez le ménage de votre logement</title>
 <link rel="canonical" href="https://clean-flow-dun.vercel.app/">
 
 <!-- Aperçu de lien (Open Graph + Twitter). NOTE : remplacer clean-flow-dun.vercel.app
@@ -13,307 +13,162 @@
 <meta property="og:site_name" content="Zebramoon">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:url" content="https://clean-flow-dun.vercel.app/">
-<meta property="og:title" content="Zebramoon, l'alternative simple à la conciergerie">
-<meta property="og:description" content="Vous gardez la main sur vos réservations. Zebramoon organise le ménage, le linge et le contrôle qualité entre chaque séjour, sans commission sur vos revenus.">
+<meta property="og:title" content="Zebramoon, réservez le ménage de votre logement">
+<meta property="og:description" content="Répondez à quelques questions sur votre logement, voyez le prix, réservez. Une équipe vérifiée s'occupe du ménage, du linge et du contrôle qualité, sans commission sur vos revenus.">
 <meta property="og:image" content="https://clean-flow-dun.vercel.app/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Zebramoon, l'alternative simple à la conciergerie, sans commission sur vos revenus.">
+<meta property="og:image:alt" content="Zebramoon, réservez le ménage de votre logement en quelques questions.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Zebramoon, l'alternative simple à la conciergerie">
-<meta name="twitter:description" content="Vous gardez la main sur vos réservations. Zebramoon organise le ménage, le linge et le contrôle qualité entre chaque séjour, sans commission sur vos revenus.">
+<meta name="twitter:title" content="Zebramoon, réservez le ménage de votre logement">
+<meta name="twitter:description" content="Répondez à quelques questions sur votre logement, voyez le prix, réservez. Une équipe vérifiée s'occupe du ménage, du linge et du contrôle qualité, sans commission sur vos revenus.">
 <meta name="twitter:image" content="https://clean-flow-dun.vercel.app/assets/og.png">
 <link rel="icon" href="assets/moon-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/tokens.css">
-<link rel="stylesheet" href="assets/zebra.css">
-<link rel="stylesheet" href="assets/photo.css">
+<link rel="stylesheet" href="assets/booking.css">
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
   html{ scroll-behavior:smooth; scroll-padding-top:84px; overflow-x:hidden; }
-  @media (min-width:861px){ html{ scroll-padding-top:148px; } }
-  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; padding-top:65px; }
-  @media (min-width:861px){ body{ padding-top:131px; } }
-  .wrap{ max-width: 1180px; margin:0 auto; padding: 0 32px; }
-  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.06; color:var(--ink); }
+  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; padding-top:72px; }
+  .wrap{ max-width: 1100px; margin:0 auto; padding: 0 24px; }
+  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
   a{ color:inherit; }
   ::selection{ background:var(--pink); color:#fff; }
-  img{ max-width:100%; }
-
-  /* NAV: two rows on desktop, brand centered above a links row, so the
-     wordmark reads as the anchor rather than one more item in a bar.
-     Mobile keeps the original compact single row + dropdown untouched.
-     Inverts to the dark palette while a dark section sits underneath it. */
-  nav{ position:fixed; top:0; left:0; right:0; z-index:50; background: rgba(245,239,227,0.92); backdrop-filter: blur(10px); border-bottom:1px solid var(--line); transition: background-color .35s ease, border-color .35s ease, transform .35s var(--ease); }
-  nav.nav-hidden{ transform:translateY(-100%); }
-  nav.on-dark{ background: rgba(24,20,14,0.86); border-bottom-color: rgba(245,239,227,0.14); }
-  nav.on-dark .brand{ color:var(--ivory); }
-  nav.on-dark .nav-links{ color:rgba(245,239,227,0.72); }
-  nav.on-dark .nav-links a:hover{ color:var(--ivory); }
-  nav.on-dark .nav-login{ color:var(--ivory) !important; }
-  nav.on-dark .nav-toggle span{ background:var(--ivory); }
-  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:0 32px; max-width:1180px; margin:0 auto; height:64px; gap:20px; }
-  .brand{ display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-weight:600; font-size:21px; letter-spacing:-0.01em; color:var(--ink); flex-shrink:0; text-decoration:none; transition: color .3s ease; }
-  .brand .k{ color:var(--pink); }
-  .nav-links{ display:flex; align-items:center; gap:26px; font-size:14px; font-weight:600; color: var(--muted); transition: color .3s ease, border-color .35s ease; }
-  .nav-link-group{ display:flex; align-items:center; gap:26px; }
-  .nav-actions{ display:flex; align-items:center; gap:18px; }
-  .nav-links a{ text-decoration:none; transition: color .15s ease-out; }
-  .nav-links a:hover{ color: var(--ink); }
-  .nav-login{ color:var(--ink) !important; }
-  .nav-cta{ background: var(--pink); color:#fff; font-family:var(--font-body); font-weight:700; font-size:13.5px; padding: 10px 18px; text-decoration:none; border-radius:var(--radius); transition: background .18s ease-out, transform .15s var(--ease); white-space:nowrap; flex-shrink:0; }
-  .nav-cta:hover{ background: var(--pink-deep); transform:translateY(-1px); }
-  .nav-toggle{ display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:34px; height:34px; padding:0; border:none; background:none; cursor:pointer; flex-shrink:0; }
-  .nav-toggle span{ display:block; width:21px; height:2px; background:var(--ink); border-radius:2px; transition: transform .2s ease-out, opacity .2s ease-out, background-color .3s ease; }
-  .nav-toggle[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
-  .nav-toggle[aria-expanded="true"] span:nth-child(2){ opacity:0; }
-  .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
-
-  @media (min-width:861px){
-    .nav-inner{ flex-direction:column; height:auto; padding:0; gap:0; }
-    .brand{ margin:0 auto; padding:15px 0 13px; }
-    .nav-links{ display:grid; grid-template-columns:1fr auto 1fr; width:100%; max-width:1180px; margin:0 auto; box-sizing:border-box; padding:13px 32px; border-top:1px solid var(--line); }
-    .nav-link-group{ grid-column:2; justify-self:center; }
-    .nav-actions{ grid-column:3; justify-self:end; }
-  }
-  @media (max-width:860px){
-    .nav-toggle{ display:flex; }
-    .nav-links{ position:absolute; top:64px; left:0; right:0; display:none; flex-direction:column; align-items:stretch; gap:0; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 22px 18px; }
-    nav.on-dark .nav-links{ background:var(--charcoal); }
-    .nav-links.open{ display:flex; }
-    .nav-link-group, .nav-actions{ flex-direction:column; align-items:stretch; width:100%; gap:0; }
-    .nav-links a{ width:100%; padding:12px 0; border-top:1px solid var(--line); }
-    nav.on-dark .nav-links a{ border-top-color:rgba(245,239,227,0.14); }
-    .nav-link-group a:first-child{ border-top:none; }
-    .nav-cta{ width:100%; text-align:center; margin-top:6px; }
-  }
+  img{ max-width:100%; display:block; }
 
   :focus-visible{ outline:2px solid var(--pink); outline-offset:2px; }
 
-  /* Buttons: one settled radius, not a pill, not a sharp corner */
-  .btn-a{ display:inline-flex; align-items:center; gap:9px; font-family:var(--font-body); font-weight:700; font-size:15px; letter-spacing:-0.005em; padding:14px 24px; text-decoration:none; border:none; border-radius:var(--radius); cursor:pointer; transition: transform .18s var(--ease), background .18s ease-out; }
-  .btn-a:hover{ transform: translateY(-2px); }
-  .btn-a:active{ transform: translateY(0) scale(.98); }
+  /* NAV, one row, fixed, no scroll-hide, no inversion */
+  nav{ position:fixed; top:0; left:0; right:0; z-index:50; height:72px; background:rgba(255,255,255,0.94); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; height:100%; gap:20px; max-width:1100px; margin:0 auto; padding:0 24px; }
+  .brand{ display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-weight:600; font-size:19px; color:var(--ink); text-decoration:none; flex-shrink:0; }
+  .brand .k{ color:var(--pink); }
+  .nav-links{ display:flex; align-items:center; gap:28px; font-size:14px; font-weight:600; color:var(--muted); }
+  .nav-links a{ text-decoration:none; }
+  .nav-links a:hover{ color:var(--ink); }
+  .nav-actions{ display:flex; align-items:center; gap:16px; flex-shrink:0; }
+  .nav-login{ font-size:14px; font-weight:600; color:var(--ink); text-decoration:none; }
+  .nav-cta{ background:var(--pink); color:#fff; font-family:var(--font-body); font-weight:700; font-size:14px; padding:10px 18px; text-decoration:none; border-radius:var(--radius); transition:background .15s ease-out; }
+  .nav-cta:hover{ background:var(--pink-deep); }
+  .nav-toggle{ display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:34px; height:34px; padding:0; border:none; background:none; cursor:pointer; flex-shrink:0; }
+  .nav-toggle span{ display:block; width:20px; height:2px; background:var(--ink); border-radius:2px; transition:transform .2s ease-out, opacity .2s ease-out; }
+  .nav-toggle[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
+  .nav-toggle[aria-expanded="true"] span:nth-child(2){ opacity:0; }
+  .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
+  @media (max-width:760px){
+    .nav-toggle{ display:flex; }
+    .nav-links{ position:absolute; top:72px; left:0; right:0; display:none; flex-direction:column; align-items:stretch; gap:0; background:var(--white); border-bottom:1px solid var(--line); padding:6px 24px 16px; }
+    .nav-links.open{ display:flex; }
+    .nav-links a{ padding:12px 0; border-top:1px solid var(--line); }
+    .nav-actions{ position:absolute; top:72px; left:0; right:0; display:none; flex-direction:column; align-items:stretch; gap:10px; background:var(--white); padding:0 24px 18px; }
+    .nav-actions.open{ display:flex; }
+    .nav-cta{ text-align:center; }
+  }
+
+  /* Buttons */
+  .btn-a{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:15px; padding:14px 26px; text-decoration:none; border:none; border-radius:var(--radius); cursor:pointer; transition:background .15s ease-out; }
   .btn-a.pink{ background:var(--pink); color:#fff; }
   .btn-a.pink:hover{ background:var(--pink-deep); }
-  .btn-a.dark{ background:var(--ink); color:var(--ivory); }
-  .btn-a.dark:hover{ background:#000; }
-  .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:15px; padding:14px 2px; text-decoration:none; background:none; color:var(--ink); border:none; border-bottom:1.5px solid var(--ink); border-radius:0; transition: color .18s ease-out, border-color .18s ease-out, gap .18s var(--ease); }
-  .btn-outline:hover{ color:var(--pink); border-color:var(--pink); gap:12px; }
+  .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:15px; padding:14px 4px; text-decoration:none; background:none; color:var(--ink); border:none; border-bottom:1.5px solid var(--ink); }
+  .btn-outline:hover{ color:var(--pink); border-color:var(--pink); }
 
-  /* HERO: a real photograph fills the whole hero (not a panel, not a card),
-     with a scrim so the text stays legible over whatever the photo shows.
-     One committed anchor on every size: text sits bottom-left, the photo
-     runs full-bleed behind it. One small zebra runs up the right edge,
-     bleeding past the hero's own bottom edge into the next section. Must
-     still fit the first viewport, on a two-row nav on desktop. */
-  .hero{ position:relative; overflow:visible; min-height:calc(100svh - 65px); display:flex; align-items:flex-end; padding:40px 0 56px; }
-  @media (min-width:861px){ .hero{ min-height:calc(100svh - 131px); padding-bottom:72px; } }
-  .hero-bg{ position:absolute; inset:0; overflow:hidden; z-index:0; }
-  .hero-bg .photo{ position:absolute; inset:0; }
-  .hero-scrim{ position:absolute; inset:0; z-index:1; pointer-events:none;
-    background:
-      linear-gradient(100deg, rgba(12,10,7,.92) 0%, rgba(12,10,7,.8) 34%, rgba(12,10,7,.4) 54%, transparent 70%),
-      linear-gradient(0deg, rgba(12,10,7,.6) 0%, transparent 42%); }
-  .hero-zebra{ width:9vw; aspect-ratio:1/2.8; right:0; bottom:-5%; z-index:2;
-    -webkit-mask-size:180% auto; mask-size:180% auto; -webkit-mask-position:50% 30%; mask-position:50% 30%; }
-  .hero-content{ position:relative; z-index:3; max-width:520px; }
-  .hero h1{ font-size: clamp(34px,4.8vw,60px); margin-bottom:18px; font-weight:600; color:var(--ivory); }
-  .hero p{ font-size:17px; line-height:1.6; color: rgba(245,239,227,.82); max-width:480px; margin-bottom:26px; }
-  .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
-  .hero .btn-outline{ color:var(--ivory); border-bottom-color:rgba(245,239,227,.55); }
-  .hero .btn-outline:hover{ color:var(--pink-soft); border-color:var(--pink-soft); }
-  @media (max-width:860px){
-    .hero{ padding:34px 0 42px; }
-    .hero-zebra{ width:16vw; aspect-ratio:1/2.4; right:5vw; bottom:-4%; }
-    .hero-bg .photo-cap{ display:none; }
+  /* HERO, light background, headline and one supporting photo side by side */
+  .hero{ padding:56px 0 48px; }
+  .hero-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; }
+  .hero h1{ font-size:clamp(36px,4.6vw,60px); margin-bottom:18px; }
+  .hero p{ font-size:17px; line-height:1.65; color:var(--muted); max-width:440px; margin-bottom:26px; }
+  .btn-row{ display:flex; gap:20px; flex-wrap:wrap; align-items:center; }
+  .hero-photo{ border-radius:var(--radius-md); overflow:hidden; aspect-ratio:4/3; }
+  .hero-photo img{ width:100%; height:100%; object-fit:cover; }
+  @media (max-width:820px){
+    .hero{ padding:36px 0 32px; }
+    .hero-grid{ grid-template-columns:1fr; gap:26px; }
+    .hero-photo{ aspect-ratio:16/10; }
   }
 
-  @keyframes rise{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
-  html.js .hero h1, html.js .hero p, html.js .hero .btn-row{ animation: rise .7s var(--ease) backwards; }
-  .hero p{ animation-delay:.08s; } .hero .btn-row{ animation-delay:.15s; }
-
-  /* SECTIONS: deliberately uneven rhythm, not one uniform padding value */
-  section{ padding: 88px 0; }
-  .sec-head{ margin-bottom: 48px; max-width:640px; }
+  section{ padding:64px 0; }
+  .sec-head{ margin-bottom:36px; max-width:600px; }
   .sec-head.center{ margin-left:auto; margin-right:auto; text-align:center; }
-  .sec-head h2{ font-size: clamp(28px,3.6vw,44px); font-weight:600; }
-  .sec-head p{ margin-top:14px; color:var(--muted); font-size:16.5px; line-height:1.7; }
-  .band-dark{ background:var(--charcoal); color:var(--ivory); }
-  .band-dark h2, .band-dark h3{ color:var(--ivory); }
-  .band-dark p{ color:rgba(245,239,227,.78); }
+  .sec-head h2{ font-size:clamp(26px,3.2vw,38px); }
+  .sec-head p{ margin-top:12px; color:var(--muted); font-size:16px; line-height:1.65; }
+  .sec-kicker{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--pink); margin-bottom:10px; }
 
-  html.js .reveal{ opacity:0; transform:translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
-  html.js .reveal.in{ opacity:1; transform:none; }
-  /* Motion variants: not every block enters the same way */
-  html.js .reveal-side{ opacity:0; transform:translateX(-26px); transition: opacity .75s var(--ease), transform .75s var(--ease); }
-  html.js .reveal-side.in{ opacity:1; transform:none; }
-  html.js .reveal-wide{ opacity:0; transform:scaleX(.92); transform-origin:left center; transition: opacity .8s var(--ease), transform .8s var(--ease); }
-  html.js .reveal-wide.in{ opacity:1; transform:none; }
-  html.js .reveal-soft{ opacity:0; transition: opacity 1s var(--ease); }
-  html.js .reveal-soft.in{ opacity:1; }
+  /* Booking section */
+  #booking{ padding:48px 0 72px; }
+  .booking-panel{ background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-md); padding:36px 32px; max-width:680px; margin:0 auto; }
+  @media (max-width:640px){ .booking-panel{ padding:24px 18px; } }
 
-  /* 01, ENTRE DEUX VOYAGEURS */
-  #entre-deux{ padding-top:100px; padding-bottom:24px; position:relative; z-index:1; }
-  .tl-wrap{ display:grid; grid-template-columns:1.1fr .9fr; gap:64px; align-items:start; position:relative; }
-  @media (max-width:900px){ .tl-wrap{ grid-template-columns:1fr; gap:40px; } }
-  .flow-line{ position:relative; z-index:1; font-family:var(--font-display); font-weight:600;
-    font-size:clamp(23px,3.1vw,37px); line-height:1.6; letter-spacing:-0.01em; }
-  .flow-line .arrow{ display:inline-block; margin:0 9px; color:var(--muted); font-weight:400; font-size:.62em; vertical-align:middle; }
-  .flow-line .is-control{ color:var(--pink); }
-  .flow-note{ margin-top:26px; max-width:440px; color:var(--muted); font-size:15.5px; line-height:1.75; position:relative; z-index:1; }
-  .tl-photo-wrap{ position:sticky; top:88px; }
-  .tl-photo{ width:100%; }
-  .tl-band{ width:56%; aspect-ratio:1/2.3; right:-20%; top:-14%;
-    -webkit-mask-size:175% auto; mask-size:175% auto; -webkit-mask-position:55% 15%; mask-position:55% 15%; }
+  /* Comment ça marche, rows of plain prose, no numbered badges */
+  .how-row{ padding:20px 0; border-top:1px solid var(--line); }
+  .how-row:first-child{ border-top:none; }
+  .how-row h4{ font-size:17px; font-weight:600; margin-bottom:5px; }
+  .how-row p{ font-size:14.5px; color:var(--muted); line-height:1.6; max-width:520px; }
 
-  /* 02, LE TRAVAIL HUMAIN : la section précédente empiète légèrement dessus,
-     la photo qui colle au scroll (tl-photo-wrap) reste au-dessus jusqu'à ce
-     qu'elle quitte sa colonne, puis laisse voir celle-ci en entier. */
-  #travail-humain{ padding-top:20px; margin-top:-70px; position:relative; z-index:0; }
-  @media (max-width:900px){ #travail-humain{ margin-top:-42px; } }
-  @media (max-width:640px){ #travail-humain{ margin-top:-26px; } }
-  .work-grid{ display:grid; grid-template-columns: 0.85fr 1.15fr; gap:56px; align-items:center; }
-  @media (max-width:900px){ .work-grid{ grid-template-columns:1fr; gap:36px; } }
-  .work-photos{ position:relative; display:grid; grid-template-columns:1.3fr .7fr; gap:0; align-items:end; }
-  .work-photo-main{ position:relative; z-index:1; }
-  .work-photo-small{ margin:0 0 -28px -46px; position:relative; z-index:2; box-shadow:0 20px 40px rgba(26,22,15,.22); }
-  .work-band{ width:38%; aspect-ratio:1/2.1; left:-9%; bottom:-8%; opacity:.94;
-    -webkit-mask-size:165% auto; mask-size:165% auto; -webkit-mask-position:20% 60%; mask-position:20% 60%; }
-  @media (max-width:640px){
-    .work-photos{ grid-template-columns:1fr; }
-    .work-photo-small{ width:58%; margin:-40px 0 0 auto; }
-  }
-
-  /* 03, VÉRIFICATION : bande sombre, dossier opérationnel */
-  .verify-outer{ padding: 100px 0; position:relative; overflow:hidden; }
-  .verify-grid{ display:grid; grid-template-columns: 0.9fr 1.1fr; gap:64px; align-items:center; position:relative; z-index:1; }
-  @media (max-width:900px){ .verify-grid{ grid-template-columns:1fr; gap:40px; } }
-  .record{ background:rgba(255,255,255,0.04); border:1px solid rgba(245,239,227,0.16); border-radius:var(--radius-md); padding:26px 28px; }
-  .record-head{ font-family:var(--font-body); font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--pink-soft); margin-bottom:4px; }
-  .record-sub{ font-size:13.5px; color:rgba(245,239,227,.6); margin-bottom:18px; }
-  .record-row{ display:flex; gap:16px; padding:9px 0; border-top:1px solid rgba(245,239,227,0.12); font-size:14px; color:rgba(245,239,227,.85); font-variant-numeric:tabular-nums; }
-  .record-row:first-of-type{ border-top:none; }
-  .record-row time{ color:rgba(245,239,227,.5); width:44px; flex-shrink:0; }
-  .record-status{ margin-top:16px; padding-top:16px; border-top:1px solid rgba(245,239,227,0.16); display:flex; align-items:center; gap:10px; font-weight:700; color:var(--pink-soft); font-size:14px; }
-  .evidence-grid{ margin-top:18px; max-width:220px; }
-  .verify-band{ width:26vw; aspect-ratio:1/1.6; left:-4vw; bottom:-8%;
-    -webkit-mask-size:220% auto; mask-size:220% auto; -webkit-mask-position:65% 40%; mask-position:65% 40%; }
-
-  /* 04, CÔTÉ PROPRIÉTAIRE : photo et texte côte à côte, jamais l'un au-dessus de l'autre */
-  #proprietaire{ padding:72px 0; }
-  .owner-grid{ display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center; }
-  @media (max-width:760px){ .owner-grid{ grid-template-columns:1fr; gap:32px; } }
-  .owner-photo{ position:relative; aspect-ratio:4/5; }
-  @media (max-width:760px){ .owner-photo{ aspect-ratio:4/3; } }
-  .owner-band{ width:34%; aspect-ratio:1/2; right:-11%; top:-10%;
-    -webkit-mask-size:190% auto; mask-size:190% auto; -webkit-mask-position:45% 60%; mask-position:45% 60%; }
-  .owner-text{ max-width:480px; }
-  .owner-text h2{ font-size:clamp(26px,3.4vw,40px); }
-
-  /* 05, SERVICES : liste éditoriale ancrée par une photographie */
-  .services-grid{ display:grid; grid-template-columns:1.25fr .85fr; gap:56px; align-items:start; }
+  /* Services / photography */
+  .services-grid{ display:grid; grid-template-columns:1.2fr .8fr; gap:48px; align-items:start; }
   .services-grid .sec-head{ grid-column:1/-1; }
-  @media (max-width:900px){
-    .services-grid{ grid-template-columns:1fr; gap:32px; }
-    .services-grid .service-photo{ order:-1; max-width:320px; }
+  @media (max-width:820px){
+    .services-grid{ grid-template-columns:1fr; gap:28px; }
+    .services-grid .service-photo{ order:-1; }
   }
-  .service-list{ max-width:520px; }
-  .service-row{ padding:22px 0; border-top:1px solid var(--line); }
+  .service-row{ padding:20px 0; border-top:1px solid var(--line); }
   .service-row:first-child{ border-top:none; }
-  .service-row h4{ font-size:19px; font-weight:600; margin-bottom:5px; }
-  .service-row p{ font-size:14.5px; color:var(--muted); line-height:1.65; }
-  .service-photo{ position:relative; }
-  .service-band{ width:40%; aspect-ratio:1/1.9; right:-13%; bottom:-10%;
-    -webkit-mask-size:200% auto; mask-size:200% auto; -webkit-mask-position:65% 75%; mask-position:65% 75%; transform:scaleX(-1); }
+  .service-row h4{ font-size:18px; font-weight:600; margin-bottom:5px; }
+  .service-row p{ font-size:14.5px; color:var(--muted); line-height:1.6; }
+  .service-photo{ border-radius:var(--radius-md); overflow:hidden; aspect-ratio:3/4; }
+  .service-photo img{ width:100%; height:100%; object-fit:cover; }
 
-  /* 06, ÉCONOMIE : exemple + simulateur, centrés, un seul jeu d'hypothèses */
-  #economie{ padding-top:120px; }
-  .econ-note{ margin-top:20px; font-size:12.5px; color:var(--muted); line-height:1.65; max-width:520px; margin-left:auto; margin-right:auto; }
-  .band-dark .econ-note{ color:rgba(245,239,227,.6); }
-  .receipt{ max-width:520px; margin:0 auto; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-  .receipt-head{ font-family:var(--font-body); font-size:13px; color:var(--muted); padding:16px 0 10px; }
-  .receipt-row{ display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:12px 0; border-top:1px solid var(--line); font-size:14.5px; color:var(--muted); }
-  .receipt-row:first-of-type{ border-top:none; }
-  .receipt-row b{ color:var(--ink); font-weight:700; font-size:15.5px; white-space:nowrap; font-family:var(--font-display); }
-  .receipt-save{ padding:20px 0; text-align:center; }
-  .receipt-save-label{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--pink-deep); }
-  .receipt-save-amount{ font-family:var(--font-display); font-size: clamp(30px,4vw,40px); font-weight:600; color:var(--pink); line-height:1.15; margin:6px 0 2px; }
-  .receipt-save-pct{ font-size:14px; font-weight:600; color:var(--ink); }
+  /* Trust / verification, dark section, kept as-is content-wise */
+  .verify-outer{ background:var(--charcoal); color:var(--ivory); padding:72px 0; }
+  .verify-outer h3{ color:var(--ivory); font-size:clamp(26px,3.4vw,38px); }
+  .verify-outer p{ color:rgba(245,245,247,.78); }
+  .verify-grid{ display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center; }
+  @media (max-width:820px){ .verify-grid{ grid-template-columns:1fr; gap:32px; } }
+  .record{ background:rgba(255,255,255,0.04); border:1px solid rgba(245,245,247,0.16); border-radius:var(--radius-md); padding:24px 26px; }
+  .record-head{ font-size:11px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--pink-soft); margin-bottom:4px; }
+  .record-sub{ font-size:13.5px; color:rgba(245,245,247,.6); margin-bottom:16px; }
+  .record-row{ display:flex; gap:16px; padding:9px 0; border-top:1px solid rgba(245,245,247,0.12); font-size:14px; color:rgba(245,245,247,.85); font-variant-numeric:tabular-nums; }
+  .record-row:first-of-type{ border-top:none; }
+  .record-row time{ color:rgba(245,245,247,.5); width:44px; flex-shrink:0; }
+  .record-status{ margin-top:14px; padding-top:14px; border-top:1px solid rgba(245,245,247,0.16); display:flex; align-items:center; gap:10px; font-weight:700; color:var(--pink-soft); font-size:14px; }
 
-  .sim-outer{ background: var(--charcoal); color:var(--ivory); padding: 96px 0; }
-  .sim-grid{ display:grid; grid-template-columns: 0.95fr 1.05fr; gap:56px; align-items:start; max-width:980px; margin:0 auto; }
-  @media (max-width:860px){ .sim-grid{ grid-template-columns:1fr; gap:36px; } }
-  .sim-fields{ display:grid; gap:14px; max-width:400px; margin-top:24px; }
-  .sim-fields label{ font-size:13px; font-weight:600; color:rgba(245,239,227,0.85); display:grid; gap:7px; }
-  .sim-input{ display:flex; align-items:center; background:rgba(245,239,227,0.06); border:1px solid rgba(245,239,227,0.22); border-radius:var(--radius-sm); overflow:hidden; }
-  .sim-input input{ flex:1; min-width:0; background:none; border:none; color:var(--ivory); font-size:16px; font-weight:700; padding:11px 13px; font-family:inherit; }
-  .sim-input input:focus{ outline:none; }
-  .sim-input span{ padding:0 13px; color:rgba(245,239,227,0.5); font-weight:700; }
-  .sim-result{ border-top:1px solid rgba(245,239,227,.18); padding-top:20px; }
-  .sim-row{ display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:11px 0; border-top:1px solid rgba(245,239,227,.14); font-size:14.5px; color:rgba(245,239,227,.7); }
-  .sim-row:first-child{ border-top:none; }
-  .sim-row b{ color:var(--ivory); font-weight:700; font-size:16px; white-space:nowrap; font-family:var(--font-display); }
-  .sim-save{ margin-top:18px; padding-top:18px; border-top:1px solid rgba(245,239,227,.2); }
-  .sim-save-label{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--pink-soft); }
-  .sim-save-amount{ font-family:var(--font-display); font-size: clamp(32px,4.6vw,44px); font-weight:600; color:#fff; line-height:1.15; margin:6px 0 2px; }
-  .sim-save-pct{ font-size:14.5px; font-weight:600; color:rgba(245,239,227,.75); }
-  .sim-more{ display:inline-block; margin-top:16px; font-size:13.5px; font-weight:700; color:var(--pink-soft); text-decoration:none; }
-  .sim-more:hover{ text-decoration:underline; }
-
-  /* 07, FAQ, centrée, section resserrée */
-  #faq{ padding:64px 0; }
-  .faq-list{ max-width: 700px; margin:0 auto; }
+  /* FAQ */
+  #faq{ padding:56px 0; }
+  .faq-list{ max-width:680px; margin:0 auto; }
   .faq-list details{ border-bottom:1px solid var(--line); }
-  .faq-list summary{ cursor:pointer; padding:20px 0; font-family:var(--font-display); font-weight:600; font-size:18px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; transition: color .15s ease-out; }
+  .faq-list summary{ cursor:pointer; padding:18px 0; font-family:var(--font-display); font-weight:600; font-size:17px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:16px; }
   .faq-list summary:hover{ color:var(--pink); }
   .faq-list summary::-webkit-details-marker{ display:none; }
-  .faq-list summary::after{ content:'+'; color:var(--pink); font-family:var(--font-body); font-size:22px; flex-shrink:0; transition: transform .25s var(--ease); }
+  .faq-list summary::after{ content:'+'; color:var(--pink); font-size:20px; flex-shrink:0; transition:transform .2s ease-out; }
   .faq-list details[open] summary{ color:var(--pink); }
-  .faq-list details[open] summary::after{ transform: rotate(45deg); }
-  .faq-list details p{ padding:0 4px 22px 0; font-size:14.5px; color:var(--muted); line-height:1.75; text-align:left; }
+  .faq-list details[open] summary::after{ transform:rotate(45deg); }
+  .faq-list details p{ padding:0 4px 20px 0; font-size:14.5px; color:var(--muted); line-height:1.7; }
 
-  /* CTA finale : grand bandeau, zebra en fond, typographie + photo */
-  #cta{ padding:130px 0 120px; position:relative; overflow:hidden; }
-  .cta-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; position:relative; z-index:1; }
-  @media (max-width:860px){ .cta-grid{ grid-template-columns:1fr; gap:28px; } }
-  .cta-grid h2{ font-size: clamp(32px,4.6vw,54px); margin-bottom:16px; }
-  .cta-grid p{ color: var(--muted); max-width:440px; margin-bottom:26px; font-size:16px; line-height:1.7; }
-  .cta-contact{ margin-top:22px; font-size:13.5px; color:var(--muted); }
-  .cta-contact a{ color:var(--pink); font-weight:600; }
-  .cta-band{ width:19vw; aspect-ratio:1/2.2; right:5vw; top:-8%;
-    -webkit-mask-size:190% auto; mask-size:190% auto; -webkit-mask-position:30% 50%; mask-position:30% 50%; opacity:.4; }
-  @media (max-width:860px){ .cta-band{ display:none; } }
-
-  /* FOOTER */
-  footer{ padding: 64px 0 30px; background: var(--charcoal); color: rgba(245,239,227,0.6); }
-  .footer-top{ display:grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap:36px; padding-bottom:36px; border-bottom:1px solid rgba(245,239,227,0.14); }
-  @media (max-width:760px){ .footer-top{ grid-template-columns:1fr 1fr; gap:28px 22px; } }
-  .footer-brand b{ display:flex; align-items:center; gap:9px; color:var(--ivory); font-family:var(--font-display); font-size:19px; font-weight:600; }
+  /* Footer */
+  footer{ padding:56px 0 28px; background:var(--charcoal); color:rgba(245,245,247,0.6); }
+  .footer-top{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:32px; padding-bottom:32px; border-bottom:1px solid rgba(245,245,247,0.14); }
+  @media (max-width:720px){ .footer-top{ grid-template-columns:1fr 1fr; gap:26px 20px; } }
+  .footer-brand b{ display:flex; align-items:center; gap:8px; color:var(--ivory); font-family:var(--font-display); font-size:18px; font-weight:600; }
   .footer-brand .k{ color:var(--pink-soft); }
-  .footer-brand p{ color: rgba(245,239,227,0.6); margin-top:12px; font-size:13.5px; max-width:280px; line-height:1.6; }
-  .footer-col h5{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:rgba(245,239,227,0.5); margin-bottom:14px; font-weight:700; }
-  .footer-col a, .footer-col span{ display:block; color: rgba(245,239,227,0.75); text-decoration:none; margin-bottom:10px; transition: color .15s ease-out; }
+  .footer-brand p{ margin-top:12px; font-size:13.5px; max-width:280px; line-height:1.6; }
+  .footer-col h5{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:rgba(245,245,247,0.5); margin-bottom:12px; font-weight:700; }
+  .footer-col a, .footer-col span{ display:block; color:rgba(245,245,247,0.75); text-decoration:none; margin-bottom:9px; }
   .footer-col a:hover{ color:var(--ivory); }
-  .footer-bottom{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; padding-top:22px; font-size:12px; color: rgba(245,239,227,0.45); }
-  footer a{ color: rgba(245,239,227,0.8); }
+  .footer-bottom{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; padding-top:20px; font-size:12px; color:rgba(245,245,247,0.45); }
+  footer a{ color:rgba(245,245,247,0.8); }
 
   @media (max-width:640px){
-    section{ padding:52px 0; }
-    #entre-deux{ padding-top:52px; }
-    #economie{ padding-top:52px; }
-    #cta{ padding:64px 0 72px; }
-    .hero{ padding:18px 0; }
-    .sec-head{ margin-bottom:28px; }
-    .wrap{ padding:0 20px; }
+    section{ padding:44px 0; }
+    .sec-head{ margin-bottom:24px; }
+    .wrap{ padding:0 18px; }
   }
 
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
     html{ scroll-behavior:auto; }
-    html.js .reveal, html.js .reveal-side, html.js .reveal-wide, html.js .reveal-soft{ opacity:1; transform:none; }
   }
 </style>
 <script type="application/ld+json">
@@ -321,7 +176,7 @@
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   "name": "Zebramoon",
-  "description": "L'alternative simple à la conciergerie : ménage, linge et contrôle qualité entre chaque séjour, sans commission sur les revenus locatifs.",
+  "description": "Réservation en ligne du ménage, du linge et du contrôle qualité d'un logement entre chaque séjour, sans commission sur les revenus locatifs.",
   "url": "https://clean-flow-dun.vercel.app/",
   "logo": "https://clean-flow-dun.vercel.app/assets/moon-mark.svg",
   "image": "https://clean-flow-dun.vercel.app/assets/og.png",
@@ -334,156 +189,86 @@
 </script>
 </head>
 <body>
-<script>document.documentElement.classList.add('js');</script>
 
 <nav>
   <div class="nav-inner">
     <a class="brand" href="/">
-      <img class="mark" src="assets/moon-mark.svg" alt="" aria-hidden="true" width="26" height="26">
+      <img class="mark" src="assets/moon-mark.svg" alt="" aria-hidden="true" width="24" height="24">
       <span><span class="k">Zebra</span>moon</span>
     </a>
     <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Ouvrir le menu">
       <span></span><span></span><span></span>
     </button>
     <div class="nav-links" id="navLinks">
-      <div class="nav-link-group">
-        <a href="#entre-deux">Fonctionnement</a>
-        <a href="#verification">Vérification</a>
-        <a href="#services">Services</a>
-        <a href="#economie">Tarifs</a>
-        <a href="#faq">FAQ</a>
-      </div>
-      <div class="nav-actions">
-        <a href="/app/" class="nav-login">Connexion</a>
-        <a href="/app/" class="nav-cta">Créer mon compte</a>
-      </div>
+      <a href="#services">Services</a>
+      <a href="#comment">Comment ça marche</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-actions" id="navActions">
+      <a href="/app/" class="nav-login">Connexion</a>
+      <a href="#booking" class="nav-cta">Réserver</a>
     </div>
   </div>
 </nav>
 
 <header class="hero">
-  <div class="hero-bg" data-depth="0.06">
-    <div class="photo ratio-full">
-      <img class="photo-media" src="assets/hero.jpg" alt="Un logement, entre deux séjours" fetchpriority="high">
-    </div>
-    <div class="hero-scrim"></div>
-  </div>
-  <div class="wrap">
-    <div class="hero-content">
-      <h1>Votre logement. Notre équipe entre les deux.</h1>
-      <p>Zebramoon coordonne le ménage, le linge et le contrôle qualité entre chaque séjour. Vous gardez la main sur vos réservations, sans commission sur vos revenus.</p>
+  <div class="wrap hero-grid">
+    <div>
+      <h1>Réservez le ménage de votre logement en quelques minutes.</h1>
+      <p>Répondez à quelques questions sur votre logement et la date souhaitée. Le prix s'affiche tout de suite. Une équipe vérifiée s'occupe du ménage, du linge et du contrôle qualité.</p>
       <div class="btn-row">
-        <a href="#economie" class="btn-a pink">Estimer mes économies →</a>
-        <a href="#entre-deux" class="btn-outline">Voir comment ça marche</a>
+        <a href="#booking" class="btn-a pink">Réserver un ménage</a>
+        <a href="#comment" class="btn-outline">Comment ça marche</a>
       </div>
+    </div>
+    <div class="hero-photo">
+      <img src="assets/hero.jpg" alt="Un logement prêt entre deux séjours" fetchpriority="high">
     </div>
   </div>
 </header>
 
 <main>
 
-<section id="entre-deux">
+<section id="booking">
   <div class="wrap">
-    <div class="sec-head reveal">
-      <h2>Il se passe beaucoup de choses entre deux voyageurs.</h2>
-      <p>Le voyageur part, le suivant arrive quelques heures plus tard. Entre les deux, une équipe entière se met en mouvement.</p>
-    </div>
-    <div class="tl-wrap">
-      <div>
-        <p class="flow-line reveal-side">
-          <span>Départ</span><span class="arrow" aria-hidden="true">→</span>
-          <span>Ménage</span><span class="arrow" aria-hidden="true">→</span>
-          <span>Linge</span><span class="arrow" aria-hidden="true">→</span>
-          <span class="is-control">Contrôle</span><span class="arrow" aria-hidden="true">→</span>
-          <span>Validation</span><span class="arrow" aria-hidden="true">→</span>
-          <span>Prochaine arrivée</span>
-        </p>
-        <p class="flow-note reveal">Un prestataire vérifié prépare chaque pièce, le linge repart et un jeu propre est livré. Avant toute confirmation, un jeu de photos précis est soumis et contrôlé par notre équipe.</p>
-      </div>
-      <div class="tl-photo-wrap reveal">
-        <div class="zebra-band tl-band ghost"></div>
-        <div class="photo-frame tl-photo">
-          <div class="photo ratio-tall">
-            <img class="photo-media" src="assets/room.jpg" alt="Linge préparé avant livraison" loading="lazy">
-          </div>
-        </div>
-      </div>
+    <div class="booking-panel">
+      <div id="booking-root"></div>
     </div>
   </div>
 </section>
 
-<section id="travail-humain">
-  <div class="wrap work-grid">
-    <div class="reveal-side">
-      <h2 style="font-size:clamp(26px,3.4vw,40px);">Une intervention n'est pas une case cochée.</h2>
-      <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75; max-width:440px;">Derrière chaque ménage, une équipe se déplace, refait les lits, change le linge, vérifie chaque pièce une à une. Ce n'est pas un algorithme qui entre dans le logement, c'est quelqu'un.</p>
+<section id="comment">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Comment ça marche</h2>
     </div>
-    <div class="work-photos reveal">
-      <div class="zebra-band work-band"></div>
-      <div class="photo-frame work-photo-main bleed-r" data-depth="0.07">
-        <div class="photo ratio-portrait">
-          <img class="photo-media" src="assets/preparation.jpg" alt="Préparation d'une chambre" loading="lazy">
-        </div>
+    <div>
+      <div class="how-row">
+        <h4>Vous répondez à quelques questions</h4>
+        <p>Le type de ménage, votre logement, la date souhaitée. Rien de plus que ce qui compte pour le prix.</p>
       </div>
-      <div class="work-photo-small">
-        <div class="photo ratio-square">
-          <img class="photo-media" src="assets/linge.jpeg" alt="Linge changé" loading="lazy">
-        </div>
+      <div class="how-row">
+        <h4>Le prix s'affiche tout de suite</h4>
+        <p>Calculé à partir de la surface, du nombre de pièces et des suppléments choisis, sans appel ni devis à attendre.</p>
       </div>
-    </div>
-  </div>
-</section>
-
-</main>
-
-<div class="verify-outer band-dark" id="verification">
-  <div class="zebra-band verify-band ghost"></div>
-  <div class="wrap verify-grid">
-    <div class="reveal">
-      <h3 style="font-size:clamp(28px,3.8vw,46px);">Un logement n'est pas prêt parce qu'une case est cochée.</h3>
-      <p style="margin-top:16px; font-size:16px; line-height:1.75; max-width:460px;">Chaque ménage est prouvé par un jeu de photos précis, contrôlé par notre équipe avant toute confirmation. Rien ne part au client sans regard humain.</p>
-    </div>
-    <div class="reveal">
-      <div class="record">
-        <div class="record-head">Zebramoon / Contrôle</div>
-        <div class="record-sub">Appartement, Rue de la Pompe, Paris 16ᵉ</div>
-        <div class="record-row"><time>11:42</time><span>Intervention terminée</span></div>
-        <div class="record-row"><time>11:47</time><span>6 photos reçues</span></div>
-        <div class="record-row"><time>11:49</time><span>Contrôle humain, équipe Zebramoon</span></div>
-        <div class="record-status">✓ Validé, confirmation envoyée au client</div>
+      <div class="how-row">
+        <h4>Une entreprise de ménage vérifiée intervient</h4>
+        <p>Assignée par notre équipe à la date prévue, avec le linge et les consommables nécessaires.</p>
       </div>
-      <div class="evidence-grid">
-        <div class="photo evidence ratio-square"><div class="photo-placeholder"><span class="photo-cap">Cuisine</span></div></div>
+      <div class="how-row">
+        <h4>Le contrôle qualité valide l'intervention</h4>
+        <p>Un jeu de photos est pris sur place et vérifié par notre équipe avant que la réservation soit confirmée.</p>
       </div>
-    </div>
-  </div>
-</div>
-
-<main>
-
-<section id="proprietaire">
-  <div class="wrap owner-grid">
-    <div class="owner-photo reveal">
-      <div class="zebra-band owner-band pink"></div>
-      <div class="photo-frame" style="position:absolute; inset:0;" data-depth="0.06">
-        <div class="photo ratio-full">
-          <img class="photo-media" src="assets/keys_exchange.jpg" alt="Logement prêt, lumière naturelle" loading="lazy">
-        </div>
-      </div>
-    </div>
-    <div class="owner-text reveal">
-      <h2>Vous n'avez pas à tout gérer vous-même.</h2>
-      <p style="margin-top:16px; color:var(--muted); font-size:16px; line-height:1.75;">Vous voyez chaque intervention, son statut et sa vérification depuis votre espace. Pas de conciergerie qui prend la main sur vos réservations, pas de surprise sur ce qui a été fait.</p>
     </div>
   </div>
 </section>
 
 <section id="services">
   <div class="wrap services-grid">
-    <div class="sec-head reveal">
-      <h2>Tout ce qu'il faut entre deux voyageurs.</h2>
+    <div class="sec-head">
+      <h2>Tout ce qu'il faut entre deux voyageurs</h2>
     </div>
-    <div class="service-list reveal-wide">
+    <div class="service-list">
       <div class="service-row">
         <h4>Ménage professionnel</h4><p>Réalisé par des entreprises de ménage vérifiées, assignées par notre équipe à chaque mission.</p>
       </div>
@@ -497,82 +282,35 @@
         <h4>Contrôle et suivi</h4><p>Chaque dossier est vérifié par notre équipe, les incidents signalés et suivis directement en ligne.</p>
       </div>
     </div>
-    <div class="service-photo reveal">
-      <div class="zebra-band service-band"></div>
-      <div class="photo-frame">
-        <div class="photo ratio-tall">
-          <img class="photo-media" src="assets/control.jpg" alt="Avant la remise des clés" loading="lazy">
-        </div>
-      </div>
+    <div class="service-photo">
+      <img src="assets/control.jpg" alt="Avant la remise des clés" loading="lazy">
     </div>
   </div>
 </section>
 
-<section id="economie">
-  <div class="wrap">
-    <div class="sec-head center reveal">
-      <h2>Le calcul, en clair.</h2>
-      <p>Une conciergerie classique prélève une commission sur tous vos revenus locatifs. Zebramoon se paie au ménage.</p>
+<section class="verify-outer" id="verification">
+  <div class="wrap verify-grid">
+    <div>
+      <h3>Un logement n'est pas prêt parce qu'une case est cochée.</h3>
+      <p style="margin-top:14px; font-size:16px; line-height:1.7; max-width:440px;">Chaque ménage est prouvé par un jeu de photos précis, contrôlé par notre équipe avant toute confirmation. Rien ne part au client sans regard humain.</p>
     </div>
-    <div class="receipt reveal">
-      <div class="receipt-head">Appartement 100 m², Paris 16ᵉ · 6 ménages / mois</div>
-      <div class="receipt-row"><span>Revenus locatifs</span><b>6 000&nbsp;€/mois · 72 000&nbsp;€/an</b></div>
-      <div class="receipt-row"><span>Conciergerie classique (20&nbsp;%)</span><b>14 400&nbsp;€/an</b></div>
-      <div class="receipt-row"><span>Avec Zebramoon</span><b>6 816&nbsp;€/an</b></div>
-      <div class="receipt-save">
-        <div class="receipt-save-label">Économie estimée</div>
-        <div class="receipt-save-amount">7 584&nbsp;€/an</div>
-        <div class="receipt-save-pct">soit environ 53&nbsp;% de moins</div>
-      </div>
+    <div class="record">
+      <div class="record-head">Zebramoon / Contrôle</div>
+      <div class="record-sub">Appartement, Rue de la Pompe, Paris 16ᵉ</div>
+      <div class="record-row"><time>11:42</time><span>Intervention terminée</span></div>
+      <div class="record-row"><time>11:47</time><span>6 photos reçues</span></div>
+      <div class="record-row"><time>11:49</time><span>Contrôle humain, équipe Zebramoon</span></div>
+      <div class="record-status">✓ Validé, confirmation envoyée au client</div>
     </div>
-    <p class="econ-note">Exemple indicatif à partir des hypothèses ci-dessous. Le nombre d'interventions et les services choisis font varier le résultat.</p>
   </div>
 </section>
-
-</main>
-
-<div class="sim-outer band-dark" id="simulateur">
-  <div class="wrap">
-    <div class="sim-grid">
-      <div class="reveal">
-        <h3 style="font-family:var(--font-display); font-weight:600; font-size:clamp(26px,3.4vw,38px);">Combien vous fait économiser Zebramoon&nbsp;?</h3>
-        <p style="margin-top:14px; font-size:15.5px; color:rgba(245,239,227,.78); line-height:1.7; max-width:420px;">Mêmes hypothèses que l'exemple ci-dessus. Renseignez vos chiffres pour estimer l'écart sur votre bien.</p>
-        <div class="sim-fields">
-          <label>Prix moyen de la nuit
-            <div class="sim-input"><input id="simNight" type="number" min="0" inputmode="numeric" value="150"><span>€</span></div>
-          </label>
-          <label>Taux d'occupation
-            <div class="sim-input"><input id="simOcc" type="number" min="0" max="100" inputmode="numeric" value="70"><span>%</span></div>
-          </label>
-          <label>Ménages par mois
-            <div class="sim-input"><input id="simBookings" type="number" min="0" inputmode="numeric" value="6"></div>
-          </label>
-        </div>
-      </div>
-      <div class="sim-result reveal">
-        <div class="sim-row"><span>Revenus locatifs estimés/an</span><b id="simRevenue">…</b></div>
-        <div class="sim-row"><span>Conciergerie classique/an</span><b id="simConcierge">…</b></div>
-        <div class="sim-row"><span>Avec Zebramoon/an</span><b id="simCleanflow">…</b></div>
-        <div class="sim-save">
-          <div class="sim-save-label">Vous économisez/an</div>
-          <div class="sim-save-amount" id="simSavings">…</div>
-          <div class="sim-save-pct" id="simPct"></div>
-        </div>
-        <a href="/devis/" class="sim-more">Obtenir un devis détaillé →</a>
-        <p class="econ-note" style="margin-left:0;">Hypothèses : commission conciergerie classique 20&nbsp;% des revenus locatifs. Zebramoon : ménage à 30&nbsp;€/h (durée moyenne 2,5&nbsp;h, selon logement), + 10&nbsp;€ de déplacement et 8&nbsp;€ de commission par intervention, + 10&nbsp;€/mois d'abonnement. Le prix exact dépend de votre logement (surface, lits, salles de bain) et s'affiche avant chaque réservation.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<main>
 
 <section id="faq">
   <div class="wrap">
-    <div class="sec-head center reveal">
-      <h2>Ce que les propriétaires nous demandent.</h2>
+    <div class="sec-head center">
+      <h2>Questions fréquentes</h2>
     </div>
-    <div class="faq-list reveal">
+    <div class="faq-list">
       <details>
         <summary>Où intervenez-vous ?</summary>
         <p>Nous démarrons en bêta sur une zone pilote. D'autres secteurs suivront une fois le processus rodé.</p>
@@ -601,22 +339,6 @@
   </div>
 </section>
 
-<section id="cta">
-  <div class="zebra-band cta-band"></div>
-  <div class="wrap cta-grid">
-    <div class="reveal">
-      <h2>Envie de tester Zebramoon sur votre bien&nbsp;?</h2>
-      <p>La bêta est ouverte à un petit nombre de propriétaires. Créez votre compte et gardez la main sur vos réservations.</p>
-      <a href="/app/" class="btn-a pink">Créer mon compte client →</a>
-      <div class="cta-contact">Une question ? Écrivez-nous à <a href="mailto:w.wanecque@gmail.com">w.wanecque@gmail.com</a></div>
-    </div>
-    <div class="photo-frame zebra-br zebra-behind reveal">
-      <div class="photo ratio-portrait">
-        <img class="photo-media" src="assets/open_door.jpg" alt="Prêt pour le prochain voyageur" loading="lazy">
-      </div>
-    </div>
-  </div>
-</section>
 </main>
 
 <footer>
@@ -627,7 +349,7 @@
           <img class="mark" src="assets/moon-mark.svg" alt="" aria-hidden="true" width="22" height="22">
           <span><span class="k">Zebra</span>moon</span>
         </b>
-        <p>L'alternative simple à la conciergerie. Vous gardez la main sur vos réservations, nous nous occupons du reste.</p>
+        <p>Réservez le ménage de votre logement en ligne. Une équipe vérifiée s'occupe du ménage, du linge et du contrôle qualité entre chaque séjour.</p>
       </div>
       <div class="footer-col">
         <h5>Espaces</h5>
@@ -637,10 +359,10 @@
       </div>
       <div class="footer-col">
         <h5>Zebramoon</h5>
-        <a href="#entre-deux">Fonctionnement</a>
-        <a href="#economie">Tarifs</a>
-        <a href="#simulateur">Simulateur</a>
+        <a href="#services">Services</a>
+        <a href="#comment">Comment ça marche</a>
         <a href="#faq">FAQ</a>
+        <a href="#booking">Réserver</a>
       </div>
       <div class="footer-col">
         <h5>Contact</h5>
@@ -658,157 +380,29 @@
 
 <script>
   (function () {
-    var els = document.querySelectorAll('.reveal, .reveal-side, .reveal-wide, .reveal-soft');
-    if (!('IntersectionObserver' in window)) {
-      els.forEach(function (el) { el.classList.add('in'); });
-      return;
-    }
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in');
-          io.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12 });
-    els.forEach(function (el) { io.observe(el); });
-  })();
-</script>
-
-<script>
-  // Menu mobile : bouton burger, un seul panneau de liens, fermeture au clic.
-  (function () {
     var btn = document.getElementById('navToggle');
-    var panel = document.getElementById('navLinks');
-    if (!btn || !panel) return;
+    var links = document.getElementById('navLinks');
+    var actions = document.getElementById('navActions');
+    if (!btn || !links || !actions) return;
     btn.addEventListener('click', function () {
-      var open = panel.classList.toggle('open');
+      var open = links.classList.toggle('open');
+      actions.classList.toggle('open', open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
-    panel.querySelectorAll('a').forEach(function (a) {
+    links.querySelectorAll('a').forEach(function (a) {
       a.addEventListener('click', function () {
-        panel.classList.remove('open');
+        links.classList.remove('open');
+        actions.classList.remove('open');
         btn.setAttribute('aria-expanded', 'false');
       });
     });
   })();
 </script>
 
-<script>
-  // La nav s'inverse quand une bande sombre ("Notre différence", "Simulateur")
-  // passe juste dessous : on observe une bande fine collée sous la nav plutôt
-  // que la section entière, pour réagir au bon moment du scroll.
-  (function () {
-    var nav = document.querySelector('nav');
-    var darkSections = document.querySelectorAll('.band-dark');
-    if (!nav || !darkSections.length || !('IntersectionObserver' in window)) return;
-    var active = new Set();
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) active.add(entry.target);
-        else active.delete(entry.target);
-      });
-      nav.classList.toggle('on-dark', active.size > 0);
-    }, { rootMargin: '-64px 0px -85% 0px', threshold: 0 });
-    darkSections.forEach(function (el) { io.observe(el); });
-  })();
+<script type="module">
+  import { mount } from './assets/js/booking-flow.js';
+  mount(document.getElementById('booking-root'), {});
 </script>
 
-<script>
-  // La nav se retire au scroll vers le bas, revient dès qu'on remonte.
-  (function () {
-    var nav = document.querySelector('nav');
-    var panel = document.getElementById('navLinks');
-    if (!nav) return;
-    var lastY = window.scrollY;
-    var ticking = false;
-    function update() {
-      var y = Math.max(0, window.scrollY);
-      var menuOpen = panel && panel.classList.contains('open');
-      if (!menuOpen) {
-        if (y > lastY && y > 120) nav.classList.add('nav-hidden');
-        else if (y < lastY) nav.classList.remove('nav-hidden');
-      }
-      lastY = y;
-      ticking = false;
-    }
-    window.addEventListener('scroll', function () {
-      if (!ticking) { requestAnimationFrame(update); ticking = true; }
-    }, { passive: true });
-  })();
-</script>
-
-<script>
-  // Profondeur : les photographies dérivent un peu plus lentement que le
-  // reste au scroll, un mouvement léger plutôt qu'un décor animé. Chaque
-  // élément porte son propre facteur (data-depth), désactivé si l'utilisateur
-  // préfère moins de mouvement.
-  (function () {
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    var els = Array.prototype.slice.call(document.querySelectorAll('[data-depth]'));
-    if (!els.length) return;
-    var ticking = false;
-    function update() {
-      var vh = window.innerHeight;
-      els.forEach(function (el) {
-        var depth = parseFloat(el.getAttribute('data-depth')) || 0;
-        var rect = el.getBoundingClientRect();
-        var center = rect.top + rect.height / 2 - vh / 2;
-        el.style.transform = 'translateY(' + Math.max(-56, Math.min(56, center * -depth)) + 'px)';
-      });
-      ticking = false;
-    }
-    function onScroll() {
-      if (!ticking) { requestAnimationFrame(update); ticking = true; }
-    }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    update();
-  })();
-</script>
-
-<script>
-  // Simulateur d'économies : conciergerie (commission sur revenus) vs Zebramoon
-  // (paiement au ménage). Mêmes hypothèses que la section "Économie" ci-dessus,
-  // à centraliser dans le back-office quand la tarification y sera pilotable.
-  (function () {
-    var CONCIERGERIE_RATE = 0.20;  // commission conciergerie classique (% des revenus)
-    var HOURLY_STANDARD = 30;      // tarif horaire ménage standard (€ HT / h), = shared.js DEFAULT_PRICING.hourlyRates.normal
-    var AVG_HOURS = 2.5;           // durée moyenne d'un ménage (h), indicative, selon logement
-    var TRAVEL_FEE = 10;           // = shared.js DEFAULT_PRICING.travelFee
-    var COMMISSION = 8;            // = shared.js DEFAULT_PRICING.commission
-    var SUBSCRIPTION = 10;         // = shared.js DEFAULT_PRICING.subscriptionMonthly
-
-    var night = document.getElementById('simNight');
-    var occ = document.getElementById('simOcc');
-    var bk = document.getElementById('simBookings');
-    if (!night || !occ || !bk) return;
-
-    var eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-    function num(el) { var v = parseFloat(el.value); return isFinite(v) && v > 0 ? v : 0; }
-    function set(id, txt) { var e = document.getElementById(id); if (e) e.textContent = txt; }
-
-    function update() {
-      var nights = Math.round(365 * Math.min(100, num(occ)) / 100);
-      var revenue = num(night) * nights;
-      var concierge = revenue * CONCIERGERIE_RATE;
-      var perCleaning = HOURLY_STANDARD * AVG_HOURS + TRAVEL_FEE + COMMISSION;
-      var cleanflow = num(bk) * 12 * perCleaning + 12 * SUBSCRIPTION;
-      var savings = concierge - cleanflow;
-      set('simRevenue', eur.format(revenue));
-      set('simConcierge', eur.format(concierge));
-      set('simCleanflow', eur.format(cleanflow));
-      if (savings > 0) {
-        set('simSavings', eur.format(savings));
-        set('simPct', concierge > 0 ? 'soit ' + Math.round(savings / concierge * 100) + ' % de moins' : '');
-      } else {
-        set('simSavings', eur.format(0));
-        set('simPct', 'Avantage croissant avec vos revenus locatifs');
-      }
-    }
-    [night, occ, bk].forEach(function (el) { el.addEventListener('input', update); });
-    update();
-  })();
-</script>
 </body>
 </html>

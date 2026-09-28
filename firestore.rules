@@ -46,18 +46,19 @@ service cloud.firestore {
       return hasRole('admin');
     }
 
-    // Configuration tarifaire éditable depuis le back-office admin.
-    // Lecture par tout utilisateur connecté (le client en a besoin pour calculer
-    // son prix) ; écriture réservée à l'équipe CleanFlow.
+    // Configuration tarifaire éditable depuis le back-office admin. Lecture
+    // publique (le visiteur voit le prix avant de créer un compte, dans le
+    // parcours de réservation de la page d'accueil) ; écriture réservée à
+    // l'équipe Zebramoon. Rien de sensible dans ce document.
     match /settings/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Catalogue (kits d'accueil, consommables, location de linge). Lecture par
-    // tout utilisateur connecté (le client les sélectionne) ; écriture admin.
+    // Catalogue (kits d'accueil, consommables, location de linge). Lecture
+    // publique, mêmes raisons que /settings ci-dessus ; écriture admin.
     match /catalog/{itemId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 

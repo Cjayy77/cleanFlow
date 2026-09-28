@@ -1,0 +1,109 @@
+/* Zebramoon, parcours de réservation guidé (assets/js/booking-flow.js).
+   Une question à la fois, une carte = un vrai choix (pas de grille SaaS
+   générique), pas de dégradés, pas de glassmorphism, rayons modestes. Chargé
+   par la page d'accueil et par l'espace client : ne dépend d'aucun autre
+   système de boutons, tout est défini ici. */
+
+.bk-shell{ max-width:640px; margin:0 auto; }
+
+.bk-topbar{ display:flex; align-items:center; gap:18px; margin-bottom:28px; }
+.bk-back{ display:inline-flex; align-items:center; gap:6px; background:none; border:none; padding:6px 0; font-family:var(--font-body); font-weight:700; font-size:14px; color:var(--ink); cursor:pointer; flex-shrink:0; }
+.bk-back:hover{ color:var(--pink); }
+.bk-progress{ flex:1; height:3px; background:var(--line); border-radius:2px; overflow:hidden; }
+.bk-progress-fill{ height:100%; background:var(--pink); transition:width .25s var(--ease); }
+
+.bk-panel{ animation: bk-in .22s var(--ease); }
+@keyframes bk-in{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+
+.bk-question h2{ font-family:var(--font-display); font-weight:600; font-size:clamp(26px,3.6vw,34px); letter-spacing:-0.01em; line-height:1.15; margin-bottom:8px; }
+.bk-sub{ color:var(--muted); font-size:15.5px; line-height:1.6; margin-bottom:22px; }
+.bk-panel-intro .bk-question{ text-align:center; }
+.bk-panel-intro .bk-options{ max-width:480px; margin:0 auto; }
+
+.bk-options{ display:grid; gap:12px; margin-bottom:22px; }
+.bk-option{ display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:left; width:100%; background:var(--white); border:1.5px solid var(--line); border-radius:var(--radius); padding:18px 20px; cursor:pointer; transition: border-color .15s ease-out, background .15s ease-out; font-family:inherit; }
+.bk-option:hover{ border-color:var(--ink); }
+.bk-option.selected{ border-color:var(--pink); background:var(--tint); }
+.bk-option-title{ font-family:var(--font-display); font-weight:600; font-size:17px; color:var(--ink); }
+.bk-option-meta{ font-size:13.5px; color:var(--muted); }
+
+.bk-form{ display:grid; gap:14px; margin-bottom:20px; }
+.bk-field{ display:grid; gap:6px; }
+.bk-field label{ font-size:13px; font-weight:700; color:var(--ink); }
+.bk-field input, .bk-field select{ height:48px; padding:0 14px; border:1.5px solid var(--line); border-radius:var(--radius-sm); font-family:inherit; font-size:16px; color:var(--ink); background:var(--white); }
+.bk-field input:focus, .bk-field select:focus{ outline:none; border-color:var(--pink); }
+
+.bk-error{ background:var(--danger-bg); color:var(--danger-ink); border-radius:var(--radius-sm); padding:10px 14px; font-size:13.5px; margin-bottom:16px; }
+.bk-note{ background:var(--soft); color:var(--muted); border-radius:var(--radius-sm); padding:12px 14px; font-size:13.5px; margin-bottom:16px; }
+.hidden{ display:none !important; }
+
+.bk-next{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; background:var(--pink); color:#fff; text-decoration:none; font-family:var(--font-body); font-weight:700; font-size:16px; border:none; border-radius:var(--radius); cursor:pointer; transition: background .18s ease-out, transform .15s var(--ease); }
+.bk-next:hover:not(:disabled){ background:var(--pink-deep); }
+.bk-next:active:not(:disabled){ transform:scale(.99); }
+.bk-next:disabled{ background:var(--line); color:var(--muted); cursor:not-allowed; }
+
+.bk-link{ display:inline-block; margin-top:6px; background:none; border:none; padding:8px 0; font-family:var(--font-body); font-weight:700; font-size:14px; color:var(--muted); text-decoration:underline; cursor:pointer; }
+.bk-link:hover{ color:var(--pink); }
+
+.bk-step-actions{ display:flex; align-items:center; gap:18px; margin-bottom:6px; }
+.bk-step-actions .bk-next{ width:auto; flex:1; }
+
+/* Compteur +/- (chambres, salles de bain, lits) */
+.bk-stepper{ display:flex; align-items:center; justify-content:center; gap:28px; margin:12px 0 28px; }
+.bk-stepper-btn{ width:48px; height:48px; border-radius:50%; border:1.5px solid var(--line); background:var(--white); font-size:22px; line-height:1; color:var(--ink); cursor:pointer; }
+.bk-stepper-btn:hover{ border-color:var(--pink); color:var(--pink); }
+.bk-stepper-count{ min-width:40px; text-align:center; font-family:var(--font-display); font-weight:600; font-size:28px; }
+
+/* Calendrier */
+.bk-calendar{ margin-bottom:20px; }
+.bk-cal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.bk-cal-month{ font-family:var(--font-display); font-weight:600; font-size:16px; }
+.bk-cal-nav{ width:36px; height:36px; border-radius:50%; border:1.5px solid var(--line); background:var(--white); font-size:18px; color:var(--ink); cursor:pointer; }
+.bk-cal-nav:hover:not(:disabled){ border-color:var(--pink); color:var(--pink); }
+.bk-cal-nav:disabled{ opacity:.35; cursor:not-allowed; }
+.bk-cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.bk-cal-daylabel{ text-align:center; font-size:11px; font-weight:700; color:var(--muted); padding-bottom:6px; }
+.bk-cal-day{ aspect-ratio:1/1; border:none; background:none; border-radius:var(--radius-sm); font-size:14px; color:var(--ink); cursor:pointer; }
+.bk-cal-day:hover:not(:disabled){ background:var(--soft); }
+.bk-cal-day.today{ font-weight:700; color:var(--pink); }
+.bk-cal-day.selected{ background:var(--pink); color:#fff; }
+.bk-cal-day.past, .bk-cal-day.booked{ color:var(--line); cursor:not-allowed; }
+.bk-cal-day.empty{ visibility:hidden; }
+.bk-chosen-date{ margin:14px 0; font-weight:700; }
+
+/* Suppléments */
+.bk-extras{ margin-bottom:8px; }
+.bk-extras-head{ text-transform:uppercase; letter-spacing:0.06em; font-size:11px; font-weight:700; color:var(--muted); margin:18px 0 6px; }
+.bk-extras-head:first-child{ margin-top:0; }
+.bk-extra-row{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-top:1px solid var(--line); }
+.bk-extra-name{ font-weight:600; font-size:15px; }
+.bk-extra-meta{ font-size:13px; color:var(--muted); }
+.bk-extra-check{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.bk-extra-check input[type="checkbox"]{ width:20px; height:20px; accent-color:var(--pink); }
+.bk-extra-check span{ font-size:13px; color:var(--muted); white-space:nowrap; }
+.bk-inline-number{ width:72px; height:38px; text-align:center; border:1.5px solid var(--line); border-radius:var(--radius-sm); font-family:inherit; font-size:15px; }
+
+/* Bilan */
+.bk-summary{ border-top:1px solid var(--line); margin-bottom:22px; }
+.bk-summary-row{ display:grid; grid-template-columns:110px 1fr auto; align-items:baseline; gap:10px; padding:13px 0; border-bottom:1px solid var(--line); }
+.bk-summary-label{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); }
+.bk-summary-value{ font-size:15px; color:var(--ink); }
+.bk-price-box{ text-align:center; padding:22px 0; }
+.bk-price-total{ font-family:var(--font-display); font-weight:600; font-size:clamp(32px,4.4vw,42px); color:var(--ink); line-height:1.1; }
+.bk-price-sub{ font-size:13px; color:var(--muted); margin-top:4px; }
+
+/* Confirmation */
+.bk-confirm{ text-align:center; padding:20px 0; }
+.bk-confirm-mark{ width:56px; height:56px; margin:0 auto 18px; border-radius:50%; background:var(--tint); color:var(--pink); display:flex; align-items:center; justify-content:center; font-size:26px; }
+.bk-confirm h2{ font-family:var(--font-display); font-weight:600; font-size:clamp(26px,3.6vw,34px); margin-bottom:10px; }
+.bk-confirm .bk-next{ max-width:280px; margin:18px auto 0; }
+
+@media (max-width:640px){
+  .bk-summary-row{ grid-template-columns:1fr; gap:2px; }
+  .bk-stepper{ gap:20px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .bk-panel{ animation:none; }
+  .bk-progress-fill{ transition:none; }
+}
