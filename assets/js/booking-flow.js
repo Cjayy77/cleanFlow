@@ -68,6 +68,12 @@ let authError = '';
 let draft = loadDraft() || freshDraft();
 let step = draft.propertyId || draft.newProperty ? (draft.selectedDate ? 'extras' : 'date') : 'service';
 let lastBookingSummary = null;
+// Pile des étapes réellement visitées, dans l'ordre. Remplace un ordre fixe
+// (qui ne peut pas représenter les branchements : nouveau logement vs.
+// logement existant, catalogue vide, retouche depuis le bilan…) par
+// l'historique réel du visiteur, pour que Retour revienne toujours à l'écran
+// précédent effectivement vu, jamais à un écran déduit d'un ordre générique.
+let stepHistory = [];
 
 function freshDraft() {
   return {
@@ -189,17 +195,26 @@ function progressPercent() {
   return i < 0 ? 10 : Math.round(((i + 1) / STEP_ORDER.length) * 100);
 }
 
+// Avance d'une étape « réelle » : empile l'étape quittée avant de changer
+// l'état, pour que goBack() puisse toujours revenir exactement là d'où le
+// visiteur vient (et pas à une étape déduite d'un ordre générique).
+function goToStep(next) {
+  stepHistory.push(step);
+  step = next;
+  render();
+}
+
 function goBack() {
-  const order = ['service', 'property', 'date', 'extras', 'welcomer', 'review'];
-  if (step === 'auth') { step = 'review'; render(); return; }
-  if (NEW_PROPERTY_STEPS.includes(step)) {
-    const i = NEW_PROPERTY_STEPS.indexOf(step);
-    step = i > 0 ? NEW_PROPERTY_STEPS[i - 1] : 'property';
-    render();
+  if (stepHistory.length) {
+    step = stepHistory.pop();
+  } else if (step !== 'service') {
+    // Brouillon repris après un rechargement de page : aucun historique en
+    // mémoire. Retour recommence au tout début plutôt que de ne rien faire ;
+    // rien n'est perdu, les réponses déjà données restent dans le brouillon.
+    step = 'service';
+  } else {
     return;
   }
-  const i = order.indexOf(step);
-  step = i > 0 ? order[i - 1] : order[0];
   render();
 }
 
@@ -253,6 +268,17 @@ function primaryButton(label, onClick, disabled) {
 
 // ------------------------------------------------------- étape : service ----
 
+// Après le service : la liste des logements enregistrés n'a de sens que
+// pour un client connecté qui en a au moins un. Décidé une fois ici, à la
+// source, plutôt que de rendre l'étape « property » puis la laisser se
+// rediriger elle-même vers « address » au rendu (ce qui empêchait Retour de
+// jamais revenir correctement à « service » pour un premier logement).
+function goAfterService() {
+  if (currentUser && userProperties.length) { goToStep('property'); return; }
+  draft.newProperty = draft.newProperty || {};
+  goToStep('address');
+}
+
 function renderServiceStep() {
   const panel = el('div', 'bk-panel bk-panel-intro');
   panel.appendChild(question('De quoi votre logement a-t-il besoin ?'));
@@ -262,13 +288,13 @@ function renderServiceStep() {
     title: 'Ménage standard',
     meta: 'Remise en état complète entre deux séjours',
     selected: draft.serviceType === 'normal',
-    onClick: () => { draft.serviceType = 'normal'; saveDraft(); step = 'property'; render(); },
+    onClick: () => { draft.serviceType = 'normal'; saveDraft(); goAfterService(); },
   }));
   group.appendChild(optionCard({
     title: 'Ménage en profondeur',
     meta: 'Nettoyage approfondi, recommandé périodiquement',
     selected: draft.serviceType === 'deep',
-    onClick: () => { draft.serviceType = 'deep'; saveDraft(); step = 'property'; render(); },
+    onClick: () => { draft.serviceType = 'deep'; saveDraft(); goAfterService(); },
   }));
   panel.appendChild(group);
   return panel;
@@ -294,11 +320,14 @@ function renderPropertyStep() {
     panel.appendChild(list);
     const addBtn = el('button', 'bk-link', 'Ajouter un autre logement');
     addBtn.type = 'button';
-    addBtn.addEventListener('click', () => { draft.propertyId = null; draft.newProperty = draft.newProperty || {}; step = 'address'; saveDraft(); render(); });
+    addBtn.addEventListener('click', () => { draft.propertyId = null; draft.newProperty = draft.newProperty || {}; saveDraft(); goToStep('address'); });
     panel.appendChild(addBtn);
   } else {
-    // Personne pas connectée, ou aucun logement enregistré : on démarre
-    // directement la saisie progressive d'un nouveau logement.
+    // Filet de sécurité seulement : goAfterService() ne fait plus jamais
+    // atterrir ici sans logement enregistré (un brouillon repris après
+    // suppression de tous les logements, par ex., pourrait encore le faire).
+    // Rendu direct, sans passer par goToStep, pour ne pas empiler une étape
+    // que Retour ne pourrait de toute façon pas re-proposer utilement.
     draft.newProperty = draft.newProperty || {};
     step = 'address';
     return renderStep();
@@ -315,11 +344,10 @@ function selectExistingProperty(p) {
   draft.beds = p.beds != null ? p.beds : null;
   saveDraft();
   if (draft.bedrooms == null || draft.bathrooms == null || draft.beds == null) {
-    step = 'bedrooms';
+    goToStep('bedrooms');
   } else {
-    step = 'date';
+    goToStep('date');
   }
-  render();
 }
 
 function renderNewPropertyStep() {
@@ -370,8 +398,7 @@ function renderAddressStep(np) {
     // La zone tarifaire se déduit du code postal : jamais demandée au client.
     np.street = streetV; np.city = cityV; np.postalCode = postalV; np.zone = zoneFromPostalCode(postalV);
     saveDraft();
-    step = 'type';
-    render();
+    goToStep('type');
   }));
   return panel;
 }
@@ -385,7 +412,7 @@ function renderPropertyTypeStep(np) {
     group.appendChild(optionCard({
       title: t.label,
       selected: (np.propertyType || 'appartement') === t.value,
-      onClick: () => { np.propertyType = t.value; saveDraft(); step = 'surface'; render(); },
+      onClick: () => { np.propertyType = t.value; saveDraft(); goToStep('surface'); },
     }));
   });
   panel.appendChild(group);
@@ -410,8 +437,7 @@ function renderSurfaceStep(np) {
     }
     np.surface = v;
     saveDraft();
-    step = 'bedrooms';
-    render();
+    goToStep('bedrooms');
   }));
   return panel;
 }
@@ -433,8 +459,7 @@ function renderCountStep({ title, min, next, onSet, current }) {
   panel.appendChild(primaryButton('Continuer', () => {
     onSet(value);
     saveDraft();
-    step = next;
-    render();
+    goToStep(next);
   }));
   return panel;
 }
@@ -479,7 +504,10 @@ function renderDateStep() {
   if (draft.selectedDate) {
     const chosen = el('div', 'bk-chosen-date', `Le ${formatShortDate(draft.selectedDate)}`);
     panel.appendChild(chosen);
-    panel.appendChild(primaryButton('Continuer', () => { step = 'extras'; render(); }));
+    // Pas de suppléments à proposer : passe directement au contrôle qualité,
+    // décidé ici pour que Retour depuis « welcomer » revienne correctement
+    // à « date » (et pas à une étape « extras » jamais réellement affichée).
+    panel.appendChild(primaryButton('Continuer', () => { goToStep(catalog.length ? 'extras' : 'welcomer'); }));
   }
   return panel;
 }
@@ -533,6 +561,9 @@ function renderExtrasStep() {
   const panel = el('div', 'bk-panel');
   panel.appendChild(question('Autre chose ?', 'Linge, kit de bienvenue, consommables.'));
   if (!catalog.length) {
+    // Filet de sécurité seulement : le bouton Continuer de l'étape date
+    // saute déjà cette étape quand le catalogue est vide. Rendu direct, sans
+    // empiler, pour la même raison que le filet de renderPropertyStep().
     step = 'welcomer';
     return renderStep();
   }
@@ -549,9 +580,9 @@ function renderExtrasStep() {
   const row = el('div', 'bk-step-actions');
   const skip = el('button', 'bk-link', 'Passer');
   skip.type = 'button';
-  skip.addEventListener('click', () => { step = 'welcomer'; render(); });
+  skip.addEventListener('click', () => { goToStep('welcomer'); });
   row.appendChild(skip);
-  row.appendChild(primaryButton('Continuer', () => { step = 'welcomer'; render(); }));
+  row.appendChild(primaryButton('Continuer', () => { goToStep('welcomer'); }));
   panel.appendChild(row);
   return panel;
 }
@@ -624,14 +655,14 @@ function renderWelcomerStep() {
   group.appendChild(optionCard({
     title: 'Non merci',
     selected: !draft.welcomerService,
-    onClick: () => { draft.welcomerService = ''; saveDraft(); step = 'review'; render(); },
+    onClick: () => { draft.welcomerService = ''; saveDraft(); goToStep('review'); },
   }));
   WELCOMER_TIERS.forEach(t => {
     group.appendChild(optionCard({
       title: t.label,
       meta: `${t.fee}€ HT`,
       selected: draft.welcomerService === t.key,
-      onClick: () => { draft.welcomerService = t.key; saveDraft(); step = 'review'; render(); },
+      onClick: () => { draft.welcomerService = t.key; saveDraft(); goToStep('review'); },
     }));
   });
   panel.appendChild(group);
@@ -672,11 +703,11 @@ function renderReviewStep() {
   const extras = quote ? extrasList() : [];
   const summary = el('div', 'bk-summary');
 
-  summary.appendChild(summaryRow('Logement', propertyLabelForReview(), () => { step = draft.propertyId ? 'property' : 'address'; render(); }));
-  summary.appendChild(summaryRow('Prestation', draft.serviceType === 'deep' ? 'Ménage en profondeur' : 'Ménage standard', () => { step = 'service'; render(); }));
-  summary.appendChild(summaryRow('Date', draft.selectedDate ? formatShortDate(draft.selectedDate) : ',', () => { step = 'date'; render(); }));
-  summary.appendChild(summaryRow('Suppléments', extras.length ? extras.map(e => `${e.name}${e.qty > 1 ? ` ×${e.qty}` : ''}`).join(', ') : 'Aucun', () => { step = 'extras'; render(); }));
-  summary.appendChild(summaryRow('Contrôle qualité', draft.welcomerService ? (welcomerTier(draft.welcomerService) || {}).label : 'Non', () => { step = 'welcomer'; render(); }));
+  summary.appendChild(summaryRow('Logement', propertyLabelForReview(), () => { goToStep(draft.propertyId ? 'property' : 'address'); }));
+  summary.appendChild(summaryRow('Prestation', draft.serviceType === 'deep' ? 'Ménage en profondeur' : 'Ménage standard', () => { goToStep('service'); }));
+  summary.appendChild(summaryRow('Date', draft.selectedDate ? formatShortDate(draft.selectedDate) : ',', () => { goToStep('date'); }));
+  summary.appendChild(summaryRow('Suppléments', extras.length ? extras.map(e => `${e.name}${e.qty > 1 ? ` ×${e.qty}` : ''}`).join(', ') : 'Aucun', () => { goToStep('extras'); }));
+  summary.appendChild(summaryRow('Contrôle qualité', draft.welcomerService ? (welcomerTier(draft.welcomerService) || {}).label : 'Non', () => { goToStep('welcomer'); }));
   panel.appendChild(summary);
 
   const priceBox = el('div', 'bk-price-box');
@@ -704,7 +735,7 @@ function renderReviewStep() {
   panel.appendChild(primaryButton(label, () => {
     draft.readyToSubmit = true;
     saveDraft();
-    if (!currentUser) { step = 'auth'; render(); return; }
+    if (!currentUser) { goToStep('auth'); return; }
     finalizeBooking();
   }, submitting || !canSubmit));
 
@@ -988,6 +1019,7 @@ function renderConfirmStep() {
 export function reset() {
   clearDraft();
   step = 'service';
+  stepHistory = [];
   authMode = 'signin';
   authError = '';
   lastBookingSummary = null;
