@@ -10,7 +10,7 @@ import {
   registerClient,
   openDevisDocument,
   openLogementQr,
-  ZONES,
+  zoneFromPostalCode,
   zoneLabel,
   formatShortDate,
   formatBookingStatus,
@@ -58,7 +58,6 @@ const propertyStreet = document.getElementById('propertyStreet');
 const propertyCity = document.getElementById('propertyCity');
 const propertyPostal = document.getElementById('propertyPostal');
 const propertySurface = document.getElementById('propertySurface');
-const propertyZone = document.getElementById('propertyZone');
 const propertyTypeField = document.getElementById('propertyTypeField');
 const propertyBedrooms = document.getElementById('propertyBedrooms');
 const propertyBathrooms = document.getElementById('propertyBathrooms');
@@ -94,16 +93,6 @@ let editingPropertyId = null;
 // Une réservation encore en cours bloque la suppression du bien concerné.
 const ACTIVE_BOOKING_STATUSES = ['pending', 'accepted', 'submitted', 'rejected'];
 
-function populateZones() {
-  propertyZone.innerHTML = '';
-  ZONES.forEach(zone => {
-    const option = document.createElement('option');
-    option.value = zone.value;
-    option.textContent = zone.label;
-    propertyZone.appendChild(option);
-  });
-}
-
 function setPropertyFormMode(property = null) {
   editingPropertyId = property ? property.id : null;
   propertyFormCard.open = !!property || properties.length === 0;
@@ -114,7 +103,6 @@ function setPropertyFormMode(property = null) {
   propertyCity.value = property ? property.city : '';
   propertyPostal.value = property ? property.postalCode : '';
   propertySurface.value = property && property.surface ? property.surface : '';
-  propertyZone.value = property && property.zone ? property.zone : (ZONES[0] ? ZONES[0].value : '');
   propertyTypeField.value = property && property.propertyType ? property.propertyType : 'appartement';
   propertyBedrooms.value = property && property.bedrooms != null ? property.bedrooms : '';
   propertyBathrooms.value = property && property.bathrooms != null ? property.bathrooms : '';
@@ -380,6 +368,10 @@ function renderBookings() {
         try {
           await withButtonLoading(cancelBtn, () =>
             withTimeout(updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }), 15000));
+          // Libère le créneau verrouillé à la réservation (voir booking-flow.js /
+          // firestore.rules, collection bookingSlots) : best-effort, n'empêche
+          // jamais l'annulation elle-même de réussir.
+          deleteDoc(doc(db, 'bookingSlots', `${booking.propertyId}_${booking.scheduledDate}`)).catch(() => {});
           queueEmail({
             to: TEAM_EMAIL,
             subject: `Zebramoon, réservation annulée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
@@ -656,7 +648,8 @@ propertyForm.addEventListener('submit', async event => {
   const city = propertyCity.value.trim();
   const postalCode = propertyPostal.value.trim();
   const surface = Math.floor(Number(propertySurface.value) || 0);
-  const zone = propertyZone.value;
+  // La zone tarifaire se déduit du code postal : jamais demandée au client.
+  const zone = zoneFromPostalCode(postalCode);
   const propertyType = propertyTypeField.value;
   const bedrooms = propertyBedrooms.value === '' ? null : Math.max(0, Math.floor(Number(propertyBedrooms.value) || 0));
   const bathrooms = propertyBathrooms.value === '' ? null : Math.max(0, Math.floor(Number(propertyBathrooms.value) || 0));
@@ -669,10 +662,6 @@ propertyForm.addEventListener('submit', async event => {
   }
   if (!surface || surface <= 0) {
     setAppStatus('Indiquez la surface du logement (en m²) : elle détermine le tarif.', 'error');
-    return;
-  }
-  if (!zone) {
-    setAppStatus('Sélectionnez la zone du logement.', 'error');
     return;
   }
   const fields = { street, city, postalCode, surface, zone, propertyType, bedrooms, bathrooms, beds, notes, keyAccess };
@@ -712,5 +701,3 @@ cancelEditBtn.addEventListener('click', event => {
   event.preventDefault();
   setPropertyFormMode(null);
 });
-
-populateZones();
