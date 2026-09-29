@@ -21,6 +21,7 @@ import {
   setPricing,
   DEFAULT_PRICING,
   PRICING_SCALARS,
+  PUBLIC_PRICING_FIELDS,
   openDevisDocument,
   uploadCatalogImage,
   welcomerTier,
@@ -385,8 +386,16 @@ async function savePricing(config) {
   // On enregistre une config déjà normalisée par le moteur (mêmes défauts de secours).
   const normalized = setPricing(config); // met aussi à jour l'aperçu local
   Object.assign(clean, normalized);
+  // Sous-ensemble public recopié dans le même lot : jamais de décalage entre
+  // les deux documents, jamais de commission/abonnement dans le document
+  // public (voir PUBLIC_PRICING_FIELDS, shared.js).
+  const publicSlice = {};
+  PUBLIC_PRICING_FIELDS.forEach(k => { publicSlice[k] = clean[k]; });
   try {
-    await withTimeout(setDoc(doc(db, 'settings', 'pricing'), { ...clean, updatedAt: serverTimestamp() }), 15000);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'settings', 'pricing'), { ...clean, updatedAt: serverTimestamp() });
+    batch.set(doc(db, 'settings', 'publicPricing'), { ...publicSlice, updatedAt: serverTimestamp() });
+    await withTimeout(batch.commit(), 15000);
     setPricingStatus('Tarifs enregistrés. Les nouvelles réservations utilisent ce barème.', 'success');
   } catch (error) {
     setPricingStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
@@ -1483,6 +1492,9 @@ async function cancelBooking(booking, button) {
   try {
     await withButtonLoading(button, () =>
       withTimeout(updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled' }), 15000));
+    // Libère le créneau verrouillé (collection bookingSlots) : best-effort,
+    // n'empêche jamais l'annulation elle-même de réussir.
+    deleteDoc(doc(db, 'bookingSlots', `${booking.propertyId}_${booking.scheduledDate}`)).catch(() => {});
     try {
       const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
       if (clientSnap.exists() && clientSnap.data().email) {
@@ -1521,6 +1533,15 @@ function openReschedule(booking, row, triggerBtn) {
     try {
       await withButtonLoading(save, () =>
         withTimeout(updateDoc(doc(db, 'bookings', booking.id), { scheduledDate: newDate }), 15000));
+      // Déplace le verrou de créneau vers la nouvelle date : best-effort
+      // (si la nouvelle date est déjà verrouillée pour un autre logement,
+      // ça n'empêche pas la reprogrammation, ça laisse juste l'ancien
+      // créneau bloqué jusqu'à intervention manuelle).
+      deleteDoc(doc(db, 'bookingSlots', `${booking.propertyId}_${booking.scheduledDate}`)).catch(() => {});
+      setDoc(doc(db, 'bookingSlots', `${booking.propertyId}_${newDate}`), {
+        propertyId: booking.propertyId, scheduledDate: newDate, bookingId: booking.id,
+        clientId: booking.clientId, createdAt: serverTimestamp(),
+      }).catch(() => {});
       try {
         const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
         if (clientSnap.exists() && clientSnap.data().email) {

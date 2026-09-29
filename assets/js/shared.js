@@ -77,6 +77,18 @@ export const PRICING_SCALARS = [
   'kitPrice', 'travelFee', 'commission', 'commissionMin', 'commissionMax', 'subscriptionMonthly', 'vatRate', 'taxCreditRate',
 ];
 
+// Sous-ensemble de la config publiable sans authentification (calculateur de
+// la page d'accueil et du devis en ligne, cf. /settings/publicPricing dans
+// firestore.rules). Volontairement SANS commission/commissionMin/commissionMax
+// (marge Zebramoon), subscriptionMonthly (abonnement propriétaire) ni
+// taxCreditRate/devisText/cities : rien qui renseigne un visiteur non
+// authentifié sur la structure de marge ou l'activité de l'entreprise.
+export const PUBLIC_PRICING_FIELDS = [
+  'hourlyRates', 'timeGrid', 'hoursPerExtraBed', 'hoursPerExtraBathroom',
+  'hoursPer25sqmAbove90', 'maxAutoSurface', 'kitPrice', 'travelFee', 'vatRate',
+  'taxCreditEnabled', // simple interrupteur d'affichage, pas une donnée de marge
+];
+
 function toNum(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
 
 // Nettoie/complète une config venue de Firestore : tout champ manquant ou
@@ -128,6 +140,16 @@ export const ZONES = [
 
 export function zoneLabel(value) {
   return (ZONES.find(z => z.value === value) || {}).label || value || '';
+}
+
+// Déduit la zone depuis le code postal, pour ne jamais demander au client de
+// choisir lui-même un « secteur » (terminologie interne). Couverture bêta :
+// Paris et proche banlieue ; code non reconnu → Paris par défaut.
+export function zoneFromPostalCode(postalCode) {
+  const prefix = String(postalCode || '').trim().slice(0, 2);
+  if (['92', '93', '94'].includes(prefix)) return 'petite_couronne';
+  if (['77', '78', '91', '95'].includes(prefix)) return 'grande_couronne';
+  return 'paris';
 }
 
 export function travelFeeForZone(/* zone */) {

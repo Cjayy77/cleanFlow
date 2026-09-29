@@ -16,12 +16,13 @@ import {
   db,
   computeBookingPrice,
   setPricing,
-  ZONES,
+  zoneFromPostalCode,
   zoneLabel,
   WELCOMER_TIERS,
   welcomerTier,
   formatShortDate,
   registerClient,
+  loadUserDoc,
   authErrorMessage,
   withTimeout,
   queueEmail,
@@ -32,9 +33,11 @@ import {
   query,
   where,
   onSnapshot,
+  getDoc,
   getDocs,
   addDoc,
   doc,
+  runTransaction,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
@@ -102,10 +105,7 @@ export function mount(container, options = {}) {
   root = container;
   onComplete = options.onComplete || (() => {});
 
-  onSnapshot(doc(db, 'settings', 'pricing'), snap => {
-    if (snap.exists()) setPricing(snap.data());
-    render();
-  }, () => { /* valeurs par défaut déjà en place côté shared.js */ });
+  subscribePricing(); // tant que l'état de connexion n'est pas connu : doc public
 
   onSnapshot(collection(db, 'catalog'), snap => {
     catalog = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.active !== false);
@@ -113,8 +113,10 @@ export function mount(container, options = {}) {
   }, () => { /* pas de suppléments affichés si le catalogue est indisponible */ });
 
   onAuthStateChanged(auth, user => {
-    const justSignedIn = !currentUser && user;
+    const wasSignedIn = !!currentUser;
+    const justSignedIn = !wasSignedIn && user;
     currentUser = user;
+    if (!!user !== wasSignedIn) subscribePricing();
     if (user) {
       subscribeProperties(user.uid);
       if (justSignedIn && draft.readyToSubmit) { finalizeBooking(); return; }
@@ -125,6 +127,21 @@ export function mount(container, options = {}) {
   });
 
   render();
+}
+
+let pricingUnsub = null;
+// Un visiteur non connecté (y compris un brouillon repris avant connexion) ne
+// lit jamais que le sous-ensemble public de la tarification (sans commission
+// ni abonnement, voir shared.js/PUBLIC_PRICING_FIELDS). Une fois connecté, le
+// document complet est relu pour que le recalcul final (finalizeBooking) se
+// fasse sur les tarifs réels, pas sur les valeurs par défaut.
+function subscribePricing() {
+  if (pricingUnsub) pricingUnsub();
+  const ref = currentUser ? doc(db, 'settings', 'pricing') : doc(db, 'settings', 'publicPricing');
+  pricingUnsub = onSnapshot(ref, snap => {
+    if (snap.exists()) setPricing(snap.data());
+    render();
+  }, () => { /* valeurs par défaut déjà en place côté shared.js */ });
 }
 
 let propertiesUnsub = null;
@@ -338,17 +355,6 @@ function renderAddressStep(np) {
   const city = labeledInput('Ville', np.city || '', 'text');
   const postal = labeledInput('Code postal', np.postalCode || '', 'text');
   form.append(street.wrap, city.wrap, postal.wrap);
-  const zoneWrap = el('div', 'bk-field');
-  zoneWrap.appendChild(el('label', null, 'Secteur'));
-  const zoneSelect = document.createElement('select');
-  ZONES.forEach(z => {
-    const opt = document.createElement('option');
-    opt.value = z.value; opt.textContent = z.label;
-    if (np.zone === z.value) opt.selected = true;
-    zoneSelect.appendChild(opt);
-  });
-  zoneWrap.appendChild(zoneSelect);
-  form.appendChild(zoneWrap);
   panel.appendChild(form);
   const errorBox = el('div', 'bk-error hidden');
   panel.appendChild(errorBox);
@@ -361,7 +367,8 @@ function renderAddressStep(np) {
       errorBox.classList.remove('hidden');
       return;
     }
-    np.street = streetV; np.city = cityV; np.postalCode = postalV; np.zone = zoneSelect.value;
+    // La zone tarifaire se déduit du code postal : jamais demandée au client.
+    np.street = streetV; np.city = cityV; np.postalCode = postalV; np.zone = zoneFromPostalCode(postalV);
     saveDraft();
     step = 'type';
     render();
@@ -447,6 +454,9 @@ function labeledInput(labelText, value, type) {
 function renderDateStep() {
   const panel = el('div', 'bk-panel');
   panel.appendChild(question('Quand souhaitez-vous notre passage ?'));
+  if (authError) {
+    panel.appendChild(el('div', 'bk-error', authError));
+  }
   const cal = el('div', 'bk-calendar');
   const head = el('div', 'bk-cal-head');
   const prev = el('button', 'bk-cal-nav', '‹');
@@ -511,7 +521,7 @@ function paintCalendar(grid, label, prev) {
     btn.disabled = isPast || isBooked;
     btn.setAttribute('aria-label', formatShortDate(iso) + (isBooked ? ', déjà réservé' : ''));
     if (!btn.disabled) {
-      btn.addEventListener('click', () => { draft.selectedDate = iso; saveDraft(); render(); });
+      btn.addEventListener('click', () => { draft.selectedDate = iso; authError = ''; saveDraft(); render(); });
     }
     grid.appendChild(btn);
   }
@@ -778,10 +788,43 @@ function renderAuthStep() {
 
 // ------------------------------------------------- finalisation + envoi ----
 
+// registerClient() attend déjà l'écriture de /users/{uid} avant de rendre la
+// main, mais onAuthStateChanged (qui déclenche finalizeBooking juste après
+// l'inscription) est un écouteur indépendant : rien ne garantit qu'il ne se
+// déclenche pas avant que ce document soit lisible. Sans lui, isClient() côté
+// règles Firestore échoue et la création du logement/réservation est refusée
+// juste après une inscription pourtant réussie. On attend ici, brièvement,
+// que le document existe et soit approuvé avant d'écrire quoi que ce soit.
+async function waitForUserDoc(uid, attempts = 6, delayMs = 350) {
+  for (let i = 0; i < attempts; i += 1) {
+    const docData = await loadUserDoc(uid).catch(() => null);
+    if (docData && docData.accountStatus === 'approved') return docData;
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+  return null;
+}
+
 async function finalizeBooking() {
   if (!currentUser) return;
   submitting = true; render();
   try {
+    const userReady = await waitForUserDoc(currentUser.uid);
+    if (!userReady) {
+      const err = new Error('Votre compte vient d’être créé, sa mise en place prend encore quelques secondes. Réessayez dans un instant.');
+      err.code = 'app/user-not-ready';
+      throw err;
+    }
+
+    // Relit la tarification COMPLÈTE juste avant de calculer le prix final :
+    // la souscription au document complet (déclenchée par la connexion qui
+    // vient de se produire) n'a pas forcément encore livré son premier
+    // instantané. Une lecture directe évite de calculer sur les valeurs par
+    // défaut restées en mémoire depuis la tarification publique pré-connexion.
+    try {
+      const pricingSnap = await getDoc(doc(db, 'settings', 'pricing'));
+      if (pricingSnap.exists()) setPricing(pricingSnap.data());
+    } catch { /* on garde la config actuellement en mémoire */ }
+
     let propertyId = draft.propertyId;
     let property;
     if (!propertyId) {
@@ -834,38 +877,63 @@ async function finalizeBooking() {
     const extrasHT = extras.reduce((s, e) => s + e.priceHT * e.qty, 0);
     const welcomerFee = draft.welcomerService ? (welcomerTier(draft.welcomerService) || {}).fee || 0 : 0;
     const finalHT = quote.total + extrasHT + welcomerFee;
+    const vat = Math.round(finalHT * quote.vatRate);
+    const finalTTC = finalHT + vat;
 
-    const bookingRef = await withTimeout(addDoc(collection(db, 'bookings'), {
-      clientId: currentUser.uid,
-      propertyId,
-      propertyAddress: `${property.street}, ${property.city}`,
-      keyAccess: property.keyAccess || '',
-      prestataireId: null,
-      livreurId: null,
-      welcomerId: null,
-      serviceType: quote.serviceType,
-      surface: Number(property.surface),
-      zone: property.zone || '',
-      propertyType: draft.propertyId ? (property.propertyType || 'appartement') : ((draft.newProperty || {}).propertyType || 'appartement'),
-      beds: quote.beds,
-      bathrooms: quote.bathrooms,
-      guests: Number(draft.guests) || 0,
-      hours: quote.hours,
-      bedrooms: quote.bedrooms,
-      kitCount: quote.kitCount,
-      linenRequested: quote.kitCount > 0,
-      prestationPrice: quote.prestation,
-      amenitiesPrice: quote.amenitiesTotal,
-      travelFee: quote.travel,
-      commission: quote.commission,
-      extras,
-      extrasHT,
-      welcomerService: draft.welcomerService || '',
-      welcomerFee,
-      price: finalHT,
-      scheduledDate: draft.selectedDate,
-      status: 'pending',
-      createdAt: serverTimestamp(),
+    // Le créneau (logement + date) et la réservation sont écrits dans la même
+    // transaction : si un autre onglet/appareil a réservé la même date entre
+    // temps (brouillon resté ouvert, double clic, session reprise), Firestore
+    // refuse la seconde écriture du verrou et la transaction échoue proprement
+    // plutôt que de créer une réservation en doublon (voir firestore.rules,
+    // collection bookingSlots).
+    const slotRef = doc(db, 'bookingSlots', `${propertyId}_${draft.selectedDate}`);
+    const bookingRef = doc(collection(db, 'bookings'));
+    await withTimeout(runTransaction(db, async tx => {
+      const slotSnap = await tx.get(slotRef);
+      if (slotSnap.exists()) {
+        const err = new Error('SLOT_TAKEN');
+        err.code = 'app/slot-taken';
+        throw err;
+      }
+      tx.set(bookingRef, {
+        clientId: currentUser.uid,
+        propertyId,
+        propertyAddress: `${property.street}, ${property.city}`,
+        keyAccess: property.keyAccess || '',
+        prestataireId: null,
+        livreurId: null,
+        welcomerId: null,
+        serviceType: quote.serviceType,
+        surface: Number(property.surface),
+        zone: property.zone || '',
+        propertyType: draft.propertyId ? (property.propertyType || 'appartement') : ((draft.newProperty || {}).propertyType || 'appartement'),
+        beds: quote.beds,
+        bathrooms: quote.bathrooms,
+        guests: Number(draft.guests) || 0,
+        hours: quote.hours,
+        bedrooms: quote.bedrooms,
+        kitCount: quote.kitCount,
+        linenRequested: quote.kitCount > 0,
+        prestationPrice: quote.prestation,
+        amenitiesPrice: quote.amenitiesTotal,
+        travelFee: quote.travel,
+        commission: quote.commission,
+        extras,
+        extrasHT,
+        welcomerService: draft.welcomerService || '',
+        welcomerFee,
+        price: finalHT,
+        scheduledDate: draft.selectedDate,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+      tx.set(slotRef, {
+        propertyId,
+        scheduledDate: draft.selectedDate,
+        bookingId: bookingRef.id,
+        clientId: currentUser.uid,
+        createdAt: serverTimestamp(),
+      });
     }), 20000);
 
     queueEmail({
@@ -876,11 +944,20 @@ async function finalizeBooking() {
 
     clearDraft();
     step = 'confirm';
-    lastBookingSummary = { property, date: draft.selectedDate, serviceType: quote.serviceType, price: finalHT, welcomer: draft.welcomerService, bookingId: bookingRef.id };
+    lastBookingSummary = { property, date: draft.selectedDate, serviceType: quote.serviceType, priceTTC: finalTTC, welcomer: draft.welcomerService, bookingId: bookingRef.id };
     submitting = false;
     render();
     onComplete(bookingRef.id);
   } catch (err) {
+    if (err && err.code === 'app/slot-taken') {
+      draft.selectedDate = null;
+      saveDraft();
+      authError = 'Cette date vient d’être réservée pour ce logement. Merci d’en choisir une autre.';
+      submitting = false;
+      step = 'date';
+      render();
+      return;
+    }
     authError = authErrorMessage(err);
     submitting = false;
     step = 'review';
@@ -895,8 +972,8 @@ function renderConfirmStep() {
   if (lastBookingSummary) {
     const s = lastBookingSummary;
     panel.appendChild(el('p', 'bk-sub', `${s.property.street}, ${s.property.city} · ${formatShortDate(s.date)} · ${s.serviceType === 'deep' ? 'Ménage en profondeur' : 'Ménage standard'}`));
-    panel.appendChild(el('div', 'bk-price-total', `${s.price}€`));
-    panel.appendChild(el('div', 'bk-price-sub', `Référence ${s.bookingId.slice(0, 6).toUpperCase()}`));
+    panel.appendChild(el('div', 'bk-price-total', `${s.priceTTC}€`));
+    panel.appendChild(el('div', 'bk-price-sub', `TTC · Référence ${s.bookingId.slice(0, 6).toUpperCase()}`));
   } else {
     panel.appendChild(el('p', 'bk-sub', 'Votre demande de devis a bien été envoyée, nous revenons vers vous rapidement.'));
   }

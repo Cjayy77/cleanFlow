@@ -31,25 +31,27 @@ function setStatus(msg, type) {
   wizardStatus.classList.toggle('hidden', !msg);
 }
 
-// --- Chargement (auth anonyme + config + catalogue) ---
+// --- Chargement (config + catalogue publics, puis auth anonyme pour le lead) ---
 (async function init() {
+  // /settings/publicPricing et /catalog sont en lecture publique (voir
+  // firestore.rules) : pas besoin d'être connecté, ni même anonyme, pour les
+  // lire. Seule la création du prospect en fin de parcours a besoin d'une
+  // session (anonyme suffit pour ça).
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'publicPricing'));
+    if (snap.exists()) setPricing(snap.data());
+  } catch (e) { /* défauts */ }
+  try {
+    const cat = await getDocs(collection(db, 'catalog'));
+    catalog = cat.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.active !== false);
+  } catch (e) { catalog = []; }
   try {
     await signInAnonymously(auth);
     authOk = true;
   } catch (e) {
-    // Sans auth anonyme (provider non activé) : le devis se calcule quand même
-    // avec les tarifs par défaut, mais l'envoi du lead sera indisponible.
+    // Sans auth anonyme (provider non activé) : le devis se calcule quand même,
+    // mais l'envoi du lead sera indisponible.
     authOk = false;
-  }
-  if (authOk) {
-    try {
-      const snap = await getDoc(doc(db, 'settings', 'pricing'));
-      if (snap.exists()) setPricing(snap.data());
-    } catch (e) { /* défauts */ }
-    try {
-      const cat = await getDocs(collection(db, 'catalog'));
-      catalog = cat.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.active !== false);
-    } catch (e) { catalog = []; }
   }
   renderSupplements();
   const P = getPricing();

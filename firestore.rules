@@ -46,11 +46,24 @@ service cloud.firestore {
       return hasRole('admin');
     }
 
-    // Configuration tarifaire éditable depuis le back-office admin. Lecture
-    // publique (le visiteur voit le prix avant de créer un compte, dans le
-    // parcours de réservation de la page d'accueil) ; écriture réservée à
-    // l'équipe Zebramoon. Rien de sensible dans ce document.
-    match /settings/{docId} {
+    // Configuration tarifaire COMPLÈTE (grille horaire, kits, déplacement,
+    // MAIS AUSSI commission, bornes de commission, abonnement, crédit d'impôt,
+    // texte de devis, villes desservies). Un client connecté en a besoin pour
+    // recalculer son prix final au moment de réserver (voir booking-flow.js),
+    // mais un visiteur non authentifié — y compris via une connexion anonyme
+    // (cf. devis.js) — ne doit jamais lire les marges internes. isSignedIn()
+    // seul ne suffit pas ici : une session anonyme le satisferait aussi.
+    match /settings/pricing {
+      allow read: if isClient() || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Sous-ensemble public de la tarification : uniquement ce qu'il faut au
+    // calculateur affiché avant connexion (page d'accueil, devis en ligne).
+    // Recopié automatiquement depuis /settings/pricing par admin.js à chaque
+    // enregistrement (voir PUBLIC_PRICING_FIELDS dans shared.js) ; ne
+    // contient ni commission, ni abonnement, ni crédit d'impôt.
+    match /settings/publicPricing {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -260,6 +273,29 @@ service cloud.firestore {
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prestatairePay', 'adjustment', 'adjustmentNote']))
       );
+    }
+
+    // Verrou de créneau : un document par (logement, date), jamais modifiable
+    // (allow update: if false), seulement créé ou supprimé. Deux réservations
+    // ne peuvent jamais coexister sur le même logement à la même date, parce
+    // que Firestore refuse d'écraser un document existant sans règle 'update'
+    // qui l'autorise — la garantie ne dépend d'aucune logique côté client.
+    // Voir finalizeBooking() (booking-flow.js) : le créneau et la réservation
+    // sont créés dans la même transaction.
+    match /bookingSlots/{slotId} {
+      allow read: if isAdmin();
+      allow create: if (
+        isAdmin()
+        || (isClient()
+          && request.resource.data.clientId == request.auth.uid
+          && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid)
+      )
+        && request.resource.data.propertyId is string
+        && request.resource.data.scheduledDate is string
+        && request.resource.data.bookingId is string
+        && slotId == (request.resource.data.propertyId + '_' + request.resource.data.scheduledDate);
+      allow update: if false;
+      allow delete: if isAdmin() || (isClient() && resource.data.clientId == request.auth.uid);
     }
 
     match /photos/{photoId} {
