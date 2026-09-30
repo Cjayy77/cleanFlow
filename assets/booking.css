@@ -12,8 +12,10 @@
 .bk-progress{ flex:1; height:3px; background:var(--line); border-radius:2px; overflow:hidden; }
 .bk-progress-fill{ height:100%; background:var(--pink); transition:width .25s var(--ease); }
 
-.bk-panel{ animation: bk-in .22s var(--ease); }
-@keyframes bk-in{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+.bk-panel{ animation: bk-in-forward .28s var(--ease); }
+.dir-back .bk-panel{ animation: bk-in-back .28s var(--ease); }
+@keyframes bk-in-forward{ from{ opacity:0; transform:translateX(16px); } to{ opacity:1; transform:none; } }
+@keyframes bk-in-back{ from{ opacity:0; transform:translateX(-16px); } to{ opacity:1; transform:none; } }
 
 .bk-question h2{ font-family:var(--font-display); font-weight:600; font-size:clamp(26px,3.6vw,34px); letter-spacing:-0.01em; line-height:1.15; margin-bottom:8px; }
 .bk-sub{ color:var(--muted); font-size:15.5px; line-height:1.6; margin-bottom:22px; }
@@ -104,6 +106,6 @@
 }
 
 @media (prefers-reduced-motion: reduce){
-  .bk-panel{ animation:none; }
+  .bk-panel, .dir-back .bk-panel, .dir-forward .bk-panel{ animation:none !important; }
   .bk-progress-fill{ transition:none; }
 }

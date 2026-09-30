@@ -74,6 +74,10 @@ let lastBookingSummary = null;
 // l'historique réel du visiteur, pour que Retour revienne toujours à l'écran
 // précédent effectivement vu, jamais à un écran déduit d'un ordre générique.
 let stepHistory = [];
+// Sens du dernier changement d'étape (goToStep = 'forward', goBack = 'back'),
+// pour que le panneau qui entre s'anime depuis le bon côté selon que le
+// visiteur avance ou fait Retour.
+let navDirection = 'forward';
 
 function freshDraft() {
   return {
@@ -164,7 +168,7 @@ function subscribeProperties(uid) {
 function render() {
   if (!root) return;
   root.innerHTML = '';
-  const shell = el('div', 'bk-shell');
+  const shell = el('div', `bk-shell dir-${navDirection}`);
   if (step !== 'service' && step !== 'confirm') {
     shell.appendChild(renderTopBar());
   }
@@ -201,6 +205,7 @@ function progressPercent() {
 function goToStep(next) {
   stepHistory.push(step);
   step = next;
+  navDirection = 'forward';
   render();
 }
 
@@ -215,6 +220,7 @@ function goBack() {
   } else {
     return;
   }
+  navDirection = 'back';
   render();
 }
 
