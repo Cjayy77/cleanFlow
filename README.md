@@ -5,7 +5,7 @@ calendrier, dossier photo obligatoire, contrôle humain par l'équipe Zebramoon
 avant toute confirmation au client.
 
 ## Structure    
-
+ 
 ```
 index.html            Site vitrine public
 app/                  Espace client (auto-inscription)
