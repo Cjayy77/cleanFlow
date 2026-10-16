@@ -18,7 +18,7 @@
 <meta property="og:image" content="https://clean-flow-dun.vercel.app/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Votre logement, prêt pour le prochain séjour.">
+<meta property="og:image:alt" content="Plus de temps pour l'essentiel.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Zebramoon, ménage et contrôle qualité entre deux séjours">
 <meta name="twitter:description" content="ZebraMoon coordonne le ménage et le contrôle qualité de votre logement entre deux séjours, sans commission sur vos revenus.">
@@ -34,7 +34,7 @@
   html{ scroll-behavior:smooth; scroll-padding-top:84px; overflow-x:hidden; }
   body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; padding-top:72px; }
   .wrap{ max-width: 1100px; margin:0 auto; padding: 0 24px; }
-  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
+  h1,h2,h3,h4{ font-family:var(--font-display); font-weight:500; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
   a{ color:inherit; }
   ::selection{ background:var(--pink); color:var(--on-light); }
   img{ max-width:100%; display:block; }
@@ -75,21 +75,20 @@
   .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:14px; padding:14px 2px; text-decoration:none; background:none; color:var(--muted); border:none; }
   .btn-outline:hover{ color:var(--pink); }
 
-  /* HERO, light, headline + one line + photo. No operation explainer here. */
-  .hero{ padding:52px 0 44px; }
-  .hero-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:48px; align-items:center; }
-  .hero h1{ font-size:clamp(36px,4.6vw,58px); margin-bottom:16px; }
-  .hero p{ font-size:17px; line-height:1.6; color:var(--muted); max-width:420px; margin-bottom:24px; }
+  /* HERO: eyebrow + serif headline + one line + the moon, no photo. */
+  .hero{ padding:60px 0 40px; overflow:hidden; }
+  .hero-grid{ display:grid; grid-template-columns:1fr 0.85fr; gap:24px; align-items:center; }
+  .hero-eyebrow{ text-transform:uppercase; letter-spacing:0.16em; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:18px; }
+  .hero h1{ font-size:clamp(38px,5vw,62px); font-weight:500; margin-bottom:18px; }
+  .hero p{ font-size:17px; line-height:1.6; color:var(--muted); max-width:420px; margin-bottom:26px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
-  .hero-photo-wrap{ position:relative; }
-  .hero-photo{ border-radius:var(--radius-md); overflow:hidden; aspect-ratio:4/3; border:1px solid var(--line); }
-  .hero-photo img{ width:100%; height:100%; object-fit:cover; }
-  .hero-moon{ position:absolute; z-index:2; width:44%; aspect-ratio:1/1; right:-9%; bottom:-12%; pointer-events:none; filter:drop-shadow(0 20px 44px rgba(0,0,0,.6)); }
+  .hero-moon-wrap{ display:flex; align-items:center; justify-content:center; }
+  .hero-moon-img{ width:100%; max-width:500px; filter:drop-shadow(0 30px 70px rgba(0,0,0,.7)); }
   @media (max-width:820px){
-    .hero{ padding:32px 0 28px; }
-    .hero-grid{ grid-template-columns:1fr; gap:22px; }
-    .hero-photo{ aspect-ratio:16/10; }
-    .hero-moon{ width:34%; right:-5%; bottom:-8%; }
+    .hero{ padding:36px 0 24px; }
+    .hero-grid{ grid-template-columns:1fr; gap:10px; }
+    .hero-moon-wrap{ order:-1; margin:-10px -10px 0; }
+    .hero-moon-img{ max-width:340px; margin:0 auto; }
   }
 
   section{ padding:56px 0; }
@@ -103,9 +102,17 @@
   .booking-panel{ background:var(--paper); border:1px solid var(--line); border-radius:var(--radius-md); padding:36px 32px; max-width:680px; margin:0 auto; }
   @media (max-width:640px){ .booking-panel{ padding:22px 16px; } }
 
-  /* Plus qu'un ménage : une phrase, une liste compacte, pas de cartes */
+  /* Des personnes qui prennent soin : une photo, une phrase de confiance */
   #difference{ padding:40px 0 48px; }
-  .capability-line{ margin-top:16px; font-size:15.5px; font-weight:600; color:var(--ink); }
+  .difference-grid{ display:grid; grid-template-columns:0.85fr 1fr; gap:44px; align-items:center; }
+  .difference-photo{ border-radius:var(--radius-md); overflow:hidden; aspect-ratio:4/5; border:1px solid var(--line); }
+  .difference-photo img{ width:100%; height:100%; object-fit:cover; }
+  .difference-text{ color:var(--muted); font-size:15.5px; line-height:1.6; margin-top:4px; }
+  .capability-line{ margin-top:18px; font-size:15.5px; font-weight:600; color:var(--ink); }
+  @media (max-width:820px){
+    .difference-grid{ grid-template-columns:1fr; gap:24px; }
+    .difference-photo{ aspect-ratio:16/10; }
+  }
 
   /* Vérification : différenciateur central, section sombre compacte */
   .verify-outer{ background:var(--charcoal); color:var(--ink); padding:56px 0; }
@@ -180,7 +187,7 @@
 <nav>
   <div class="nav-inner">
     <a class="brand" href="/">
-      <img class="mark" src="assets/moon-mark.svg" alt="" aria-hidden="true" width="24" height="24">
+      <img class="mark" src="assets/moon-nav.png" alt="" aria-hidden="true" width="20" height="24">
       <span><span class="k">Zebra</span>moon</span>
     </a>
     <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Ouvrir le menu">
@@ -201,18 +208,15 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <h1>Votre logement, prêt pour le prochain séjour.</h1>
-      <p>ZebraMoon coordonne le ménage et le contrôle qualité de votre logement entre chaque séjour.</p>
+      <p class="hero-eyebrow">Le ménage locatif, autrement.</p>
+      <h1>Plus de temps<br>pour l'essentiel.</h1>
+      <p>Zebra Moon est une solution simple qui connecte propriétaires et agents de ménage qualifiés pour des logements toujours impeccables.</p>
       <div class="btn-row">
-        <a href="#booking" class="btn-a pink">Réserver un ménage</a>
-        <a href="#difference" class="btn-outline">Pourquoi ZebraMoon ?</a>
+        <a href="#difference" class="btn-a pink">Découvrir le concept →</a>
       </div>
     </div>
-    <div class="hero-photo-wrap">
-      <div class="hero-photo">
-        <img src="assets/room.jpg" alt="Logement prêt pour l'arrivée du prochain voyageur" fetchpriority="high">
-      </div>
-      <img class="hero-moon" src="assets/moon-hero.svg" alt="" aria-hidden="true">
+    <div class="hero-moon-wrap">
+      <img class="hero-moon-img" src="assets/moon-hero-photo.jpg" alt="" aria-hidden="true" fetchpriority="high">
     </div>
   </div>
 </header>
@@ -232,10 +236,14 @@
 </section>
 
 <section id="difference">
-  <div class="wrap">
-    <div class="sec-head center">
-      <h2>Plus qu'un ménage.</h2>
-      <p>ZebraMoon coordonne tout ce qu'il faut préparer avant l'arrivée du prochain voyageur.</p>
+  <div class="wrap difference-grid">
+    <div class="difference-photo">
+      <img src="assets/preparation.jpg" alt="Agent de ménage professionnel en intervention">
+    </div>
+    <div>
+      <p class="hero-eyebrow">Des agents de confiance</p>
+      <h2>Des personnes qui prennent soin.</h2>
+      <p class="difference-text">Des agents qualifiés, déclarés et évalués, pour un service fiable et régulier.</p>
       <div class="capability-line">Ménage · Linge · Consommables · Welcomer · Contrôle</div>
     </div>
   </div>
@@ -300,7 +308,7 @@
     <div class="footer-top">
       <div class="footer-brand">
         <b>
-          <img class="mark" src="assets/moon-mark.svg" alt="" aria-hidden="true" width="22" height="22">
+          <img class="mark" src="assets/moon-nav.png" alt="" aria-hidden="true" width="18" height="22">
           <span><span class="k">Zebra</span>moon</span>
         </b>
         <p>ZebraMoon coordonne le ménage, le linge, les consommables et le contrôle qualité de votre logement entre deux séjours.</p>

@@ -13,7 +13,7 @@
    pills), since a light accent needs dark text, not white. */
 :root{
   /* Color: near-black background, warm ivory ink, one neutral gray */
-  --ivory: #0A0A09;       /* page background */
+  --ivory: #000000;       /* page background, pure black */
   --paper: #151512;       /* raised surface, cards, inputs */
   --white: #FFFFFF;       /* pure white, reserved for text on a dark/saturated fill */
   --ink: #F2EDE1;         /* warm ivory, primary text/foreground */
@@ -29,7 +29,7 @@
   --pink-deep: #FFFFFF;
   --pink-soft: rgba(242,237,225,0.5);
   --tint: rgba(242,237,225,0.08);   /* selected-state surface wash */
-  --on-light: #0A0A09;    /* text color for anything on an ivory/--pink fill */
+  --on-light: #000000;    /* text color for anything on an ivory/--pink fill */
 
   --gold: #D9A94A;        /* rating stars, "today" marker */
   --danger-bg: rgba(229,72,77,0.14);
