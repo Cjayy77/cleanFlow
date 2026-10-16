@@ -79,15 +79,20 @@
   .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:14px; padding:14px 2px; text-decoration:none; background:none; color:var(--muted); border:none; }
   .btn-outline:hover{ color:var(--pink); }
 
-  /* HERO: eyebrow + serif headline + one line. No moon, no photo. */
-  .hero{ padding:72px 0 48px; }
-  .hero-copy{ max-width:620px; }
-  .hero-eyebrow{ text-transform:uppercase; letter-spacing:0.16em; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:18px; }
+  /* HERO: serif headline + one line + the moon, desktop only (no stacking
+     it below on narrow screens, where it would have to shrink/crop to fit). */
+  .hero{ padding:72px 0 48px; overflow:hidden; }
+  .hero-grid{ display:grid; grid-template-columns:1fr 0.85fr; gap:40px; align-items:center; }
+  .hero-copy{ max-width:560px; }
   .hero h1{ font-size:clamp(38px,5vw,62px); font-weight:500; margin-bottom:18px; }
   .hero p{ font-size:17px; line-height:1.6; color:var(--muted); max-width:420px; margin-bottom:26px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
+  .hero-moon-wrap{ display:flex; align-items:center; justify-content:center; }
+  .hero-moon-img{ width:100%; max-width:460px; filter:drop-shadow(0 30px 70px rgba(0,0,0,.7)); }
   @media (max-width:820px){
     .hero{ padding:40px 0 28px; }
+    .hero-grid{ grid-template-columns:1fr; }
+    .hero-moon-wrap{ display:none; }
   }
 
   section{ padding:56px 0; }
@@ -207,12 +212,16 @@
 </nav>
 
 <header class="hero">
-  <div class="wrap hero-copy">
-    <p class="hero-eyebrow">Le ménage locatif, autrement.</p>
-    <h1>Plus de temps<br>pour l'essentiel.</h1>
-    <p>Zebra Moon est une solution simple qui connecte propriétaires et agents de ménage qualifiés pour des logements toujours impeccables.</p>
-    <div class="btn-row">
-      <a href="#difference" class="btn-a pink">Découvrir le concept →</a>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <h1>Plus de temps<br>pour l'essentiel.</h1>
+      <p>Zebra Moon est une solution simple qui connecte propriétaires et agents de ménage qualifiés pour des logements toujours impeccables.</p>
+      <div class="btn-row">
+        <a href="#difference" class="btn-a pink">Découvrir le concept →</a>
+      </div>
+    </div>
+    <div class="hero-moon-wrap">
+      <img class="hero-moon-img" src="assets/moon-hero-photo.jpg" alt="" aria-hidden="true" fetchpriority="high">
     </div>
   </div>
 </header>
@@ -237,7 +246,6 @@
       <img src="assets/preparation.jpg" alt="Agent de ménage professionnel en intervention">
     </div>
     <div>
-      <p class="hero-eyebrow">Des agents de confiance</p>
       <h2>Des personnes qui prennent soin.</h2>
       <p class="difference-text">Des agents qualifiés, déclarés et évalués, pour un service fiable et régulier.</p>
       <div class="capability-line">Ménage · Linge · Consommables · Welcomer · Contrôle</div>
