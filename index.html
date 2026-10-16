@@ -23,10 +23,10 @@
 <meta name="twitter:title" content="Zebramoon, ménage et contrôle qualité entre deux séjours">
 <meta name="twitter:description" content="ZebraMoon coordonne le ménage et le contrôle qualité de votre logement entre deux séjours, sans commission sur vos revenus.">
 <meta name="twitter:image" content="https://clean-flow-dun.vercel.app/assets/og.png">
-<link rel="icon" href="assets/moon-mark.svg">
+<link rel="icon" href="assets/moon-nav.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/tokens.css">
 <link rel="stylesheet" href="assets/booking.css">
 <style>
@@ -50,6 +50,10 @@
   .nav-links a{ text-decoration:none; }
   .nav-links a:hover{ color:var(--ink); }
   .nav-actions{ display:flex; align-items:center; gap:16px; flex-shrink:0; }
+  /* On desktop the wrapper itself is invisible to layout, so nav-links and
+     nav-actions stay direct flex children of .nav-inner exactly as before;
+     the mobile media query below turns it into a real stacked panel. */
+  .nav-mobile-panel{ display:contents; }
   .nav-login{ font-size:14px; font-weight:600; color:var(--ink); text-decoration:none; }
   .nav-cta{ background:var(--pink); color:var(--on-light); font-family:var(--font-body); font-weight:700; font-size:14px; padding:10px 18px; text-decoration:none; border-radius:var(--radius); transition:background .15s ease-out; }
   .nav-cta:hover{ background:var(--pink-deep); }
@@ -60,11 +64,11 @@
   .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
   @media (max-width:760px){
     .nav-toggle{ display:flex; }
-    .nav-links{ position:absolute; top:72px; left:0; right:0; display:none; flex-direction:column; align-items:stretch; gap:0; background:var(--ivory); border-bottom:1px solid var(--line); padding:6px 24px 16px; }
-    .nav-links.open{ display:flex; }
+    .nav-mobile-panel{ position:absolute; top:72px; left:0; right:0; display:none; flex-direction:column; background:var(--ivory); border-bottom:1px solid var(--line); }
+    .nav-mobile-panel.open{ display:flex; }
+    .nav-links{ flex-direction:column; align-items:stretch; gap:0; padding:6px 24px 10px; }
     .nav-links a{ padding:12px 0; border-top:1px solid var(--line); }
-    .nav-actions{ position:absolute; top:72px; left:0; right:0; display:none; flex-direction:column; align-items:stretch; gap:10px; background:var(--ivory); padding:0 24px 18px; }
-    .nav-actions.open{ display:flex; }
+    .nav-actions{ flex-direction:column; align-items:stretch; gap:10px; padding:10px 24px 18px; border-top:1px solid var(--line); }
     .nav-cta{ text-align:center; }
   }
 
@@ -75,20 +79,20 @@
   .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body); font-weight:700; font-size:14px; padding:14px 2px; text-decoration:none; background:none; color:var(--muted); border:none; }
   .btn-outline:hover{ color:var(--pink); }
 
-  /* HERO: eyebrow + serif headline + one line + the moon, no photo. */
-  .hero{ padding:60px 0 40px; overflow:hidden; }
-  .hero-grid{ display:grid; grid-template-columns:1fr 0.85fr; gap:24px; align-items:center; }
-  .hero-eyebrow{ text-transform:uppercase; letter-spacing:0.16em; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:18px; }
+  /* HERO: serif headline + one line + the moon, desktop only (no stacking
+     it below on narrow screens, where it would have to shrink/crop to fit). */
+  .hero{ padding:72px 0 48px; overflow:hidden; }
+  .hero-grid{ display:grid; grid-template-columns:1fr 0.85fr; gap:40px; align-items:center; }
+  .hero-copy{ max-width:560px; }
   .hero h1{ font-size:clamp(38px,5vw,62px); font-weight:500; margin-bottom:18px; }
   .hero p{ font-size:17px; line-height:1.6; color:var(--muted); max-width:420px; margin-bottom:26px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
   .hero-moon-wrap{ display:flex; align-items:center; justify-content:center; }
-  .hero-moon-img{ width:100%; max-width:500px; filter:drop-shadow(0 30px 70px rgba(0,0,0,.7)); }
+  .hero-moon-img{ width:100%; max-width:460px; filter:drop-shadow(0 30px 70px rgba(0,0,0,.7)); }
   @media (max-width:820px){
-    .hero{ padding:36px 0 24px; }
-    .hero-grid{ grid-template-columns:1fr; gap:10px; }
-    .hero-moon-wrap{ order:-1; margin:-10px -10px 0; }
-    .hero-moon-img{ max-width:340px; margin:0 auto; }
+    .hero{ padding:40px 0 28px; }
+    .hero-grid{ grid-template-columns:1fr; }
+    .hero-moon-wrap{ display:none; }
   }
 
   section{ padding:56px 0; }
@@ -190,25 +194,26 @@
       <img class="mark" src="assets/moon-nav.png" alt="" aria-hidden="true" width="20" height="24">
       <span><span class="k">Zebra</span>moon</span>
     </a>
-    <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Ouvrir le menu">
+    <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navPanel" aria-label="Ouvrir le menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="nav-links" id="navLinks">
-      <a href="#difference">Pourquoi ZebraMoon</a>
-      <a href="#verification">Vérification</a>
-      <a href="#faq">FAQ</a>
-    </div>
-    <div class="nav-actions" id="navActions">
-      <a href="/app/" class="nav-login">Connexion</a>
-      <a href="#booking" class="nav-cta">Réserver</a>
+    <div class="nav-mobile-panel" id="navPanel">
+      <div class="nav-links" id="navLinks">
+        <a href="#difference">Pourquoi ZebraMoon</a>
+        <a href="#verification">Vérification</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="nav-actions" id="navActions">
+        <a href="/app/" class="nav-login">Connexion</a>
+        <a href="#booking" class="nav-cta">Réserver</a>
+      </div>
     </div>
   </div>
 </nav>
 
 <header class="hero">
   <div class="wrap hero-grid">
-    <div>
-      <p class="hero-eyebrow">Le ménage locatif, autrement.</p>
+    <div class="hero-copy">
       <h1>Plus de temps<br>pour l'essentiel.</h1>
       <p>Zebra Moon est une solution simple qui connecte propriétaires et agents de ménage qualifiés pour des logements toujours impeccables.</p>
       <div class="btn-row">
@@ -241,7 +246,6 @@
       <img src="assets/preparation.jpg" alt="Agent de ménage professionnel en intervention">
     </div>
     <div>
-      <p class="hero-eyebrow">Des agents de confiance</p>
       <h2>Des personnes qui prennent soin.</h2>
       <p class="difference-text">Des agents qualifiés, déclarés et évalués, pour un service fiable et régulier.</p>
       <div class="capability-line">Ménage · Linge · Consommables · Welcomer · Contrôle</div>
@@ -343,18 +347,15 @@
 <script>
   (function () {
     var btn = document.getElementById('navToggle');
-    var links = document.getElementById('navLinks');
-    var actions = document.getElementById('navActions');
-    if (!btn || !links || !actions) return;
+    var panel = document.getElementById('navPanel');
+    if (!btn || !panel) return;
     btn.addEventListener('click', function () {
-      var open = links.classList.toggle('open');
-      actions.classList.toggle('open', open);
+      var open = panel.classList.toggle('open');
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
-    links.querySelectorAll('a').forEach(function (a) {
+    panel.querySelectorAll('a').forEach(function (a) {
       a.addEventListener('click', function () {
-        links.classList.remove('open');
-        actions.classList.remove('open');
+        panel.classList.remove('open');
         btn.setAttribute('aria-expanded', 'false');
       });
     });
