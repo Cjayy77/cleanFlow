@@ -23,7 +23,7 @@
 .bk-panel-intro .bk-options{ max-width:480px; margin:0 auto; }
 
 .bk-options{ display:grid; gap:12px; margin-bottom:22px; }
-.bk-option{ display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:left; width:100%; background:var(--white); border:1.5px solid var(--line); border-radius:var(--radius); padding:18px 20px; cursor:pointer; transition: border-color .15s ease-out, background .15s ease-out; font-family:inherit; }
+.bk-option{ display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:left; width:100%; background:var(--paper); border:1.5px solid var(--line); border-radius:var(--radius); padding:18px 20px; cursor:pointer; transition: border-color .15s ease-out, background .15s ease-out; font-family:inherit; }
 .bk-option:hover{ border-color:var(--ink); }
 .bk-option.selected{ border-color:var(--pink); background:var(--tint); }
 .bk-option-title{ font-family:var(--font-display); font-weight:600; font-size:17px; color:var(--ink); }
@@ -32,14 +32,14 @@
 .bk-form{ display:grid; gap:14px; margin-bottom:20px; }
 .bk-field{ display:grid; gap:6px; }
 .bk-field label{ font-size:13px; font-weight:700; color:var(--ink); }
-.bk-field input, .bk-field select{ height:48px; padding:0 14px; border:1.5px solid var(--line); border-radius:var(--radius-sm); font-family:inherit; font-size:16px; color:var(--ink); background:var(--white); }
+.bk-field input, .bk-field select{ height:48px; padding:0 14px; border:1.5px solid var(--line); border-radius:var(--radius-sm); font-family:inherit; font-size:16px; color:var(--ink); background:var(--paper); }
 .bk-field input:focus, .bk-field select:focus{ outline:none; border-color:var(--pink); }
 
 .bk-error{ background:var(--danger-bg); color:var(--danger-ink); border-radius:var(--radius-sm); padding:10px 14px; font-size:13.5px; margin-bottom:16px; }
 .bk-note{ background:var(--soft); color:var(--muted); border-radius:var(--radius-sm); padding:12px 14px; font-size:13.5px; margin-bottom:16px; }
 .hidden{ display:none !important; }
 
-.bk-next{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; background:var(--pink); color:#fff; text-decoration:none; font-family:var(--font-body); font-weight:700; font-size:16px; border:none; border-radius:var(--radius); cursor:pointer; transition: background .18s ease-out, transform .15s var(--ease); }
+.bk-next{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; background:var(--pink); color:var(--on-light); text-decoration:none; font-family:var(--font-body); font-weight:700; font-size:16px; border:none; border-radius:var(--radius); cursor:pointer; transition: background .18s ease-out, transform .15s var(--ease); }
 .bk-next:hover:not(:disabled){ background:var(--pink-deep); }
 .bk-next:active:not(:disabled){ transform:scale(.99); }
 .bk-next:disabled{ background:var(--line); color:var(--muted); cursor:not-allowed; }
@@ -52,7 +52,7 @@
 
 /* Compteur +/- (chambres, salles de bain, lits) */
 .bk-stepper{ display:flex; align-items:center; justify-content:center; gap:28px; margin:12px 0 28px; }
-.bk-stepper-btn{ width:48px; height:48px; border-radius:50%; border:1.5px solid var(--line); background:var(--white); font-size:22px; line-height:1; color:var(--ink); cursor:pointer; }
+.bk-stepper-btn{ width:48px; height:48px; border-radius:50%; border:1.5px solid var(--line); background:var(--paper); font-size:22px; line-height:1; color:var(--ink); cursor:pointer; }
 .bk-stepper-btn:hover{ border-color:var(--pink); color:var(--pink); }
 .bk-stepper-count{ min-width:40px; text-align:center; font-family:var(--font-display); font-weight:600; font-size:28px; }
 
@@ -60,7 +60,7 @@
 .bk-calendar{ margin-bottom:20px; }
 .bk-cal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .bk-cal-month{ font-family:var(--font-display); font-weight:600; font-size:16px; }
-.bk-cal-nav{ width:36px; height:36px; border-radius:50%; border:1.5px solid var(--line); background:var(--white); font-size:18px; color:var(--ink); cursor:pointer; }
+.bk-cal-nav{ width:36px; height:36px; border-radius:50%; border:1.5px solid var(--line); background:var(--paper); font-size:18px; color:var(--ink); cursor:pointer; }
 .bk-cal-nav:hover:not(:disabled){ border-color:var(--pink); color:var(--pink); }
 .bk-cal-nav:disabled{ opacity:.35; cursor:not-allowed; }
 .bk-cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
@@ -68,7 +68,7 @@
 .bk-cal-day{ aspect-ratio:1/1; border:none; background:none; border-radius:var(--radius-sm); font-size:14px; color:var(--ink); cursor:pointer; }
 .bk-cal-day:hover:not(:disabled){ background:var(--soft); }
 .bk-cal-day.today{ font-weight:700; color:var(--pink); }
-.bk-cal-day.selected{ background:var(--pink); color:#fff; }
+.bk-cal-day.selected{ background:var(--pink); color:var(--on-light); }
 .bk-cal-day.past, .bk-cal-day.booked{ color:var(--line); cursor:not-allowed; }
 .bk-cal-day.empty{ visibility:hidden; }
 .bk-chosen-date{ margin:14px 0; font-weight:700; }

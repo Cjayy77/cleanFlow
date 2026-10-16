@@ -8,7 +8,7 @@
 <link rel="icon" href="/assets/moon-mark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/tokens.css">
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -23,22 +23,15 @@
   p{ color:var(--muted); font-size:16px; margin-bottom:32px; }
   .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
   .btn{ text-decoration:none; font-weight:700; font-size:15px; letter-spacing:-0.01em; padding:12px 22px; border-radius:var(--radius); transition:transform .2s var(--ease), background .18s ease-out; display:inline-block; }
-  .btn.primary{ background:var(--pink); color:#fff; }
+  .btn.primary{ background:var(--pink); color:var(--on-light); }
   .btn.primary:hover{ transform:translateY(-1px); background:var(--pink-deep); }
   .btn.primary:active{ transform:translateY(0) scale(.97); }
   .btn.ghost{ background:var(--paper); color:var(--ink); border:1px solid var(--line); }
   .btn.ghost:hover{ transform:translateY(-1px); border-color:var(--pink); }
   .btn.ghost:active{ transform:translateY(0) scale(.97); }
   .links{ margin-top:34px; font-size:13px; color:var(--muted); }
-  .links a{ color:var(--pink-deep); text-decoration:none; font-weight:600; }
+  .links a{ color:var(--ink); text-decoration:none; font-weight:600; }
   .links a:hover{ text-decoration:underline; }
-  @media (prefers-color-scheme: dark){
-    body{ background:var(--charcoal); color:var(--ivory); }
-    h1{ color:var(--ivory); }
-    .brand{ color:var(--ivory); }
-    p{ color:rgba(245,239,227,.7); }
-    .btn.ghost{ background:rgba(245,239,227,.08); color:var(--ivory); border-color:rgba(245,239,227,.18); }
-  }
 </style>
 </head>
 <body>
