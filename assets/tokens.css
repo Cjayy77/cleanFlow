@@ -37,16 +37,17 @@
   --ok-bg: rgba(79,209,122,0.14);
   --ok-ink: #4FD17A;
 
-  /* Type: Fraunces carries statements and headlines (the editorial serif
-     wordmark and display type), Manrope carries body copy, UI and data. */
-  --font-display: 'Fraunces', 'Plus Jakarta Sans', 'Manrope', system-ui, -apple-system, serif;
+  /* Type: Playfair Display carries statements and headlines (the sharp,
+     high-contrast editorial serif, wordmark and display type), Manrope
+     carries body copy, UI and data. */
+  --font-display: 'Playfair Display', 'Plus Jakarta Sans', 'Manrope', system-ui, -apple-system, serif;
   --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
 
   /* Geometry: soft enough to feel tactile, short enough to stay precise.
      Not a pill, not a right angle. */
-  --radius: 8px;
-  --radius-sm: 6px;
-  --radius-md: 12px;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
 
   --shadow: 0 18px 40px rgba(0,0,0,.5);
   --shadow-sm: 0 4px 14px rgba(0,0,0,.4);
