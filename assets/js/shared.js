@@ -448,6 +448,7 @@ export const EXIGENCE_ROOM_SCOPES = [
   { key: 'bedroom', label: 'Une fois par chambre' },
   { key: 'bathroom', label: 'Une fois par salle de bain' },
   { key: 'wc', label: 'Une fois par WC' },
+  { key: 'smoke_detector', label: 'Une fois par détecteur de fumée' },
   { key: 'other', label: 'Zone unique (sol, terrasse…)' },
 ];
 
@@ -611,6 +612,212 @@ export const DEFAULT_PROTOCOL_TEMPLATES = [
     text: 'Confirmer qu’aucun matériel, sac de linge ou déchet n’est déposé dans les parties communes de l’immeuble',
     roomScope: 'none', requiresConfirmation: true,
   },
+
+  // --- MÉNAGE (document 2) ---
+  {
+    phase: 'menage', category: 'menage_preparation', order: 0,
+    text: 'Détartrer et désinfecter les surfaces (robinetterie, parois de douche, joints) — respecter 10 min de temps d’action',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'menage_preparation', order: 1,
+    text: 'Vérifier que le linge livré correspond à la configuration du logement (quantités, propreté, absence de taches ou de détérioration)',
+    roomScope: 'none', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'menage_preparation', order: 2,
+    text: 'Désinfecter les WC (produit adapté, 10 min de temps d’action)',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'menage_preparation', order: 3,
+    text: 'Vérifier l’absence de moisissures (joints, murs, plafonds) et le bon fonctionnement de la VMC',
+    roomScope: 'none', requiresYesNo: true,
+  },
+
+  {
+    phase: 'menage', category: 'chambre', order: 0,
+    text: 'Vérifier la propreté et la présence d’une alèse propre sur chaque matelas, photographier le matelas avec l’alèse visible',
+    roomScope: 'bedroom', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'chambre', order: 1,
+    text: 'Nettoyer et dépoussiérer le mobilier (placards, bureaux, étagères, interrupteurs, poignées, luminaires, tiroirs)',
+    roomScope: 'bedroom', requiresConfirmation: true, requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'chambre', order: 2,
+    text: 'Préparer le lit (linge propre, présentation soignée) et disposer les serviettes prévues, photographier le résultat',
+    roomScope: 'bedroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'chambre', order: 3,
+    text: 'Contrôle final de la chambre (propreté, rangement, absence d’objets oubliés, présentation)',
+    roomScope: 'bedroom', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 0,
+    text: 'Nettoyer les joints (traces de savon et de calcaire)',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 1,
+    text: 'Nettoyer la douche ou la baignoire (parois, robinetterie, receveur, traces de savon et de calcaire)',
+    roomScope: 'bathroom', requiresConfirmation: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 2,
+    text: 'Contrôle du siphon',
+    roomScope: 'bathroom',
+    photoSlots: ['Siphon ouvert, avec de l’eau visible, après nettoyage', 'Siphon correctement refermé et remis en place'],
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 3,
+    text: 'Présentation finale de la douche (pommeau, tapis de bain, joints, propreté générale)',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 4,
+    text: 'Vérifier le sèche-serviettes et l’éteindre conformément aux instructions du logement',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 5,
+    text: 'Vérifier la présence et le niveau des produits d’accueil (gel douche, shampooing, après-shampooing, savon mains), disposés comme la référence',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 6,
+    text: 'Vérifier, tester et nettoyer le sèche-cheveux, le ranger à son emplacement prévu',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 7,
+    text: 'Nettoyer le porte-savon (calcaire, résidus de savon)',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'wc', order: 0,
+    text: 'Nettoyer les toilettes (cuvette, abattant, chasse d’eau, support et brosse, recharge de papier toilette)',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'wc', order: 1,
+    text: 'Vérifier que la brosse WC est propre, en bon état et correctement rangée',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'wc', order: 2,
+    text: 'Vérifier la réserve de papier toilette (3 rouleaux disponibles, dont celui installé)',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'cuisine', order: 0,
+    text: 'Nettoyer et ranger la vaisselle, vider et remplir la carafe d’eau',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 1,
+    text: 'Vérifier la propreté des casseroles et poêles, nettoyer et ranger si nécessaire',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 2,
+    text: 'Nettoyer et ranger le placard sous évier (sacs-poubelle, pelle et balayette, bassine, lessive, pastilles et sel lave-vaisselle, liquide de rinçage, matériel de lavage des sols)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 3,
+    text: 'Nettoyer l’intérieur du réfrigérateur et vérifier la présence de la bouteille d’eau prévue',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 4,
+    text: 'Vider et nettoyer l’intérieur du lave-vaisselle',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 5,
+    text: 'Vider la machine à laver, nettoyer le joint, le tiroir à lessive et le hublot',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 6,
+    text: 'Tester, nettoyer et ranger le petit électroménager (bouilloire, machine à café, grille-pain)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 7,
+    text: 'Nettoyer l’intérieur du four et du micro-ondes',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 8,
+    text: 'Vérifier la réserve de sacs-poubelle destinés au client',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 9,
+    text: 'Vérifier les produits de cuisine (liquide vaisselle, éponge, torchon, essuie-tout)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'salon', order: 0,
+    text: 'Nettoyer et ranger le salon (dépoussiérer, mobilier, chaises, télécommandes, rideaux, lampes)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salon', order: 1,
+    text: 'Ouvrir le canapé-lit, vérifier sa propreté et la présence d’une alèse',
+    roomScope: 'none', requiresPhoto: true, gateFlag: 'hasSofaBed',
+  },
+  {
+    phase: 'menage', category: 'salon', order: 2,
+    text: 'Présenter le canapé (coussins, éléments décoratifs) conformément à la photo de référence',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salon', order: 3,
+    text: 'Vérifier la présence de la télécommande de climatisation',
+    roomScope: 'none', requiresYesNo: true, gateFlag: 'hasClim',
+  },
+  {
+    phase: 'menage', category: 'salon', order: 4,
+    text: 'Allumer la télévision, vérifier son fonctionnement et tester la télécommande',
+    roomScope: 'none', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'sols_entree', order: 0,
+    text: 'Aspirer l’ensemble du logement, y compris sous les meubles accessibles',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+  {
+    phase: 'menage', category: 'sols_entree', order: 1,
+    text: 'Laver les sols de toutes les pièces accessibles',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'sols_entree', order: 2,
+    text: 'Nettoyer l’entrée du logement (porte, poignées, murs accessibles, sol)',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+
+  {
+    phase: 'menage', category: 'securite', order: 0,
+    text: 'Vérifier la présence du détecteur de fumée et photographier son emplacement',
+    roomScope: 'smoke_detector', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'terrasse', order: 0,
+    text: 'Nettoyer la terrasse (mobilier, balayage, déchets, objets abandonnés, mobilier remis en place)',
+    roomScope: 'none', requiresPhoto: true, gateFlag: 'hasTerrace',
+  },
 ];
 
 const configMissing = Object.values(firebaseConfig).some(value => String(value).startsWith('REPLACE'));
@@ -739,14 +946,22 @@ export function exigenceAnswerDocId(bookingId, exigenceId, roomIndex, slotIndex 
 // du logement, pour qu'une mission en cours ne bouge pas si le logement
 // est modifié entre-temps). Une exigence 'none'/'other' n'a qu'une
 // instance.
+// Chaque entrée répétable associe son roomScope au champ de comptage gelé
+// sur le booking (voir booking-flow.js) et au mot utilisé pour numéroter
+// les instances (Chambre 1, Détecteur 2…).
+const REPEATABLE_ROOM_SCOPES = {
+  bedroom: { countField: 'bedrooms', word: 'Chambre' },
+  bathroom: { countField: 'bathrooms', word: 'Salle de bain' },
+  wc: { countField: 'wcCount', word: 'WC' },
+  smoke_detector: { countField: 'smokeDetectorCount', word: 'Détecteur' },
+  key_box: { countField: 'keyBoxCount', word: 'Boîte à clés' },
+};
+
 export function exigenceInstances(exigence, booking) {
-  if (exigence.roomScope === 'bedroom' || exigence.roomScope === 'bathroom' || exigence.roomScope === 'wc') {
-    const countField = exigence.roomScope === 'bedroom' ? booking.bedrooms
-      : exigence.roomScope === 'bathroom' ? booking.bathrooms
-      : booking.wcCount;
-    const count = Math.max(0, Number(countField) || 0);
-    const roomWord = exigence.roomScope === 'bedroom' ? 'Chambre' : exigence.roomScope === 'bathroom' ? 'Salle de bain' : 'WC';
-    return Array.from({ length: count }, (_, i) => ({ roomIndex: i, label: `${roomWord} ${i + 1}` }));
+  const repeat = REPEATABLE_ROOM_SCOPES[exigence.roomScope];
+  if (repeat) {
+    const count = Math.max(0, Number(booking[repeat.countField]) || 0);
+    return Array.from({ length: count }, (_, i) => ({ roomIndex: i, label: `${repeat.word} ${i + 1}` }));
   }
   return [{ roomIndex: null, label: null }];
 }

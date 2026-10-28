@@ -366,6 +366,7 @@ textarea{ min-height:110px; resize:vertical; }
 .exigence-progress{ font-size:13px; font-weight:700; color:var(--muted); margin-bottom:10px; }
 .exigence-tabbar{ display:flex; gap:20px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-bottom:18px; border-bottom:1px solid var(--line); }
 .exigence-tabbar::-webkit-scrollbar{ display:none; }
+.tab.locked{ opacity:.4; cursor:not-allowed; }
 .exigence-room{ margin-bottom:10px; }
 .exigence-room .exigence-row{ border-top:none; padding-top:4px; }
 .exigence-room > summary .status-pill{ margin:0; }

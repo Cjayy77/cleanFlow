@@ -397,17 +397,33 @@ function renderExigenceChecklist(canAnswer) {
   if (phasesWithItems.length > 1) {
     const tabbar = document.createElement('div');
     tabbar.className = 'exigence-tabbar';
-    phasesWithItems.forEach(phase => {
+    // Le prestataire ne peut pas commencer une phase avant d'avoir terminé
+    // la précédente (ex. Ménage reste verrouillé tant qu'Avant ménage
+    // n'est pas complet) — verrouillage relatif aux phases RÉELLEMENT
+    // présentes pour ce logement, pas à l'ordre fixe avant/ménage/après :
+    // un logement sans contenu "avant" ne bloque jamais sur une phase vide.
+    phasesWithItems.forEach((phase, index) => {
       const items = activeExigences.filter(e => e.phase === phase.key);
+      const prevPhase = index > 0 ? phasesWithItems[index - 1] : null;
+      let locked = false;
+      if (prevPhase) {
+        const prevItems = activeExigences.filter(e => e.phase === prevPhase.key);
+        locked = countAnsweredExigences(prevItems) < totalRequiredExigenceAnswers(prevItems);
+      }
       const tab = document.createElement('button');
       tab.type = 'button';
-      tab.className = 'tab' + (phase.key === activeExigencePhase ? ' active' : '');
+      tab.className = 'tab' + (phase.key === activeExigencePhase ? ' active' : '') + (locked ? ' locked' : '');
       tab.textContent = phase.label;
       const badge = document.createElement('span');
       badge.className = 'tab-badge';
       badge.textContent = `${countAnsweredExigences(items)}/${totalRequiredExigenceAnswers(items)}`;
       tab.appendChild(badge);
-      tab.onclick = () => { activeExigencePhase = phase.key; renderActiveBooking(); };
+      if (locked) {
+        tab.disabled = true;
+        tab.title = `Terminez d’abord « ${prevPhase.label} »`;
+      } else {
+        tab.onclick = () => { activeExigencePhase = phase.key; renderActiveBooking(); };
+      }
       tabbar.appendChild(tab);
     });
     wrap.appendChild(tabbar);
@@ -421,8 +437,13 @@ function renderExigenceChecklist(canAnswer) {
   }
 
   const activeItems = activeExigences.filter(e => e.phase === activeExigencePhase);
+  // 'none'/'other' ne se répètent jamais ; tout le reste (bedroom/bathroom/
+  // wc/smoke_detector/key_box…) se répète et va dans un accordéon par
+  // instance — négatif plutôt que positif pour qu'un futur roomScope
+  // répétable n'ait pas besoin d'une modification ici en plus de
+  // exigenceInstances()/REPEATABLE_ROOM_SCOPES (shared.js).
   const flatItems = activeItems.filter(e => e.roomScope === 'none' || e.roomScope === 'other');
-  const roomItems = activeItems.filter(e => e.roomScope === 'bedroom' || e.roomScope === 'bathroom' || e.roomScope === 'wc');
+  const roomItems = activeItems.filter(e => e.roomScope !== 'none' && e.roomScope !== 'other');
 
   flatItems.forEach(exigence => {
     exigenceInstances(exigence, activeBooking).forEach(instance => {
