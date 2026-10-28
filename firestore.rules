@@ -315,6 +315,33 @@ service cloud.firestore {
         && request.resource.data.verifiedBy == request.auth.uid;
     }
 
+    // Bibliothèque d'exigences, propre à chaque logement (texte, photo de
+    // référence, type de réponse attendue). Rédigée par l'équipe ; lue par
+    // les prestataires pour afficher le parcours de la mission. Même
+    // lecture publique-aux-connectés que /catalog, mais pas de lecture
+    // anonyme : ce n'est pas un contenu marketing.
+    match /exigences/{exigenceId} {
+      allow read: if isSignedIn() && (isAdmin() || isPrestataire());
+      allow write: if isAdmin();
+    }
+
+    // Réponses du prestataire à une exigence, pour UNE mission précise
+    // (id déterministe bookingId_exigenceId, cf. /photos ci-dessus : un
+    // nouvel envoi remplace le précédent, pas d'historique à gérer côté
+    // règles). Lu par l'équipe, le prestataire assigné et le client
+    // (dossier de sa réservation) ; écrit seulement par le prestataire
+    // assigné à la mission concernée.
+    match /exigenceAnswers/{answerId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
+        || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
+      );
+      allow create, update: if isPrestataire()
+        && request.resource.data.answeredBy == request.auth.uid
+        && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
+    }
+
     // File d'envoi d'e-mails, consommée par l'extension « Trigger Email »
     // (qui utilise le SDK Admin et ignore ces règles). Un utilisateur
     // connecté ne peut écrire qu'à l'adresse de l'équipe ; seul un admin

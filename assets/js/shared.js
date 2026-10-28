@@ -419,7 +419,9 @@ export function openLogementQr(target) {
 // FROM/SMTP de l'extension « Trigger Email ». Détails : SETUP.md.
 export const TEAM_EMAIL = 'w.wanecque@gmail.com';
 
-// TODO: confirm with team, liste exacte des photos exigées par mission.
+// Liste générique, utilisée uniquement pour les logements SANS exigences
+// rédigées dans /exigences (voir plus bas). Dès qu'un logement a sa propre
+// liste, le parcours prestataire bascule dessus et ignore PHOTO_SLOTS.
 export const PHOTO_SLOTS = [
   { key: 'kitchen_before', label: 'Cuisine, avant' },
   { key: 'kitchen_after', label: 'Cuisine, après' },
@@ -427,6 +429,25 @@ export const PHOTO_SLOTS = [
   { key: 'bedroom1', label: 'Chambre 1' },
   { key: 'bedroom2', label: 'Chambre 2' },
   { key: 'linen', label: 'Linge changé' },
+];
+
+// Exigences par logement (rédigées par l'équipe dans /admin/) : chaque
+// exigence appartient à une phase, et peut se répéter une fois par pièce
+// (roomScope) au lieu d'être rédigée pièce par pièce. Le nombre de pièces
+// vient des champs bedrooms/bathrooms déjà recopiés sur la réservation au
+// moment de la réservation (pas une lecture live du logement, pour que la
+// liste d'une mission en cours ne bouge pas si le logement est modifié).
+export const EXIGENCE_PHASES = [
+  { key: 'avant', label: 'Avant ménage' },
+  { key: 'menage', label: 'Ménage' },
+  { key: 'apres', label: 'Après ménage' },
+];
+
+export const EXIGENCE_ROOM_SCOPES = [
+  { key: 'none', label: 'Exigence unique' },
+  { key: 'bedroom', label: 'Une fois par chambre' },
+  { key: 'bathroom', label: 'Une fois par salle de bain' },
+  { key: 'other', label: 'Zone unique (sol, terrasse…)' },
 ];
 
 const configMissing = Object.values(firebaseConfig).some(value => String(value).startsWith('REPLACE'));
@@ -517,6 +538,71 @@ export async function uploadCatalogImage(file) {
   const storageRef = ref(storage, `catalog/${Date.now()}-${safe}`);
   await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
   return getDownloadURL(storageRef);
+}
+
+// Photo de référence d'une exigence (rédaction admin) → renvoie l'URL,
+// même logique que uploadCatalogImage.
+export async function uploadExigenceReferenceImage(file) {
+  const safe = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storageRef = ref(storage, `exigences/${Date.now()}-${safe}`);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+  return getDownloadURL(storageRef);
+}
+
+export async function loadExigencesForProperty(propertyId) {
+  const snap = await getDocs(query(collection(db, 'exigences'), where('propertyId', '==', propertyId)));
+  return snap.docs
+    .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    .filter(item => item.active !== false)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+export async function loadExigenceAnswers(bookingId) {
+  const snap = await getDocs(query(collection(db, 'exigenceAnswers'), where('bookingId', '==', bookingId)));
+  return snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+}
+
+// Id déterministe : un nouvel envoi (photo ou oui/non) remplace la réponse
+// précédente pour cette exigence (et, pour une exigence par pièce, cette
+// pièce précise) sur cette mission, même logique que la photo en slot fixe.
+export function exigenceAnswerDocId(bookingId, exigenceId, roomIndex) {
+  return roomIndex == null ? `${bookingId}_${exigenceId}` : `${bookingId}_${exigenceId}_${roomIndex}`;
+}
+
+// Une exigence « par pièce » (roomScope bedroom/bathroom) se répète une
+// fois par pièce RÉELLE de la réservation (bedrooms/bathrooms, recopiés
+// sur le booking au moment de la réservation — pas une relecture du
+// logement, pour qu'une mission en cours ne bouge pas si le logement est
+// modifié entre-temps). Une exigence 'none'/'other' n'a qu'une instance.
+export function exigenceInstances(exigence, booking) {
+  if (exigence.roomScope === 'bedroom' || exigence.roomScope === 'bathroom') {
+    const count = Math.max(0, Number(exigence.roomScope === 'bedroom' ? booking.bedrooms : booking.bathrooms) || 0);
+    const roomWord = exigence.roomScope === 'bedroom' ? 'Chambre' : 'Salle de bain';
+    return Array.from({ length: count }, (_, i) => ({ roomIndex: i, label: `${roomWord} ${i + 1}` }));
+  }
+  return [{ roomIndex: null, label: null }];
+}
+
+// Écrit en merge (pas en remplacement) : une exigence peut demander à la
+// fois une réponse oui/non ET une photo, saveExigenceYesNo et
+// uploadExigenceAnswerImage doivent pouvoir s'écrire sans s'effacer l'un
+// l'autre.
+export async function saveExigenceYesNo({ bookingId, exigenceId, propertyId, roomIndex = null, answeredBy, answerYesNo }) {
+  const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex);
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, answerYesNo, answeredAt: serverTimestamp() };
+  await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
+  return answerDoc;
+}
+
+export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, file, answeredBy }) {
+  const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex);
+  const storagePath = `exigenceAnswers/${id}`;
+  const storageRef = ref(storage, storagePath);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+  const photoUrl = await getDownloadURL(storageRef);
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, photoUrl, storagePath, answeredAt: serverTimestamp() };
+  await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
+  return answerDoc;
 }
 
 export function formatShortDate(dateString) {

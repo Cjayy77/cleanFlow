@@ -26,6 +26,13 @@ import {
   uploadCatalogImage,
   welcomerTier,
   openLogementQr,
+  EXIGENCE_PHASES,
+  EXIGENCE_ROOM_SCOPES,
+  uploadExigenceReferenceImage,
+  loadExigencesForProperty,
+  loadExigenceAnswers,
+  exigenceInstances,
+  exigenceAnswerDocId,
 } from './shared.js';
 import {
   collection,
@@ -97,6 +104,11 @@ let statsUnsub = null;
 let pricingUnsub = null;
 let catalogUnsub = null;
 let latestCatalog = [];
+let propertiesUnsub = null;
+let latestProperties = [];
+let selectedPropertyId = null;
+let exigencesUnsub = null;
+let latestExigences = [];
 let prospectsUnsub = null;
 let latestProspects = [];
 
@@ -648,6 +660,368 @@ async function deleteCatalogItem(id) {
     setCatalogStatus('Article supprimé.', 'success');
   } catch (error) {
     setCatalogStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- Back-office propriétés : exigences par logement ----
+// Remplace, logement par logement, l'ancienne liste photo générique
+// (PHOTO_SLOTS) par une liste rédigée pour CE logement (texte, photo de
+// référence, oui/non et/ou photo exigés). Tant qu'un logement n'a pas
+// d'exigences ici, le parcours prestataire garde l'ancien écran générique.
+
+function setPropertiesStatus(message, type) {
+  const el = document.getElementById('propertiesStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function subscribeProperties() {
+  if (propertiesUnsub) propertiesUnsub();
+  propertiesUnsub = onSnapshot(collection(db, 'properties'), snap => {
+    latestProperties = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderProperties();
+  }, error => setPropertiesStatus(`Impossible de charger les logements : ${authErrorMessage(error)}`, 'error'));
+}
+
+function propertyLabel(property) {
+  return `${property.street || '(sans adresse)'}, ${property.postalCode || ''} ${property.city || ''}`.trim();
+}
+
+function renderProperties() {
+  const root = document.getElementById('propertiesRoot');
+  if (!root) return;
+  root.innerHTML = '';
+  if (!latestProperties.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Aucun logement pour le moment.';
+    root.appendChild(empty);
+    return;
+  }
+  latestProperties
+    .slice()
+    .sort((a, b) => propertyLabel(a).localeCompare(propertyLabel(b)))
+    .forEach(property => root.appendChild(buildPropertyCard(property)));
+}
+
+function buildPropertyCard(property) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'task-card selectable' + (property.id === selectedPropertyId ? ' active' : '');
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = propertyLabel(property);
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [];
+  if (property.bedrooms != null) bits.push(`${property.bedrooms} ch.`);
+  if (property.bathrooms != null) bits.push(`${property.bathrooms} sdb`);
+  meta.textContent = bits.join(' · ') || '—';
+  card.append(title, meta);
+  card.onclick = () => selectProperty(property.id);
+  return card;
+}
+
+function selectProperty(propertyId) {
+  selectedPropertyId = propertyId;
+  const property = latestProperties.find(p => p.id === propertyId);
+  const card = document.getElementById('exigencesCard');
+  const titleEl = document.getElementById('exigencesPropertyTitle');
+  if (card) card.classList.toggle('hidden', !property);
+  if (titleEl) titleEl.textContent = property ? propertyLabel(property) : '';
+  renderProperties();
+  subscribeExigencesForProperty(propertyId);
+}
+
+function subscribeExigencesForProperty(propertyId) {
+  if (exigencesUnsub) exigencesUnsub();
+  exigencesUnsub = onSnapshot(
+    query(collection(db, 'exigences'), where('propertyId', '==', propertyId)),
+    snap => {
+      latestExigences = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
+      renderExigences();
+    },
+    error => setPropertiesStatus(`Impossible de charger les exigences : ${authErrorMessage(error)}`, 'error'));
+}
+
+function renderExigences() {
+  const root = document.getElementById('exigencesRoot');
+  if (!root || !selectedPropertyId) return;
+  root.innerHTML = '';
+  root.appendChild(buildDuplicatePicker());
+
+  EXIGENCE_PHASES.forEach(phase => {
+    const group = document.createElement('div');
+    group.className = 'catalog-group';
+    const head = document.createElement('div');
+    head.className = 'roster-subhead';
+    head.textContent = phase.label;
+    group.appendChild(head);
+
+    const items = latestExigences.filter(e => e.phase === phase.key);
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Aucune exigence pour cette phase.';
+      group.appendChild(empty);
+    } else {
+      items.forEach(item => group.appendChild(buildExigenceCard(item)));
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn ghost';
+    addBtn.style.marginTop = '12px';
+    addBtn.textContent = '+ Ajouter une exigence';
+    addBtn.onclick = () => {
+      if (group.querySelector('.catalog-form')) return;
+      addBtn.before(exigenceItemForm(phase.key, null));
+    };
+    group.appendChild(addBtn);
+    root.appendChild(group);
+  });
+}
+
+function roomScopeLabel(key) {
+  return (EXIGENCE_ROOM_SCOPES.find(s => s.key === key) || {}).label || key;
+}
+
+function buildExigenceCard(item) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item';
+
+  const thumb = document.createElement('div');
+  thumb.className = 'catalog-thumb';
+  if (item.referencePhotoUrl) {
+    const img = document.createElement('img');
+    img.src = item.referencePhotoUrl; img.alt = ''; img.loading = 'lazy';
+    thumb.appendChild(img);
+  }
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = item.text || '(sans texte)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [];
+  if (item.requiresYesNo) bits.push('Oui/Non');
+  if (item.requiresPhoto) bits.push('Photo');
+  if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
+  meta.textContent = bits.join(' · ') || '—';
+  info.append(name, meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'catalog-actions';
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+      card.nextElementSibling.remove(); return;
+    }
+    card.after(exigenceItemForm(item.phase, item));
+  };
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+  armInlineConfirm(del, 'Confirmer la suppression', () => deleteExigence(item.id));
+  actions.append(edit, del);
+
+  card.append(thumb, info, actions);
+  return card;
+}
+
+function exigenceItemForm(phaseKey, existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fText = document.createElement('label');
+  fText.className = 'form-row';
+  const tSpan = document.createElement('span');
+  tSpan.textContent = 'Instruction';
+  tSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const tArea = document.createElement('textarea');
+  tArea.name = 'text';
+  tArea.value = existing ? existing.text || '' : '';
+  fText.append(tSpan, tArea);
+  form.append(fText);
+
+  const fScope = document.createElement('label');
+  fScope.className = 'form-row';
+  const sSpan = document.createElement('span');
+  sSpan.textContent = 'Répétition';
+  sSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const sSel = document.createElement('select');
+  sSel.name = 'roomScope';
+  EXIGENCE_ROOM_SCOPES.forEach(scope => {
+    const o = document.createElement('option'); o.value = scope.key; o.textContent = scope.label;
+    if ((existing ? existing.roomScope : 'none') === scope.key) o.selected = true;
+    sSel.appendChild(o);
+  });
+  fScope.append(sSpan, sSel);
+  form.append(fScope);
+
+  const fYesNo = document.createElement('label');
+  fYesNo.className = 'service-option';
+  const cbYesNo = document.createElement('input');
+  cbYesNo.type = 'checkbox'; cbYesNo.name = 'requiresYesNo';
+  cbYesNo.checked = existing ? !!existing.requiresYesNo : true;
+  fYesNo.append(cbYesNo, document.createTextNode(' Réponse oui/non exigée'));
+  form.append(fYesNo);
+
+  const fPhoto = document.createElement('label');
+  fPhoto.className = 'service-option';
+  const cbPhoto = document.createElement('input');
+  cbPhoto.type = 'checkbox'; cbPhoto.name = 'requiresPhoto';
+  cbPhoto.checked = existing ? !!existing.requiresPhoto : false;
+  fPhoto.append(cbPhoto, document.createTextNode(' Photo exigée'));
+  form.append(fPhoto);
+
+  const fRefPhoto = catalogField('Photo de référence (URL, optionnel)', 'referencePhotoUrl', existing ? existing.referencePhotoUrl : '');
+  form.append(fRefPhoto);
+
+  const upWrap = document.createElement('label');
+  upWrap.className = 'form-row';
+  const upSpan = document.createElement('span');
+  upSpan.textContent = 'Téléverser une photo de référence';
+  upSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const upInput = document.createElement('input');
+  upInput.type = 'file';
+  upInput.accept = 'image/*';
+  upInput.addEventListener('change', async () => {
+    const file = upInput.files && upInput.files[0];
+    if (!file) return;
+    upSpan.textContent = 'Téléversement…';
+    try {
+      const url = await withTimeout(uploadExigenceReferenceImage(file), 30000);
+      get('referencePhotoUrl').value = url;
+      upSpan.textContent = 'Photo téléversée ✓';
+    } catch (err) {
+      upSpan.textContent = 'Téléverser une photo de référence';
+      setPropertiesStatus(`Upload impossible : ${authErrorMessage(err)}`, 'error');
+    }
+  });
+  upWrap.append(upSpan, upInput);
+  form.append(upWrap);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = get('text').value.trim();
+    if (!text) { setPropertiesStatus("L'instruction est obligatoire.", 'error'); return; }
+    const data = {
+      propertyId: selectedPropertyId,
+      phase: phaseKey,
+      text,
+      roomScope: get('roomScope').value,
+      requiresYesNo: get('requiresYesNo').checked,
+      requiresPhoto: get('requiresPhoto').checked,
+      referencePhotoUrl: get('referencePhotoUrl').value.trim(),
+      active: true,
+      order: existing ? (existing.order || 0) : latestExigences.filter(ex => ex.phase === phaseKey).length,
+    };
+    saveExigence(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveExigence(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'exigences', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'exigences'), { ...data, createdAt: serverTimestamp() }), 15000));
+    setPropertiesStatus(id ? 'Exigence mise à jour.' : 'Exigence ajoutée.', 'success');
+  } catch (error) {
+    setPropertiesStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteExigence(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'exigences', id)), 15000);
+    setPropertiesStatus('Exigence supprimée.', 'success');
+  } catch (error) {
+    setPropertiesStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// Repartir d'un logement déjà rédigé plutôt que retaper ~80 exigences :
+// copie toutes les exigences actives d'un autre logement vers celui-ci.
+function buildDuplicatePicker() {
+  const wrap = document.createElement('div');
+  wrap.className = 'form-row';
+  wrap.style.cssText = 'display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px;';
+
+  const label = document.createElement('label');
+  label.style.flex = '1';
+  label.style.minWidth = '220px';
+  const span = document.createElement('span');
+  span.textContent = 'Dupliquer les exigences d’un autre logement';
+  span.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const select = document.createElement('select');
+  const blank = document.createElement('option'); blank.value = ''; blank.textContent = 'Choisir un logement…';
+  select.appendChild(blank);
+  latestProperties
+    .filter(p => p.id !== selectedPropertyId)
+    .sort((a, b) => propertyLabel(a).localeCompare(propertyLabel(b)))
+    .forEach(p => {
+      const o = document.createElement('option'); o.value = p.id; o.textContent = propertyLabel(p);
+      select.appendChild(o);
+    });
+  label.append(span, select);
+
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'btn ghost'; btn.textContent = 'Dupliquer';
+  btn.onclick = () => {
+    if (!select.value) return;
+    duplicateExigencesFromProperty(select.value, btn);
+  };
+
+  wrap.append(label, btn);
+  return wrap;
+}
+
+async function duplicateExigencesFromProperty(sourcePropertyId, btn) {
+  try {
+    await withButtonLoading(btn, async () => {
+      const source = await withTimeout(loadExigencesForProperty(sourcePropertyId), 15000);
+      if (!source.length) {
+        setPropertiesStatus('Ce logement n’a aucune exigence à dupliquer.', 'error');
+        return;
+      }
+      const batch = writeBatch(db);
+      source.forEach(item => {
+        const newRef = doc(collection(db, 'exigences'));
+        batch.set(newRef, {
+          propertyId: selectedPropertyId,
+          phase: item.phase,
+          text: item.text,
+          roomScope: item.roomScope,
+          requiresYesNo: item.requiresYesNo,
+          requiresPhoto: item.requiresPhoto,
+          referencePhotoUrl: item.referencePhotoUrl || '',
+          active: true,
+          order: item.order || 0,
+          createdAt: serverTimestamp(),
+        });
+      });
+      await withTimeout(batch.commit(), 20000);
+      setPropertiesStatus(`${source.length} exigence(s) dupliquée(s).`, 'success');
+    });
+  } catch (error) {
+    setPropertiesStatus(`Duplication impossible : ${authErrorMessage(error)}`, 'error');
   }
 }
 
@@ -2250,35 +2624,86 @@ function renderBookingDetail() {
   renderBookingCost(selectedBooking);
   photoGrid.innerHTML = '';
 
-  PHOTO_SLOTS.forEach(slot => {
-    const photo = selectedBooking.photos && selectedBooking.photos[slot.key];
-    const slotEl = document.createElement('div');
-    slotEl.className = 'photo-slot' + (photo ? ' uploaded' : '');
-    if (photo) {
-      const img = document.createElement('img');
-      img.src = photo.downloadUrl || '';
-      img.alt = slot.label;
-      slotEl.appendChild(img);
-      const link = document.createElement('a');
-      link.href = photo.downloadUrl || '#';
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.className = 'photo-caption';
-      link.textContent = slot.label;
-      slotEl.appendChild(link);
-    } else {
-      const span = document.createElement('span');
-      span.textContent = `${slot.label}, manquante`;
-      slotEl.appendChild(span);
-    }
-    photoGrid.appendChild(slotEl);
-  });
+  if (selectedBooking.exigences && selectedBooking.exigences.length) {
+    renderExigenceAnswers();
+  } else {
+    PHOTO_SLOTS.forEach(slot => {
+      const photo = selectedBooking.photos && selectedBooking.photos[slot.key];
+      const slotEl = document.createElement('div');
+      slotEl.className = 'photo-slot' + (photo ? ' uploaded' : '');
+      if (photo) {
+        const img = document.createElement('img');
+        img.src = photo.downloadUrl || '';
+        img.alt = slot.label;
+        slotEl.appendChild(img);
+        const link = document.createElement('a');
+        link.href = photo.downloadUrl || '#';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.className = 'photo-caption';
+        link.textContent = slot.label;
+        slotEl.appendChild(link);
+      } else {
+        const span = document.createElement('span');
+        span.textContent = `${slot.label}, manquante`;
+        slotEl.appendChild(span);
+      }
+      photoGrid.appendChild(slotEl);
+    });
 
-  const allUploaded = PHOTO_SLOTS.every(slot => selectedBooking.photos && selectedBooking.photos[slot.key]);
-  verifyBtn.disabled = !allUploaded;
-  rejectBtn.disabled = false;
+    const allUploaded = PHOTO_SLOTS.every(slot => selectedBooking.photos && selectedBooking.photos[slot.key]);
+    verifyBtn.disabled = !allUploaded;
+    rejectBtn.disabled = false;
+  }
 
   renderIncidents();
+}
+
+// Même file (#photoGrid) que PHOTO_SLOTS, mais une entrée par (exigence,
+// instance de pièce) : celles qui exigent une photo l'affichent comme un
+// .photo-slot, celles qui exigent oui/non affichent la réponse, le Valider
+// reste bloqué tant que toutes les réponses exigées ne sont pas là.
+function renderExigenceAnswers() {
+  let allAnswered = true;
+  selectedBooking.exigences.forEach(exigence => {
+    exigenceInstances(exigence, selectedBooking).forEach(instance => {
+      const answerId = exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex);
+      const answer = selectedBooking.exigenceAnswers[answerId];
+      const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
+
+      if (exigence.requiresPhoto) {
+        const slotEl = document.createElement('div');
+        slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
+        if (answer && answer.photoUrl) {
+          const img = document.createElement('img');
+          img.src = answer.photoUrl; img.alt = label;
+          slotEl.appendChild(img);
+          const link = document.createElement('a');
+          link.href = answer.photoUrl; link.target = '_blank'; link.rel = 'noopener';
+          link.className = 'photo-caption'; link.textContent = label;
+          slotEl.appendChild(link);
+        } else {
+          const span = document.createElement('span');
+          span.textContent = `${label}, manquante`;
+          slotEl.appendChild(span);
+          allAnswered = false;
+        }
+        photoGrid.appendChild(slotEl);
+      }
+
+      if (exigence.requiresYesNo && (!answer || answer.answerYesNo == null)) allAnswered = false;
+      if (exigence.requiresYesNo) {
+        const slotEl = document.createElement('div');
+        slotEl.className = 'photo-slot' + (answer && answer.answerYesNo != null ? ' uploaded' : '');
+        const span = document.createElement('span');
+        span.textContent = answer && answer.answerYesNo != null ? `${label} : ${answer.answerYesNo ? 'Oui' : 'Non'}` : `${label}, sans réponse`;
+        slotEl.appendChild(span);
+        photoGrid.appendChild(slotEl);
+      }
+    });
+  });
+  verifyBtn.disabled = !allAnswered;
+  rejectBtn.disabled = false;
 }
 
 async function refreshBookingDetail() {
@@ -2289,6 +2714,17 @@ async function refreshBookingDetail() {
   selectedBooking = { id: bookingSnap.id, clientEmail, ...bookingSnap.data() };
   const photos = await loadPhotoDocs(selectedBooking.id);
   selectedBooking.photos = photos.reduce((acc, photo) => ({ ...acc, [photo.slot]: photo }), {});
+  // Logement avec sa propre liste d'exigences ? Sinon, le dossier garde
+  // l'ancien contrôle photo générique (PHOTO_SLOTS) plus bas.
+  selectedBooking.exigences = selectedBooking.propertyId
+    ? await loadExigencesForProperty(selectedBooking.propertyId)
+    : [];
+  if (selectedBooking.exigences.length) {
+    const answers = await loadExigenceAnswers(selectedBooking.id);
+    selectedBooking.exigenceAnswers = answers.reduce((acc, answer) => ({ ...acc, [answer.id]: answer }), {});
+  } else {
+    selectedBooking.exigenceAnswers = {};
+  }
 }
 
 async function renderIncidents() {
@@ -2421,6 +2857,8 @@ onAuthStateChanged(auth, async user => {
     if (statsUnsub) statsUnsub();
     if (pricingUnsub) pricingUnsub();
     if (catalogUnsub) catalogUnsub();
+    if (propertiesUnsub) propertiesUnsub();
+    if (exigencesUnsub) exigencesUnsub();
     if (prospectsUnsub) prospectsUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();
@@ -2467,6 +2905,7 @@ onAuthStateChanged(auth, async user => {
     subscribeClientMessages();
     subscribePricing();
     subscribeCatalog();
+    subscribeProperties();
     subscribeProspects();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
