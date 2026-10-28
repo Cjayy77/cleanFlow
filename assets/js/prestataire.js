@@ -13,6 +13,7 @@ import {
   loadExigenceAnswers,
   saveExigenceYesNo,
   saveExigenceConfirmation,
+  saveExigenceComment,
   uploadExigenceAnswerImage,
   exigenceInstances,
   exigenceAnswerDocId,
@@ -105,6 +106,11 @@ let activeExigences = [];
 let activeExigenceAnswers = {};
 let activeExigencePhase = null;
 let activeIncidents = [];
+// Ajouts propres au logement (pas encore fusionnés) : conservés à part pour
+// pouvoir recalculer activeExigences à chaque rendu (voir renderActiveBooking),
+// pas seulement au chargement de la mission — sinon une question de relance
+// (dependsOn) répondue en cours de route n'apparaîtrait jamais.
+let activeCustomExigences = [];
 let protocolTemplatesCache = [];
 let activeTimer = null;
 let timerTickId = null;
@@ -155,9 +161,11 @@ async function loadExigencesForBooking(booking) {
   ]);
   activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
   activeIncidents = incidents;
+  activeCustomExigences = customExigences;
   // computeChecklistItems résout dependsOn contre les réponses déjà
   // données (ex. la question de relance du linge taché) : toujours
-  // recalculé avec les dernières réponses, jamais mis en cache tel quel.
+  // recalculé avec les dernières réponses, jamais mis en cache tel quel
+  // (voir aussi renderActiveBooking, qui refait ce calcul à chaque rendu).
   activeExigences = computeChecklistItems(booking, protocolTemplatesCache, customExigences, activeExigenceAnswers);
   // Nouvelle mission : on repart de la première phase qui a des exigences.
   activeExigencePhase = (EXIGENCE_PHASES.find(p => activeExigences.some(e => e.phase === p.key)) || EXIGENCE_PHASES[0]).key;
@@ -646,6 +654,40 @@ function buildAnomalyReport(exigence, instance) {
   return details;
 }
 
+// Champ libre, informatif uniquement (ex. "préciser les difficultés
+// rencontrées" pour les déchets) : jamais compté dans exigenceAnswerStats,
+// ne bloque donc jamais la progression.
+function buildCommentField(exigence, instance, canAnswer, answerId, answer) {
+  const wrap = document.createElement('div');
+  wrap.style.marginTop = '8px';
+  const textarea = document.createElement('textarea');
+  textarea.placeholder = 'Commentaire (optionnel)…';
+  textarea.value = (answer && answer.commentText) || '';
+  textarea.disabled = !canAnswer;
+  textarea.rows = 2;
+  let saveTimer = null;
+  textarea.oninput = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try {
+        const saved = await withTimeout(saveExigenceComment({
+          bookingId: activeBooking.id,
+          exigenceId: exigence.id,
+          propertyId: activeBooking.propertyId,
+          roomIndex: instance.roomIndex,
+          answeredBy: currentUser.uid,
+          commentText: textarea.value.trim(),
+        }), 15000);
+        activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+      } catch (e) {
+        setWorkStatus(`Commentaire non enregistré : ${storageErrorMessage(e)}`);
+      }
+    }, 600);
+  };
+  wrap.appendChild(textarea);
+  return wrap;
+}
+
 function buildExigenceRow(exigence, instance, canAnswer) {
   const answerId = exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex);
   const answer = activeExigenceAnswers[answerId];
@@ -747,6 +789,10 @@ function buildExigenceRow(exigence, instance, canAnswer) {
     row.appendChild(slotsWrap);
   } else if (exigence.requiresPhoto) {
     row.appendChild(buildPhotoSlotControl(exigence, instance, canAnswer, null, null));
+  }
+
+  if (exigence.allowsComment) {
+    row.appendChild(buildCommentField(exigence, instance, canAnswer, answerId, answer));
   }
 
   row.appendChild(buildAnomalyReport(exigence, instance));
@@ -964,6 +1010,13 @@ function renderActiveBooking() {
   if (timerTickId) { clearInterval(timerTickId); timerTickId = null; }
   activeBookingContainer.innerHTML = '';
   if (!activeBooking) return;
+  // Recalculé à CHAQUE rendu, pas seulement au chargement de la mission :
+  // une réponse qui vient d'être enregistrée peut révéler une question
+  // dependsOn (ex. la relance du linge taché), qui doit apparaître dans ce
+  // même rendu sans attendre un rechargement de mission. Inoffensif pour
+  // un logement sans protocole ni exigence propre (retombe sur [] comme
+  // avant, le parcours PHOTO_SLOTS n'est pas affecté).
+  activeExigences = computeChecklistItems(activeBooking, protocolTemplatesCache, activeCustomExigences, activeExigenceAnswers);
   const heading = document.createElement('div');
   heading.className = 'eyebrow';
   heading.textContent = `Dossier ${activeBooking.id.slice(0, 6).toUpperCase()} · ${formatBookingStatus(activeBooking.status)}`;
@@ -1126,6 +1179,7 @@ function loadAssignedBookings() {
       activeExigences = [];
       activeExigenceAnswers = {};
       activeIncidents = [];
+      activeCustomExigences = [];
       activeTimer = null;
       activeComments = [];
     }

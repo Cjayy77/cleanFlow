@@ -449,6 +449,7 @@ export const EXIGENCE_ROOM_SCOPES = [
   { key: 'bathroom', label: 'Une fois par salle de bain' },
   { key: 'wc', label: 'Une fois par WC' },
   { key: 'smoke_detector', label: 'Une fois par détecteur de fumée' },
+  { key: 'key_box', label: 'Une fois par boîte à clés' },
   { key: 'other', label: 'Zone unique (sol, terrasse…)' },
 ];
 
@@ -818,6 +819,57 @@ export const DEFAULT_PROTOCOL_TEMPLATES = [
     text: 'Nettoyer la terrasse (mobilier, balayage, déchets, objets abandonnés, mobilier remis en place)',
     roomScope: 'none', requiresPhoto: true, gateFlag: 'hasTerrace',
   },
+
+  // --- APRÈS MÉNAGE (document 3) ---
+  // key sert uniquement à ce tableau (résolu en vrai itemId Firestore à
+  // l'import, voir importDefaultProtocols dans admin.js) : dependsOn ne
+  // peut pas connaître d'avance l'id auto-généré de l'item dont il dépend.
+  {
+    phase: 'apres', category: 'linge', order: 0, key: 'apres_linge_tache',
+    text: 'Le linge est-il taché ?',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'apres', category: 'linge', order: 1,
+    text: 'Avez-vous résolu le problème et remplacé le linge taché ?',
+    roomScope: 'none', requiresYesNo: true,
+    dependsOn: { key: 'apres_linge_tache', equals: true },
+  },
+  {
+    phase: 'apres', category: 'chauffage_clim', order: 0,
+    text: 'Vérifier le réglage du chauffage et de la climatisation selon les instructions du logement (voir standard de température dans la fiche du logement)',
+    roomScope: 'none', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'cles', order: 0,
+    text: 'Photographier la boîte à clés (présence, rangement, fermeture) conformément à la référence',
+    roomScope: 'key_box', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'presentation', order: 0,
+    text: 'Ouvrir et positionner correctement les rideaux',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'presentation', order: 1,
+    text: 'Fermer et vérifier toutes les fenêtres',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'entree', order: 0,
+    text: 'Contrôle final de l’entrée (propreté, rangement, présentation, absence de matériel oublié)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'parties_communes_apres', order: 0,
+    text: 'Vérifier les parties communes de l’immeuble (déchets, sacs de linge, matériel de nettoyage)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'dechets', order: 0,
+    text: 'Évacuer les déchets en respectant le tri sélectif et les emplacements prévus',
+    roomScope: 'none', requiresConfirmation: true, requiresPhoto: true, allowsComment: true,
+  },
 ];
 
 const configMissing = Object.values(firebaseConfig).some(value => String(value).startsWith('REPLACE'));
@@ -986,6 +1038,17 @@ export async function saveExigenceConfirmation({ bookingId, exigenceId, property
   return answerDoc;
 }
 
+// Commentaire libre sur une exigence (ex. "préciser les difficultés
+// rencontrées" pour les déchets, après ménage) : purement informatif, ne
+// compte jamais dans exigenceAnswerStats/required-done, donc ne bloque
+// jamais la progression ni l'envoi du dossier.
+export async function saveExigenceComment({ bookingId, exigenceId, propertyId, roomIndex = null, answeredBy, commentText }) {
+  const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex);
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, commentText, answeredAt: serverTimestamp() };
+  await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
+  return answerDoc;
+}
+
 // slotIndex distingue plusieurs photos exigées par la MÊME tâche (ex. le
 // siphon : une photo ouvert, une photo refermé, deux validations séparées) —
 // omis pour une tâche à photo unique, l'id reste identique à avant.
@@ -1029,6 +1092,7 @@ function normalizeProtocolTemplate(template) {
     photoSlots: template.photoSlots && template.photoSlots.length ? template.photoSlots : null,
     referencePhotoUrl: (template.referencePhotoUrls && template.referencePhotoUrls[0]) || template.referencePhotoUrl || '',
     referencePhotoUrls: template.referencePhotoUrls && template.referencePhotoUrls.length ? template.referencePhotoUrls : null,
+    allowsComment: !!template.allowsComment,
     dependsOn: template.dependsOn || null,
     active: template.active,
   };

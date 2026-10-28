@@ -1505,6 +1505,8 @@ function buildProtocolTemplateCard(item, items, index) {
   else if (item.requiresPhoto) bits.push('Photo');
   if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
   if (item.gateFlag) bits.push(gateFlagLabel(item.gateFlag));
+  if (item.allowsComment) bits.push('Commentaire');
+  if (item.dependsOn) bits.push('Conditionnel');
   meta.textContent = bits.join(' · ') || '—';
   info.append(name, meta);
 
@@ -1592,7 +1594,7 @@ function protocolTemplateItemForm(phaseKey, categoryKey, existing) {
   fGate.append(gSpan, gSel);
   form.append(fGate);
 
-  [['requiresConfirmation', 'Confirmation simple (mode 1)'], ['requiresYesNo', 'Réponse oui/non exigée'], ['requiresPhoto', 'Photo exigée']].forEach(([name, label]) => {
+  [['requiresConfirmation', 'Confirmation simple (mode 1)'], ['requiresYesNo', 'Réponse oui/non exigée'], ['requiresPhoto', 'Photo exigée'], ['allowsComment', 'Champ commentaire (ex. préciser une difficulté)']].forEach(([name, label]) => {
     const row = document.createElement('label');
     row.className = 'service-option';
     const cb = document.createElement('input');
@@ -1630,6 +1632,7 @@ function protocolTemplateItemForm(phaseKey, categoryKey, existing) {
       requiresConfirmation: get('requiresConfirmation').checked,
       requiresYesNo: get('requiresYesNo').checked,
       requiresPhoto: photoSlots ? true : get('requiresPhoto').checked,
+      allowsComment: get('allowsComment').checked,
       photoSlots,
       active: true,
       order: existing ? (existing.order || 0) : latestProtocolTemplates.filter(t => t.category === categoryKey).length,
@@ -1690,10 +1693,23 @@ async function importDefaultProtocols(btn) {
         setProtocolsStatus('Tous les modèles par défaut sont déjà présents.', 'success');
         return;
       }
+      // dependsOn (ex. la question de relance du linge taché) référence
+      // l'autre item par une "key" locale au tableau par défaut, pas un
+      // itemId Firestore (inconnu avant la création) : on résout vers le
+      // vrai id ici, à partir des items déjà importés (leur key est
+      // conservée sur le document) et de ceux créés dans ce même lot.
+      const keyToId = {};
+      latestProtocolTemplates.forEach(t => { if (t.key) keyToId[t.key] = t.id; });
+      const refs = missing.map(t => ({ t, ref: doc(collection(db, 'protocolTemplates')) }));
+      refs.forEach(({ t, ref }) => { if (t.key) keyToId[t.key] = ref.id; });
+
       const batch = writeBatch(db);
-      missing.forEach((t, i) => {
-        const ref = doc(collection(db, 'protocolTemplates'));
-        batch.set(ref, { ...t, active: true, order: t.order != null ? t.order : i, createdAt: serverTimestamp() });
+      refs.forEach(({ t, ref }, i) => {
+        const { dependsOn, ...rest } = t;
+        const resolvedDependsOn = dependsOn && keyToId[dependsOn.key]
+          ? { itemId: keyToId[dependsOn.key], equals: dependsOn.equals }
+          : null;
+        batch.set(ref, { ...rest, dependsOn: resolvedDependsOn, active: true, order: t.order != null ? t.order : i, createdAt: serverTimestamp() });
       });
       await withTimeout(batch.commit(), 20000);
       setProtocolsStatus(`${missing.length} modèle(s) importé(s).`, 'success');
