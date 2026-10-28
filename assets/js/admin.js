@@ -769,7 +769,7 @@ function renderExigences() {
       empty.textContent = 'Aucune exigence pour cette phase.';
       group.appendChild(empty);
     } else {
-      items.forEach(item => group.appendChild(buildExigenceCard(item)));
+      items.forEach((item, index) => group.appendChild(buildExigenceCard(item, items, index)));
     }
 
     const addBtn = document.createElement('button');
@@ -790,9 +790,9 @@ function roomScopeLabel(key) {
   return (EXIGENCE_ROOM_SCOPES.find(s => s.key === key) || {}).label || key;
 }
 
-function buildExigenceCard(item) {
+function buildExigenceCard(item, items, index) {
   const card = document.createElement('div');
-  card.className = 'catalog-item';
+  card.className = 'catalog-item' + (item.active === false ? ' inactive' : '');
 
   const thumb = document.createElement('div');
   thumb.className = 'catalog-thumb';
@@ -813,11 +813,31 @@ function buildExigenceCard(item) {
   if (item.requiresYesNo) bits.push('Oui/Non');
   if (item.requiresPhoto) bits.push('Photo');
   if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
+  if (item.active === false) bits.push('Désactivée');
   meta.textContent = bits.join(' · ') || '—';
   info.append(name, meta);
 
   const actions = document.createElement('div');
   actions.className = 'catalog-actions';
+
+  const up = document.createElement('button');
+  up.type = 'button'; up.className = 'mini-btn'; up.textContent = '↑';
+  up.setAttribute('aria-label', 'Monter');
+  up.disabled = index === 0;
+  up.onclick = () => moveExigence(items[index], items[index - 1]);
+  const down = document.createElement('button');
+  down.type = 'button'; down.className = 'mini-btn'; down.textContent = '↓';
+  down.setAttribute('aria-label', 'Descendre');
+  down.disabled = index === items.length - 1;
+  down.onclick = () => moveExigence(items[index], items[index + 1]);
+  actions.append(up, down);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button'; toggle.className = 'mini-btn';
+  toggle.textContent = item.active === false ? 'Activer' : 'Désactiver';
+  toggle.onclick = () => toggleExigenceActive(item);
+  actions.append(toggle);
+
   const edit = document.createElement('button');
   edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
   edit.onclick = () => {
@@ -956,6 +976,29 @@ async function deleteExigence(id) {
     setPropertiesStatus('Exigence supprimée.', 'success');
   } catch (error) {
     setPropertiesStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// Échange le rang affiché de deux exigences voisines (ordre stable même
+// avec des "order" non contigus : seules les deux valeurs échangées comptent).
+async function moveExigence(item, neighbor) {
+  try {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'exigences', item.id), { order: neighbor.order || 0 });
+    batch.update(doc(db, 'exigences', neighbor.id), { order: item.order || 0 });
+    await withTimeout(batch.commit(), 15000);
+  } catch (error) {
+    setPropertiesStatus(`Réorganisation impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// Masque l'exigence côté prestataire (loadExigencesForProperty filtre
+// active !== false) sans perdre son historique de réponses déjà données.
+async function toggleExigenceActive(item) {
+  try {
+    await withTimeout(updateDoc(doc(db, 'exigences', item.id), { active: item.active === false }), 15000);
+  } catch (error) {
+    setPropertiesStatus(`Changement de statut impossible : ${authErrorMessage(error)}`, 'error');
   }
 }
 
