@@ -28,6 +28,8 @@ import {
   openLogementQr,
   EXIGENCE_PHASES,
   EXIGENCE_ROOM_SCOPES,
+  EXIGENCE_SUGGESTION_CATEGORIES,
+  DEFAULT_EXIGENCE_SUGGESTIONS,
   uploadExigenceReferenceImage,
   loadExigencesForProperty,
   loadExigenceAnswers,
@@ -111,6 +113,8 @@ let latestProperties = [];
 let selectedPropertyId = null;
 let exigencesUnsub = null;
 let latestExigences = [];
+let suggestionsUnsub = null;
+let latestSuggestions = [];
 let prospectsUnsub = null;
 let latestProspects = [];
 
@@ -860,6 +864,47 @@ function exigenceItemForm(phaseKey, existing) {
   form.className = 'catalog-form';
   const get = n => form.querySelector(`[name="${n}"]`);
 
+  // Pré-remplissage à partir d'une suggestion (bibliothèque par défaut +
+  // celle de l'équipe) : uniquement à la création, pas en modification, où
+  // les champs portent déjà de vraies valeurs. L'admin garde la main pour
+  // ajuster avant d'enregistrer, le choix ne sauvegarde rien par lui-même.
+  if (!existing) {
+    const fSuggest = document.createElement('label');
+    fSuggest.className = 'form-row';
+    const sugSpan = document.createElement('span');
+    sugSpan.textContent = "Partir d'une suggestion (optionnel)";
+    sugSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+    const sugSel = document.createElement('select');
+    const blank = document.createElement('option'); blank.value = ''; blank.textContent = 'Choisir une suggestion…';
+    sugSel.appendChild(blank);
+    const allSuggestions = [...DEFAULT_EXIGENCE_SUGGESTIONS, ...latestSuggestions];
+    EXIGENCE_SUGGESTION_CATEGORIES.forEach(category => {
+      const items = allSuggestions.filter(s => s.category === category.key);
+      if (!items.length) return;
+      const group = document.createElement('optgroup');
+      group.label = category.label;
+      items.forEach((item, i) => {
+        const o = document.createElement('option');
+        o.value = `${category.key}__${i}`;
+        o.textContent = item.text;
+        o._suggestion = item;
+        group.appendChild(o);
+      });
+      sugSel.appendChild(group);
+    });
+    sugSel.onchange = () => {
+      const picked = sugSel.selectedOptions[0] && sugSel.selectedOptions[0]._suggestion;
+      if (!picked) return;
+      get('text').value = picked.text;
+      get('roomScope').value = picked.roomScope || 'none';
+      get('requiresYesNo').checked = !!picked.requiresYesNo;
+      get('requiresPhoto').checked = !!picked.requiresPhoto;
+      sugSel.value = '';
+    };
+    fSuggest.append(sugSpan, sugSel);
+    form.append(fSuggest);
+  }
+
   const fText = document.createElement('label');
   fText.className = 'form-row';
   const tSpan = document.createElement('span');
@@ -1067,6 +1112,196 @@ async function duplicateExigencesFromProperty(sourcePropertyId, btn) {
     });
   } catch (error) {
     setPropertiesStatus(`Duplication impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- Bibliothèque de suggestions d'exigences (voir exigenceItemForm, qui
+// les propose en pré-remplissage) : une liste par défaut fournie en dur
+// dans le code, plus celles que l'équipe ajoute elle-même ici. Les deux se
+// mélangent dans le sélecteur ; seules les secondes sont modifiables.
+function subscribeSuggestions() {
+  if (suggestionsUnsub) suggestionsUnsub();
+  suggestionsUnsub = onSnapshot(collection(db, 'exigenceSuggestions'), snap => {
+    latestSuggestions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderSuggestions();
+  }, error => setSuggestionsStatus(`Impossible de charger les suggestions : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setSuggestionsStatus(message, type) {
+  const el = document.getElementById('suggestionsStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function renderSuggestions() {
+  const root = document.getElementById('suggestionsRoot');
+  if (!root) return;
+  root.innerHTML = '';
+
+  EXIGENCE_SUGGESTION_CATEGORIES.forEach(category => {
+    const group = document.createElement('div');
+    group.className = 'catalog-group';
+    const head = document.createElement('div');
+    head.className = 'roster-subhead';
+    head.textContent = category.label;
+    group.appendChild(head);
+
+    DEFAULT_EXIGENCE_SUGGESTIONS
+      .filter(s => s.category === category.key)
+      .forEach(item => group.appendChild(buildSuggestionCard(item, false)));
+    latestSuggestions
+      .filter(s => s.category === category.key)
+      .sort((a, b) => (a.text || '').localeCompare(b.text || ''))
+      .forEach(item => group.appendChild(buildSuggestionCard(item, true)));
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn ghost';
+    addBtn.style.marginTop = '12px';
+    addBtn.textContent = '+ Ajouter une suggestion';
+    addBtn.onclick = () => {
+      if (group.querySelector('.catalog-form')) return;
+      addBtn.before(suggestionItemForm(category.key, null));
+    };
+    group.appendChild(addBtn);
+    root.appendChild(group);
+  });
+}
+
+function buildSuggestionCard(item, editable) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item';
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = item.text || '(sans texte)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [];
+  if (!editable) bits.push('Par défaut');
+  if (item.requiresYesNo) bits.push('Oui/Non');
+  if (item.requiresPhoto) bits.push('Photo');
+  if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
+  meta.textContent = bits.join(' · ') || '—';
+  info.append(name, meta);
+
+  card.appendChild(info);
+
+  if (editable) {
+    const actions = document.createElement('div');
+    actions.className = 'catalog-actions';
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+    edit.onclick = () => {
+      if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+        card.nextElementSibling.remove(); return;
+      }
+      card.after(suggestionItemForm(item.category, item));
+    };
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+    armInlineConfirm(del, 'Confirmer la suppression', () => deleteSuggestion(item.id));
+    actions.append(edit, del);
+    card.appendChild(actions);
+  }
+
+  return card;
+}
+
+function suggestionItemForm(categoryKey, existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fText = document.createElement('label');
+  fText.className = 'form-row';
+  const tSpan = document.createElement('span');
+  tSpan.textContent = 'Instruction';
+  tSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const tArea = document.createElement('textarea');
+  tArea.name = 'text';
+  tArea.value = existing ? existing.text || '' : '';
+  fText.append(tSpan, tArea);
+  form.append(fText);
+
+  const fScope = document.createElement('label');
+  fScope.className = 'form-row';
+  const sSpan = document.createElement('span');
+  sSpan.textContent = 'Répétition';
+  sSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const sSel = document.createElement('select');
+  sSel.name = 'roomScope';
+  EXIGENCE_ROOM_SCOPES.forEach(scope => {
+    const o = document.createElement('option'); o.value = scope.key; o.textContent = scope.label;
+    if ((existing ? existing.roomScope : 'none') === scope.key) o.selected = true;
+    sSel.appendChild(o);
+  });
+  fScope.append(sSpan, sSel);
+  form.append(fScope);
+
+  const fYesNo = document.createElement('label');
+  fYesNo.className = 'service-option';
+  const cbYesNo = document.createElement('input');
+  cbYesNo.type = 'checkbox'; cbYesNo.name = 'requiresYesNo';
+  cbYesNo.checked = existing ? !!existing.requiresYesNo : true;
+  fYesNo.append(cbYesNo, document.createTextNode(' Réponse oui/non exigée'));
+  form.append(fYesNo);
+
+  const fPhoto = document.createElement('label');
+  fPhoto.className = 'service-option';
+  const cbPhoto = document.createElement('input');
+  cbPhoto.type = 'checkbox'; cbPhoto.name = 'requiresPhoto';
+  cbPhoto.checked = existing ? !!existing.requiresPhoto : false;
+  fPhoto.append(cbPhoto, document.createTextNode(' Photo exigée'));
+  form.append(fPhoto);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = get('text').value.trim();
+    if (!text) { setSuggestionsStatus("L'instruction est obligatoire.", 'error'); return; }
+    const data = {
+      category: categoryKey,
+      text,
+      roomScope: get('roomScope').value,
+      requiresYesNo: get('requiresYesNo').checked,
+      requiresPhoto: get('requiresPhoto').checked,
+    };
+    saveSuggestion(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveSuggestion(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'exigenceSuggestions', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'exigenceSuggestions'), { ...data, createdAt: serverTimestamp() }), 15000));
+    setSuggestionsStatus(id ? 'Suggestion mise à jour.' : 'Suggestion ajoutée.', 'success');
+  } catch (error) {
+    setSuggestionsStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteSuggestion(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'exigenceSuggestions', id)), 15000);
+    setSuggestionsStatus('Suggestion supprimée.', 'success');
+  } catch (error) {
+    setSuggestionsStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
   }
 }
 
@@ -2979,6 +3214,7 @@ onAuthStateChanged(auth, async user => {
     subscribePricing();
     subscribeCatalog();
     subscribeProperties();
+    subscribeSuggestions();
     subscribeProspects();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };

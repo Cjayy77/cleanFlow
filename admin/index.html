@@ -74,6 +74,7 @@
       <button type="button" class="tab" data-tab="prospects">Prospects</button>
       <button type="button" class="tab" data-tab="catalog">Catalogue</button>
       <button type="button" class="tab" data-tab="properties">Propriétés</button>
+      <button type="button" class="tab" data-tab="suggestions">Suggestions</button>
       <button type="button" class="tab" data-tab="tarifs">Tarifs</button>
     </div>
 
@@ -252,6 +253,16 @@
         <div class="eyebrow">Exigences du logement</div>
         <h2 id="exigencesPropertyTitle"></h2>
         <div id="exigencesRoot"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="suggestions">
+      <div class="card">
+        <div class="eyebrow">Back-office</div>
+        <h2>Suggestions d'exigences</h2>
+        <p>Une bibliothèque d'exigences courantes (en plus d'une liste déjà fournie par défaut), proposée lors de la rédaction des exigences d'un logement pour éviter de tout retaper. Modifier ou supprimer une suggestion ici ne change rien aux exigences déjà créées sur les logements.</p>
+        <div id="suggestionsStatus" class="status-banner hidden" role="status"></div>
+        <div id="suggestionsRoot"></div>
       </div>
     </section>
 

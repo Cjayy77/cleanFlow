@@ -325,6 +325,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Bibliothèque de suggestions réutilisables entre logements (ex. "faire
+    // le lit", "photo du tambour du lave-linge"), proposées dans l'éditeur
+    // d'exigences pour éviter de tout retaper à chaque logement. Outil de
+    // rédaction interne à l'équipe : jamais lu par le prestataire ou le
+    // client, contrairement à /exigences qui, elle, est propre à un
+    // logement et consommée côté mission.
+    match /exigenceSuggestions/{suggestionId} {
+      allow read, write: if isAdmin();
+    }
+
     // Réponses du prestataire à une exigence, pour UNE mission précise
     // (id déterministe bookingId_exigenceId, cf. /photos ci-dessus : un
     // nouvel envoi remplace le précédent, pas d'historique à gérer côté

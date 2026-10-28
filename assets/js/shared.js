@@ -450,6 +450,39 @@ export const EXIGENCE_ROOM_SCOPES = [
   { key: 'other', label: 'Zone unique (sol, terrasse…)' },
 ];
 
+export const EXIGENCE_SUGGESTION_CATEGORIES = [
+  { key: 'cuisine', label: 'Cuisine' },
+  { key: 'salle_de_bain', label: 'Salle de bain' },
+  { key: 'chambre', label: 'Chambre' },
+  { key: 'electromenager', label: 'Électroménager' },
+  { key: 'general', label: 'Général / zones communes' },
+];
+
+// Suggestions de départ, prêtes à l'emploi sans rien configurer : l'admin
+// peut aussi enrichir sa propre bibliothèque (onglet Suggestions), qui se
+// mélange à cette liste dans le sélecteur de l'éditeur d'exigences.
+export const DEFAULT_EXIGENCE_SUGGESTIONS = [
+  { category: 'cuisine', text: 'Nettoyer la vaisselle et ranger le lave-vaisselle', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'cuisine', text: 'Essuyer les plans de travail et la table', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'cuisine', text: 'Vider et nettoyer le réfrigérateur si besoin', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'cuisine', text: 'Photo du four et de la plaque de cuisson', roomScope: 'none', requiresYesNo: false, requiresPhoto: true },
+  { category: 'cuisine', text: 'Sortir les poubelles et le recyclage', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'salle_de_bain', text: 'Nettoyer et désinfecter les toilettes', roomScope: 'bathroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'salle_de_bain', text: 'Changer les serviettes', roomScope: 'bathroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'salle_de_bain', text: 'Photo de la douche ou de la baignoire nettoyée', roomScope: 'bathroom', requiresYesNo: false, requiresPhoto: true },
+  { category: 'salle_de_bain', text: 'Vérifier le niveau de papier toilette', roomScope: 'bathroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'chambre', text: 'Faire le lit avec du linge propre', roomScope: 'bedroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'chambre', text: 'Dépoussiérer les surfaces', roomScope: 'bedroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'chambre', text: 'Photo de la chambre rangée', roomScope: 'bedroom', requiresYesNo: false, requiresPhoto: true },
+  { category: 'electromenager', text: 'Photo du tambour de la machine à laver vide', roomScope: 'none', requiresYesNo: false, requiresPhoto: true },
+  { category: 'electromenager', text: 'Vérifier et nettoyer le filtre du lave-linge', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'electromenager', text: 'Vider le filtre du sèche-linge', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'general', text: 'Aspirer et laver les sols', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'general', text: 'Vérifier que le wifi fonctionne', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'general', text: 'Photo générale du salon rangé', roomScope: 'none', requiresYesNo: false, requiresPhoto: true },
+  { category: 'general', text: "Vérifier qu'il ne manque pas d'ampoules", roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+];
+
 const configMissing = Object.values(firebaseConfig).some(value => String(value).startsWith('REPLACE'));
 if (configMissing) {
   const renderNotice = () => {
