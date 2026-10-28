@@ -40,6 +40,9 @@ import {
   PROTOCOL_GATE_FLAGS,
   DEFAULT_PROTOCOL_TEMPLATES,
   loadProtocolTemplates,
+  computeChecklistItems,
+  ANOMALY_CATEGORIES,
+  ANOMALY_URGENCY_LEVELS,
 } from './shared.js';
 import {
   collection,
@@ -3359,47 +3362,80 @@ function renderBookingDetail() {
   renderBookingComments();
 }
 
-// Même file (#photoGrid) que PHOTO_SLOTS, mais une entrée par (exigence,
-// instance de pièce) : celles qui exigent une photo l'affichent comme un
-// .photo-slot, celles qui exigent oui/non affichent la réponse, le Valider
-// reste bloqué tant que toutes les réponses exigées ne sont pas là.
+// Rapport d'intervention : même file (#photoGrid) que PHOTO_SLOTS, groupée
+// par phase (avant/ménage/après), une entrée par (exigence, instance de
+// pièce) — confirmation/oui-non affichent la réponse, photo (simple ou
+// plusieurs photoSlots indépendants) l'affiche comme un .photo-slot. Le
+// Valider reste bloqué tant que toutes les réponses exigées ne sont pas là,
+// quel que soit le mode. selectedBooking.exigences est déjà la liste
+// FUSIONNÉE (bibliothèque partagée + ajouts du logement), via
+// computeChecklistItems dans refreshBookingDetail — pas seulement les
+// exigences propres au logement comme avant.
 function renderExigenceAnswers() {
   let allAnswered = true;
-  selectedBooking.exigences.forEach(exigence => {
-    exigenceInstances(exigence, selectedBooking).forEach(instance => {
-      const answerId = exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex);
-      const answer = selectedBooking.exigenceAnswers[answerId];
-      const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
 
-      if (exigence.requiresPhoto) {
-        const slotEl = document.createElement('div');
-        slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
-        if (answer && answer.photoUrl) {
-          const img = document.createElement('img');
-          img.src = answer.photoUrl; img.alt = label;
-          slotEl.appendChild(img);
-          const link = document.createElement('a');
-          link.href = answer.photoUrl; link.target = '_blank'; link.rel = 'noopener';
-          link.className = 'photo-caption'; link.textContent = label;
-          slotEl.appendChild(link);
-        } else {
-          const span = document.createElement('span');
-          span.textContent = `${label}, manquante`;
-          slotEl.appendChild(span);
-          allAnswered = false;
+  const buildPhotoCell = (label, url) => {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'photo-slot' + (url ? ' uploaded' : '');
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url; img.alt = label;
+      slotEl.appendChild(img);
+      const link = document.createElement('a');
+      link.href = url; link.target = '_blank'; link.rel = 'noopener';
+      link.className = 'photo-caption'; link.textContent = label;
+      slotEl.appendChild(link);
+    } else {
+      const span = document.createElement('span');
+      span.textContent = `${label}, manquante`;
+      slotEl.appendChild(span);
+      allAnswered = false;
+    }
+    return slotEl;
+  };
+
+  const buildTextCell = (label, text, done) => {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'photo-slot' + (done ? ' uploaded' : '');
+    const span = document.createElement('span');
+    span.textContent = text;
+    slotEl.appendChild(span);
+    if (!done) allAnswered = false;
+    return slotEl;
+  };
+
+  EXIGENCE_PHASES.forEach(phase => {
+    const items = selectedBooking.exigences.filter(e => e.phase === phase.key);
+    if (!items.length) return;
+    const phaseHead = document.createElement('div');
+    phaseHead.className = 'roster-subhead';
+    phaseHead.textContent = phase.label;
+    photoGrid.appendChild(phaseHead);
+
+    items.forEach(exigence => {
+      exigenceInstances(exigence, selectedBooking).forEach(instance => {
+        const answerId = exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex);
+        const answer = selectedBooking.exigenceAnswers[answerId];
+        const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
+
+        if (exigence.requiresConfirmation) {
+          photoGrid.appendChild(buildTextCell(label, answer && answer.confirmed ? `${label} : fait` : `${label}, non confirmé`, !!(answer && answer.confirmed)));
         }
-        photoGrid.appendChild(slotEl);
-      }
 
-      if (exigence.requiresYesNo && (!answer || answer.answerYesNo == null)) allAnswered = false;
-      if (exigence.requiresYesNo) {
-        const slotEl = document.createElement('div');
-        slotEl.className = 'photo-slot' + (answer && answer.answerYesNo != null ? ' uploaded' : '');
-        const span = document.createElement('span');
-        span.textContent = answer && answer.answerYesNo != null ? `${label} : ${answer.answerYesNo ? 'Oui' : 'Non'}` : `${label}, sans réponse`;
-        slotEl.appendChild(span);
-        photoGrid.appendChild(slotEl);
-      }
+        if (exigence.requiresYesNo) {
+          const done = !!(answer && answer.answerYesNo != null);
+          photoGrid.appendChild(buildTextCell(label, done ? `${label} : ${answer.answerYesNo ? 'Oui' : 'Non'}` : `${label}, sans réponse`, done));
+        }
+
+        if (exigence.photoSlots && exigence.photoSlots.length) {
+          exigence.photoSlots.forEach((slotLabel, slotIndex) => {
+            const slotAnswer = selectedBooking.exigenceAnswers[exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex, slotIndex)];
+            photoGrid.appendChild(buildPhotoCell(`${label} — ${slotLabel}`, slotAnswer && slotAnswer.photoUrl));
+          });
+        } else if (exigence.requiresPhoto) {
+          photoGrid.appendChild(buildPhotoCell(label, answer && answer.photoUrl));
+        }
+      });
     });
   });
   verifyBtn.disabled = !allAnswered;
@@ -3414,17 +3450,19 @@ async function refreshBookingDetail() {
   selectedBooking = { id: bookingSnap.id, clientEmail, ...bookingSnap.data() };
   const photos = await loadPhotoDocs(selectedBooking.id);
   selectedBooking.photos = photos.reduce((acc, photo) => ({ ...acc, [photo.slot]: photo }), {});
-  // Logement avec sa propre liste d'exigences ? Sinon, le dossier garde
-  // l'ancien contrôle photo générique (PHOTO_SLOTS) plus bas.
-  selectedBooking.exigences = selectedBooking.propertyId
+  // Même fusion que côté prestataire (computeChecklistItems) : bibliothèque
+  // partagée (latestProtocolTemplates, déjà chargée en continu pour
+  // l'onglet Protocoles) + ajouts propres au logement. Sans ça, l'admin ne
+  // verrait jamais ce que le prestataire a réellement rempli dès qu'un
+  // logement n'a que des modèles partagés et aucune exigence propre — le
+  // cas normal désormais. Logement sans propertyId ni aucun contenu ?
+  // Liste vide, le dossier garde l'ancien contrôle PHOTO_SLOTS plus bas.
+  const customExigences = selectedBooking.propertyId
     ? await loadExigencesForProperty(selectedBooking.propertyId)
     : [];
-  if (selectedBooking.exigences.length) {
-    const answers = await loadExigenceAnswers(selectedBooking.id);
-    selectedBooking.exigenceAnswers = answers.reduce((acc, answer) => ({ ...acc, [answer.id]: answer }), {});
-  } else {
-    selectedBooking.exigenceAnswers = {};
-  }
+  const answers = await loadExigenceAnswers(selectedBooking.id);
+  selectedBooking.exigenceAnswers = answers.reduce((acc, answer) => ({ ...acc, [answer.id]: answer }), {});
+  selectedBooking.exigences = computeChecklistItems(selectedBooking, latestProtocolTemplates, customExigences, selectedBooking.exigenceAnswers);
 }
 
 async function renderIncidents() {
@@ -3438,13 +3476,29 @@ async function renderIncidents() {
   incidents.forEach(incident => {
     const item = document.createElement('div');
     item.className = 'incident-item';
-    const typeLabel = incident.type === 'broken_object' ? 'Objet cassé' : incident.type === 'lost_object' ? 'Objet perdu' : 'Autre';
+    const typeLabel = (ANOMALY_CATEGORIES.find(c => c.key === incident.type) || {}).label || 'Autre';
     const title = document.createElement('strong');
     title.textContent = typeLabel;
+    if (incident.urgency) {
+      const urgLabel = (ANOMALY_URGENCY_LEVELS.find(u => u.key === incident.urgency) || {}).label || incident.urgency;
+      const urgBadge = document.createElement('span');
+      urgBadge.className = 'status-pill' + (incident.urgency === 'urgente' ? ' anomaly' : incident.urgency === 'moyenne' ? ' partial' : '');
+      urgBadge.style.marginLeft = '8px';
+      urgBadge.textContent = `Urgence : ${urgLabel}`;
+      title.appendChild(urgBadge);
+    }
+    item.appendChild(title);
+    if (incident.itemId) {
+      const linkedTemplate = latestProtocolTemplates.find(t => t.id === incident.itemId);
+      const phaseLabel = (EXIGENCE_PHASES.find(p => p.key === incident.phase) || {}).label;
+      const linked = document.createElement('div');
+      linked.className = 'task-meta';
+      linked.textContent = [phaseLabel, linkedTemplate && linkedTemplate.text].filter(Boolean).join(' · ') || 'Point de contrôle lié';
+      item.appendChild(linked);
+    }
     const description = document.createElement('div');
     description.className = 'task-meta';
     description.textContent = incident.description;
-    item.appendChild(title);
     item.appendChild(description);
     (incident.photoRefs || []).forEach((url, index) => {
       const link = document.createElement('a');
