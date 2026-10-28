@@ -427,7 +427,12 @@ service cloud.firestore {
       );
       allow create: if isPrestataire()
         && request.resource.data.reportedBy == request.auth.uid
-        && request.resource.data.type in ['broken_object', 'lost_object', 'other']
+        && request.resource.data.type in [
+          'broken_object', 'lost_object', 'other',
+          'linge_manquant', 'equipement_defectueux', 'telecommande_absente',
+          'consommables_insuffisants', 'moisissures', 'degradation_mobilier',
+          'probleme_plomberie'
+        ]
         && request.resource.data.status == 'open';
       allow update: if isAdmin();
     }

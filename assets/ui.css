@@ -90,6 +90,9 @@ textarea{ min-height:110px; resize:vertical; }
 .status-pill.verified{ color:var(--ok-ink); }
 .status-pill.rejected{ color:var(--danger-ink); }
 .status-pill.cancelled{ color:var(--muted); }
+.status-pill.todo{ color:var(--muted); }
+.status-pill.partial{ color:var(--gold); }
+.status-pill.anomaly{ color:var(--danger-ink); }
 .btn.ghost.danger{ color:var(--danger-ink); }
 .btn.ghost.danger:hover:not(:disabled){ border-color:var(--danger-ink); color:var(--danger-ink); }
 /* État « armé » d'une confirmation deux-clics : blanc sur rouge, prioritaire
@@ -369,6 +372,15 @@ textarea{ min-height:110px; resize:vertical; }
 
 .exigence-timer{ display:flex; align-items:center; gap:14px; margin:14px 0; padding:12px 14px; border-radius:var(--radius-md); background:var(--soft); border:1px solid var(--line); }
 .exigence-timer-elapsed{ font-size:18px; font-weight:700; color:var(--ink); min-width:76px; }
+
+/* Signalement d'anomalie, replié par défaut sous chaque ligne d'exigence :
+   action secondaire, pas la ligne principale, donc un lien discret plutôt
+   qu'un accordéon .card pleine largeur. */
+.exigence-anomaly{ margin-top:10px; }
+.exigence-anomaly > summary{ cursor:pointer; list-style:none; font-size:12.5px; font-weight:700; color:var(--danger-ink); }
+.exigence-anomaly > summary::-webkit-details-marker{ display:none; }
+.anomaly-form{ display:flex; flex-direction:column; gap:10px; margin-top:10px; padding:12px 14px; border-radius:var(--radius-md); background:var(--soft); border:1px solid var(--line); }
+.anomaly-form textarea{ min-height:60px; resize:vertical; }
 
 .attachment-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:10px; }
 .attachment-grid img{ width:100%; aspect-ratio:1; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--line); }

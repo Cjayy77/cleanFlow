@@ -36,6 +36,10 @@ import {
   exigenceInstances,
   exigenceAnswerDocId,
   loadBookingComments,
+  PROTOCOL_CATEGORIES,
+  PROTOCOL_GATE_FLAGS,
+  DEFAULT_PROTOCOL_TEMPLATES,
+  loadProtocolTemplates,
 } from './shared.js';
 import {
   collection,
@@ -78,6 +82,7 @@ const devisBtn = document.getElementById('devisBtn');
 const rejectNote = document.getElementById('rejectNote');
 const incidentList = document.getElementById('incidentList');
 const bookingCommentList = document.getElementById('bookingCommentList');
+const importDefaultProtocolsBtn = document.getElementById('importDefaultProtocolsBtn');
 const adminStatus = document.getElementById('adminStatus');
 const statPending = document.getElementById('statPending');
 const statAccepted = document.getElementById('statAccepted');
@@ -115,6 +120,8 @@ let exigencesUnsub = null;
 let latestExigences = [];
 let suggestionsUnsub = null;
 let latestSuggestions = [];
+let protocolsUnsub = null;
+let latestProtocolTemplates = [];
 let prospectsUnsub = null;
 let latestProspects = [];
 
@@ -1408,6 +1415,296 @@ async function deleteSuggestion(id) {
   } catch (error) {
     setSuggestionsStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
   }
+}
+
+// ---- Bibliothèque PARTAGÉE de protocoles (voir computeChecklistItems,
+// shared.js) : contrairement à /exigences (propre à UN logement) et
+// /exigenceSuggestions (suggestions de copie), ce contenu s'applique à
+// tous les logements d'un coup. Modifier un point de contrôle ici le
+// modifie pour chaque mission future qui l'utilise.
+function subscribeProtocolTemplates() {
+  if (protocolsUnsub) protocolsUnsub();
+  protocolsUnsub = onSnapshot(collection(db, 'protocolTemplates'), snap => {
+    latestProtocolTemplates = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
+    renderProtocolTemplates();
+  }, error => setProtocolsStatus(`Impossible de charger les protocoles : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setProtocolsStatus(message, type) {
+  const el = document.getElementById('protocolsStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function gateFlagLabel(key) {
+  return (PROTOCOL_GATE_FLAGS.find(g => g.key === key) || {}).label || '';
+}
+
+function renderProtocolTemplates() {
+  const root = document.getElementById('protocolsRoot');
+  if (!root) return;
+  root.innerHTML = '';
+
+  EXIGENCE_PHASES.forEach(phase => {
+    const phaseHead = document.createElement('h3');
+    phaseHead.textContent = phase.label;
+    phaseHead.style.marginTop = '26px';
+    root.appendChild(phaseHead);
+
+    PROTOCOL_CATEGORIES.filter(c => c.phase === phase.key).forEach(category => {
+      const group = document.createElement('div');
+      group.className = 'catalog-group';
+      const head = document.createElement('div');
+      head.className = 'roster-subhead';
+      head.textContent = category.label;
+      group.appendChild(head);
+
+      const items = latestProtocolTemplates.filter(t => t.category === category.key);
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = 'Aucun point de contrôle pour cette catégorie.';
+        group.appendChild(empty);
+      } else {
+        items.forEach((item, index) => group.appendChild(buildProtocolTemplateCard(item, items, index)));
+      }
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'btn ghost';
+      addBtn.style.marginTop = '12px';
+      addBtn.textContent = '+ Ajouter un point de contrôle';
+      addBtn.onclick = () => {
+        if (group.querySelector('.catalog-form')) return;
+        addBtn.before(protocolTemplateItemForm(phase.key, category.key, null));
+      };
+      group.appendChild(addBtn);
+      root.appendChild(group);
+    });
+  });
+}
+
+function buildProtocolTemplateCard(item, items, index) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item' + (item.active === false ? ' inactive' : '');
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = item.text || '(sans texte)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [];
+  if (item.active === false) bits.push('Désactivé');
+  if (item.requiresConfirmation) bits.push('Confirmation');
+  if (item.requiresYesNo) bits.push('Oui/Non');
+  if (item.photoSlots && item.photoSlots.length) bits.push(`Photos (${item.photoSlots.length})`);
+  else if (item.requiresPhoto) bits.push('Photo');
+  if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
+  if (item.gateFlag) bits.push(gateFlagLabel(item.gateFlag));
+  meta.textContent = bits.join(' · ') || '—';
+  info.append(name, meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'catalog-actions';
+
+  const up = document.createElement('button');
+  up.type = 'button'; up.className = 'mini-btn'; up.textContent = '↑';
+  up.setAttribute('aria-label', 'Monter');
+  up.disabled = index === 0;
+  up.onclick = () => moveProtocolTemplate(items[index], items[index - 1]);
+  const down = document.createElement('button');
+  down.type = 'button'; down.className = 'mini-btn'; down.textContent = '↓';
+  down.setAttribute('aria-label', 'Descendre');
+  down.disabled = index === items.length - 1;
+  down.onclick = () => moveProtocolTemplate(items[index], items[index + 1]);
+  actions.append(up, down);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button'; toggle.className = 'mini-btn';
+  toggle.textContent = item.active === false ? 'Activer' : 'Désactiver';
+  toggle.onclick = () => toggleProtocolTemplateActive(item);
+  actions.append(toggle);
+
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+      card.nextElementSibling.remove(); return;
+    }
+    card.after(protocolTemplateItemForm(item.phase, item.category, item));
+  };
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+  armInlineConfirm(del, 'Confirmer la suppression', () => deleteProtocolTemplate(item.id));
+  actions.append(edit, del);
+
+  card.append(info, actions);
+  return card;
+}
+
+function protocolTemplateItemForm(phaseKey, categoryKey, existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fText = document.createElement('label');
+  fText.className = 'form-row';
+  const tSpan = document.createElement('span');
+  tSpan.textContent = 'Instruction';
+  tSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const tArea = document.createElement('textarea');
+  tArea.name = 'text';
+  tArea.value = existing ? existing.text || '' : '';
+  fText.append(tSpan, tArea);
+  form.append(fText);
+
+  const fScope = document.createElement('label');
+  fScope.className = 'form-row';
+  const sSpan = document.createElement('span');
+  sSpan.textContent = 'Répétition';
+  sSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const sSel = document.createElement('select');
+  sSel.name = 'roomScope';
+  EXIGENCE_ROOM_SCOPES.forEach(scope => {
+    const o = document.createElement('option'); o.value = scope.key; o.textContent = scope.label;
+    if ((existing ? existing.roomScope : 'none') === scope.key) o.selected = true;
+    sSel.appendChild(o);
+  });
+  fScope.append(sSpan, sSel);
+  form.append(fScope);
+
+  const fGate = document.createElement('label');
+  fGate.className = 'form-row';
+  const gSpan = document.createElement('span');
+  gSpan.textContent = "Condition d'apparition";
+  gSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const gSel = document.createElement('select');
+  gSel.name = 'gateFlag';
+  PROTOCOL_GATE_FLAGS.forEach(flag => {
+    const o = document.createElement('option'); o.value = flag.key || ''; o.textContent = flag.label;
+    if ((existing ? existing.gateFlag : null) === flag.key) o.selected = true;
+    gSel.appendChild(o);
+  });
+  fGate.append(gSpan, gSel);
+  form.append(fGate);
+
+  [['requiresConfirmation', 'Confirmation simple (mode 1)'], ['requiresYesNo', 'Réponse oui/non exigée'], ['requiresPhoto', 'Photo exigée']].forEach(([name, label]) => {
+    const row = document.createElement('label');
+    row.className = 'service-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.name = name;
+    cb.checked = existing ? !!existing[name] : false;
+    row.append(cb, document.createTextNode(` ${label}`));
+    form.append(row);
+  });
+
+  const fSlots = catalogField('Photos multiples (ex. "Siphon ouvert, Siphon refermé" — laisser vide pour une seule photo)', 'photoSlots', existing && existing.photoSlots ? existing.photoSlots.join(', ') : '');
+  form.append(fSlots);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = get('text').value.trim();
+    if (!text) { setProtocolsStatus("L'instruction est obligatoire.", 'error'); return; }
+    const slotsRaw = get('photoSlots').value.trim();
+    const photoSlots = slotsRaw ? slotsRaw.split(',').map(s => s.trim()).filter(Boolean) : null;
+    const data = {
+      phase: phaseKey,
+      category: categoryKey,
+      text,
+      roomScope: get('roomScope').value,
+      gateFlag: get('gateFlag').value || null,
+      requiresConfirmation: get('requiresConfirmation').checked,
+      requiresYesNo: get('requiresYesNo').checked,
+      requiresPhoto: photoSlots ? true : get('requiresPhoto').checked,
+      photoSlots,
+      active: true,
+      order: existing ? (existing.order || 0) : latestProtocolTemplates.filter(t => t.category === categoryKey).length,
+    };
+    saveProtocolTemplate(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveProtocolTemplate(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'protocolTemplates', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'protocolTemplates'), { ...data, createdAt: serverTimestamp() }), 15000));
+    setProtocolsStatus(id ? 'Point de contrôle mis à jour.' : 'Point de contrôle ajouté.', 'success');
+  } catch (error) {
+    setProtocolsStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteProtocolTemplate(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'protocolTemplates', id)), 15000);
+    setProtocolsStatus('Point de contrôle supprimé.', 'success');
+  } catch (error) {
+    setProtocolsStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function moveProtocolTemplate(item, neighbor) {
+  try {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'protocolTemplates', item.id), { order: neighbor.order || 0 });
+    batch.update(doc(db, 'protocolTemplates', neighbor.id), { order: item.order || 0 });
+    await withTimeout(batch.commit(), 15000);
+  } catch (error) {
+    setProtocolsStatus(`Réorganisation impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function toggleProtocolTemplateActive(item) {
+  try {
+    await withTimeout(updateDoc(doc(db, 'protocolTemplates', item.id), { active: item.active === false }), 15000);
+  } catch (error) {
+    setProtocolsStatus(`Changement de statut impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// Idempotent : n'ajoute que les modèles par défaut dont le texte n'existe
+// pas déjà pour cette phase+catégorie, pour qu'un second clic (ou un futur
+// ajout de phase au tableau par défaut) ne duplique rien.
+async function importDefaultProtocols(btn) {
+  try {
+    await withButtonLoading(btn, async () => {
+      const existingKeys = new Set(latestProtocolTemplates.map(t => `${t.phase}__${t.category}__${t.text}`));
+      const missing = DEFAULT_PROTOCOL_TEMPLATES.filter(t => !existingKeys.has(`${t.phase}__${t.category}__${t.text}`));
+      if (!missing.length) {
+        setProtocolsStatus('Tous les modèles par défaut sont déjà présents.', 'success');
+        return;
+      }
+      const batch = writeBatch(db);
+      missing.forEach((t, i) => {
+        const ref = doc(collection(db, 'protocolTemplates'));
+        batch.set(ref, { ...t, active: true, order: t.order != null ? t.order : i, createdAt: serverTimestamp() });
+      });
+      await withTimeout(batch.commit(), 20000);
+      setProtocolsStatus(`${missing.length} modèle(s) importé(s).`, 'success');
+    });
+  } catch (error) {
+    setProtocolsStatus(`Import impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+if (importDefaultProtocolsBtn) {
+  importDefaultProtocolsBtn.addEventListener('click', () => importDefaultProtocols(importDefaultProtocolsBtn));
 }
 
 // ---- CRM : prospects ----
@@ -3320,6 +3617,7 @@ onAuthStateChanged(auth, async user => {
     subscribeCatalog();
     subscribeProperties();
     subscribeSuggestions();
+    subscribeProtocolTemplates();
     subscribeProspects();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };

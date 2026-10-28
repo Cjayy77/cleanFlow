@@ -544,6 +544,75 @@ export const DEFAULT_EXIGENCE_SUGGESTIONS = [
   { category: 'general', text: "Vérifier qu'il ne manque pas d'ampoules", roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
 ];
 
+// Bibliothèque standard du protocole (cahiers des charges Avant Ménage /
+// Ménage / Après Ménage) : contenu RÉEL appliqué à tous les logements via
+// computeChecklistItems(), pas de simples suggestions. Chaque lettre du
+// document Avant Ménage devient une ou plusieurs entrées ici ; une lettre
+// qui regroupe plusieurs vérifications indépendantes sous un seul "Oui/
+// Non" est éclatée en items distincts (ex. D : éclairages ET wifi) pour
+// que le signalement d'anomalie reste précis — c'est l'esprit même du
+// document (§1 : "éviter les litiges", traçabilité par point de contrôle).
+// Les phases Ménage et Après Ménage sont ajoutées dans les phases
+// suivantes du développement, pas encore ici.
+export const DEFAULT_PROTOCOL_TEMPLATES = [
+  // --- AVANT MÉNAGE (document 1) ---
+  {
+    phase: 'avant', category: 'acces', order: 0,
+    text: 'Photographier les clés présentes dans la boîte à clés et vérifier leur présence',
+    roomScope: 'none', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'materiel', order: 0,
+    text: 'Photographier les produits et le matériel de nettoyage disponibles (désinfectant, anticalcaire, microfibres, éponges, autres équipements nécessaires)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'aeration', order: 0,
+    text: 'Ouvrir les fenêtres des pièces concernées et photographier l’aération du logement',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'equipements', order: 0,
+    text: 'Contrôler le fonctionnement des éclairages',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'equipements', order: 1,
+    text: 'Vérifier la connexion Wi-Fi',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'etat_initial', order: 0,
+    text: 'Vérifier l’absence d’objets oubliés par les précédents occupants',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'etat_initial', order: 1,
+    text: 'Vérifier l’absence de dégradations visibles',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'etat_initial', order: 2,
+    text: 'Vérifier l’absence d’odeurs inhabituelles (cigarette, humidité, etc.)',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'equipements_dispo', order: 0,
+    text: 'Photographier les équipements mis à disposition (aspirateur, fer et table à repasser, étendoir, équipements bébé le cas échéant, couettes et oreillers supplémentaires)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'consommables', order: 0,
+    text: 'Contrôler les stocks de consommables (papier toilette, essuie-tout, savon, gel douche, shampooing, après-shampooing, café, thé, sucre, autres consommables prévus) et signaler les quantités insuffisantes',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+  {
+    phase: 'avant', category: 'parties_communes', order: 0,
+    text: 'Confirmer qu’aucun matériel, sac de linge ou déchet n’est déposé dans les parties communes de l’immeuble',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+];
+
 const configMissing = Object.values(firebaseConfig).some(value => String(value).startsWith('REPLACE'));
 if (configMissing) {
   const renderNotice = () => {

@@ -12,9 +12,15 @@ import {
   loadExigencesForProperty,
   loadExigenceAnswers,
   saveExigenceYesNo,
+  saveExigenceConfirmation,
   uploadExigenceAnswerImage,
   exigenceInstances,
   exigenceAnswerDocId,
+  loadProtocolTemplates,
+  computeChecklistItems,
+  loadIncidentDocs,
+  ANOMALY_CATEGORIES,
+  ANOMALY_URGENCY_LEVELS,
   loadBookingTimer,
   startBookingTimer,
   pauseBookingTimer,
@@ -90,9 +96,16 @@ let allMyBookings = [];
 let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
+// Liste normalisée issue de computeChecklistItems() : fusion de la
+// bibliothèque partagée (protocolTemplates) et des ajouts propres à ce
+// logement (exigences), pas seulement ces derniers malgré le nom conservé
+// pour limiter le diff — buildExigenceRow/buildRoomAccordion/
+// exigenceAnswerStats la consomment exactement comme avant.
 let activeExigences = [];
 let activeExigenceAnswers = {};
 let activeExigencePhase = null;
+let activeIncidents = [];
+let protocolTemplatesCache = [];
 let activeTimer = null;
 let timerTickId = null;
 let activeComments = [];
@@ -135,13 +148,17 @@ async function loadPhotosForBooking(bookingId) {
 // Logement avec sa propre liste d'exigences ? Sinon activeExigences reste
 // vide et renderActiveBooking garde l'ancien écran PHOTO_SLOTS plus bas.
 async function loadExigencesForBooking(booking) {
-  activeExigences = booking.propertyId ? await loadExigencesForProperty(booking.propertyId) : [];
-  if (activeExigences.length) {
-    const answers = await loadExigenceAnswers(booking.id);
-    activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
-  } else {
-    activeExigenceAnswers = {};
-  }
+  const [customExigences, answers, incidents] = await Promise.all([
+    booking.propertyId ? loadExigencesForProperty(booking.propertyId) : Promise.resolve([]),
+    loadExigenceAnswers(booking.id),
+    loadIncidentDocs(booking.id),
+  ]);
+  activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
+  activeIncidents = incidents;
+  // computeChecklistItems résout dependsOn contre les réponses déjà
+  // données (ex. la question de relance du linge taché) : toujours
+  // recalculé avec les dernières réponses, jamais mis en cache tel quel.
+  activeExigences = computeChecklistItems(booking, protocolTemplatesCache, customExigences, activeExigenceAnswers);
   // Nouvelle mission : on repart de la première phase qui a des exigences.
   activeExigencePhase = (EXIGENCE_PHASES.find(p => activeExigences.some(e => e.phase === p.key)) || EXIGENCE_PHASES[0]).key;
 }
@@ -299,15 +316,49 @@ function renderMyCompta() {
   });
 }
 
-// Une exigence compte 1 ou 2 réponses attendues (oui/non ET/OU photo), et
-// se répète une fois par pièce pour les exigences roomScope bedroom/bathroom.
+// Une exigence compte 1 à N réponses attendues (confirmation, oui/non,
+// une photo OU plusieurs photoSlots indépendants), et se répète une fois
+// par pièce pour les exigences roomScope bedroom/bathroom/wc.
 function exigenceAnswerStats(exigence, instance) {
   const answer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex)];
   let required = 0;
   let done = 0;
+  if (exigence.requiresConfirmation) { required += 1; if (answer && answer.confirmed) done += 1; }
   if (exigence.requiresYesNo) { required += 1; if (answer && answer.answerYesNo != null) done += 1; }
-  if (exigence.requiresPhoto) { required += 1; if (answer && answer.photoUrl) done += 1; }
+  if (exigence.photoSlots && exigence.photoSlots.length) {
+    exigence.photoSlots.forEach((label, slotIndex) => {
+      required += 1;
+      const slotAnswer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex, slotIndex)];
+      if (slotAnswer && slotAnswer.photoUrl) done += 1;
+    });
+  } else if (exigence.requiresPhoto) {
+    required += 1;
+    if (answer && answer.photoUrl) done += 1;
+  }
   return { required, done, answer };
+}
+
+// Un signalement ouvert sur ce point précis (même tâche, même instance de
+// pièce) fait passer le statut en rouge "Anomalie", quel que soit l'état
+// des réponses — un point peut être entièrement répondu et quand même
+// porter une anomalie en cours.
+function exigenceHasOpenAnomaly(exigence, instance) {
+  return activeIncidents.some(inc => inc.itemId === exigence.id && (inc.roomIndex ?? null) === (instance.roomIndex ?? null) && inc.status === 'open');
+}
+
+const EXIGENCE_STATUS_META = {
+  todo: { cls: 'todo', label: 'À faire' },
+  partial: { cls: 'partial', label: 'En cours' },
+  done: { cls: 'verified', label: 'Terminé' },
+  anomaly: { cls: 'anomaly', label: 'Anomalie signalée' },
+};
+
+function exigenceStatusState(exigence, instance) {
+  if (exigenceHasOpenAnomaly(exigence, instance)) return 'anomaly';
+  const stats = exigenceAnswerStats(exigence, instance);
+  if (stats.required === 0 || stats.done >= stats.required) return 'done';
+  if (stats.done === 0) return 'todo';
+  return 'partial';
 }
 
 function totalRequiredExigenceAnswers(items = activeExigences) {
@@ -371,7 +422,7 @@ function renderExigenceChecklist(canAnswer) {
 
   const activeItems = activeExigences.filter(e => e.phase === activeExigencePhase);
   const flatItems = activeItems.filter(e => e.roomScope === 'none' || e.roomScope === 'other');
-  const roomItems = activeItems.filter(e => e.roomScope === 'bedroom' || e.roomScope === 'bathroom');
+  const roomItems = activeItems.filter(e => e.roomScope === 'bedroom' || e.roomScope === 'bathroom' || e.roomScope === 'wc');
 
   flatItems.forEach(exigence => {
     exigenceInstances(exigence, activeBooking).forEach(instance => {
@@ -426,6 +477,154 @@ function buildRoomAccordion(group, canAnswer) {
   return details;
 }
 
+function buildPhotoSlotControl(exigence, instance, canAnswer, slotIndex, slotLabel) {
+  const answerId = exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex, slotIndex);
+  const answer = activeExigenceAnswers[answerId];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:inline-block;vertical-align:top;margin-right:10px;';
+  if (slotLabel) {
+    const cap = document.createElement('div');
+    cap.className = 'task-meta';
+    cap.textContent = slotLabel;
+    wrap.appendChild(cap);
+  }
+  const slotEl = document.createElement('div');
+  slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
+  if (answer && answer.photoUrl) {
+    const img = document.createElement('img');
+    img.src = answer.photoUrl;
+    img.alt = slotLabel || 'Photo';
+    slotEl.appendChild(img);
+  } else {
+    const span = document.createElement('span');
+    span.textContent = 'Photo';
+    slotEl.appendChild(span);
+  }
+  if (canAnswer) {
+    slotEl.onclick = () => {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.onchange = async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        setWorkStatus('');
+        slotEl.classList.add('uploading');
+        try {
+          const saved = await withTimeout(uploadExigenceAnswerImage({
+            bookingId: activeBooking.id,
+            exigenceId: exigence.id,
+            propertyId: activeBooking.propertyId,
+            roomIndex: instance.roomIndex,
+            slotIndex,
+            file,
+            answeredBy: currentUser.uid,
+          }), 30000);
+          activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+          renderActiveBooking();
+        } catch (e) {
+          slotEl.classList.remove('uploading');
+          setWorkStatus(`Photo non envoyée : ${storageErrorMessage(e)}`);
+        }
+      };
+      fileInput.click();
+    };
+  }
+  wrap.appendChild(slotEl);
+  return wrap;
+}
+
+function buildAnomalyReport(exigence, instance) {
+  const details = document.createElement('details');
+  details.className = 'exigence-anomaly';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Signaler un problème';
+  details.appendChild(summary);
+
+  const form = document.createElement('form');
+  form.className = 'anomaly-form';
+
+  const catLabel = document.createElement('label');
+  catLabel.className = 'form-row';
+  const catSel = document.createElement('select');
+  ANOMALY_CATEGORIES.forEach(cat => {
+    const o = document.createElement('option'); o.value = cat.key; o.textContent = cat.label;
+    catSel.appendChild(o);
+  });
+  catLabel.append(catSel);
+  form.append(catLabel);
+
+  const urgLabel = document.createElement('label');
+  urgLabel.className = 'form-row';
+  const urgSel = document.createElement('select');
+  ANOMALY_URGENCY_LEVELS.forEach(level => {
+    const o = document.createElement('option'); o.value = level.key; o.textContent = `Urgence : ${level.label}`;
+    urgSel.appendChild(o);
+  });
+  urgLabel.append(urgSel);
+  form.append(urgLabel);
+
+  const descArea = document.createElement('textarea');
+  descArea.placeholder = 'Décrire le problème…';
+  descArea.required = true;
+  form.append(descArea);
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.multiple = true;
+  form.append(fileInput);
+
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.className = 'btn ghost';
+  submit.textContent = 'Envoyer le signalement';
+  form.append(submit);
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const description = descArea.value.trim();
+    if (!description) return;
+    try {
+      await withButtonLoading(submit, async () => {
+        const photoRefs = [];
+        const files = Array.from(fileInput.files || []);
+        for (const file of files) {
+          const path = `incidents/${activeBooking.id}/${Date.now()}_${file.name}`;
+          const storageRef = ref(storage, path);
+          await withTimeout(uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' }), 30000);
+          photoRefs.push(await withTimeout(getDownloadURL(storageRef), 15000));
+        }
+        await withTimeout(addDoc(collection(db, 'incidents'), {
+          bookingId: activeBooking.id,
+          reportedBy: currentUser.uid,
+          type: catSel.value,
+          urgency: urgSel.value,
+          description,
+          itemId: exigence.id,
+          roomIndex: instance.roomIndex ?? null,
+          phase: exigence.phase,
+          photoRefs,
+          reportedAt: serverTimestamp(),
+          status: 'open',
+        }), 15000);
+        activeIncidents = await loadIncidentDocs(activeBooking.id);
+        queueEmail({
+          to: TEAM_EMAIL,
+          subject: `Zebramoon, anomalie signalée · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+          text: `${exigence.text} · ${description} · signalé par ${currentUser.name || currentUser.email}.`,
+        });
+        renderActiveBooking();
+      });
+    } catch (e) {
+      setWorkStatus(`Signalement non envoyé : ${storageErrorMessage(e)}`);
+    }
+  });
+
+  details.appendChild(form);
+  return details;
+}
+
 function buildExigenceRow(exigence, instance, canAnswer) {
   const answerId = exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex);
   const answer = activeExigenceAnswers[answerId];
@@ -447,12 +646,37 @@ function buildExigenceRow(exigence, instance, canAnswer) {
     row.appendChild(refImg);
   }
 
-  const stats = exigenceAnswerStats(exigence, instance);
-  const answered = stats.done === stats.required;
+  const state = exigenceStatusState(exigence, instance);
+  const meta = EXIGENCE_STATUS_META[state];
   const pill = document.createElement('span');
-  pill.className = 'status-pill ' + (answered ? 'verified' : 'rejected');
-  pill.textContent = answered ? 'Terminé' : 'Requis';
+  pill.className = 'status-pill ' + meta.cls;
+  pill.textContent = meta.label;
   row.appendChild(pill);
+
+  if (exigence.requiresConfirmation) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn ' + (answer && answer.confirmed ? 'primary' : 'ghost');
+    btn.textContent = answer && answer.confirmed ? 'Fait ✓' : 'Marquer comme fait';
+    btn.disabled = !canAnswer;
+    btn.onclick = async () => {
+      setWorkStatus('');
+      try {
+        const saved = await withTimeout(saveExigenceConfirmation({
+          bookingId: activeBooking.id,
+          exigenceId: exigence.id,
+          propertyId: activeBooking.propertyId,
+          roomIndex: instance.roomIndex,
+          answeredBy: currentUser.uid,
+        }), 15000);
+        activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+        renderActiveBooking();
+      } catch (e) {
+        setWorkStatus(`Confirmation non enregistrée : ${storageErrorMessage(e)}`);
+      }
+    };
+    row.appendChild(btn);
+  }
 
   if (exigence.requiresYesNo) {
     const toggle = document.createElement('div');
@@ -493,50 +717,18 @@ function buildExigenceRow(exigence, instance, canAnswer) {
     row.appendChild(toggle);
   }
 
-  if (exigence.requiresPhoto) {
-    const slotEl = document.createElement('div');
-    slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
-    if (answer && answer.photoUrl) {
-      const img = document.createElement('img');
-      img.src = answer.photoUrl;
-      img.alt = label;
-      slotEl.appendChild(img);
-    } else {
-      const span = document.createElement('span');
-      span.textContent = 'Photo';
-      slotEl.appendChild(span);
-    }
-    if (canAnswer) {
-      slotEl.onclick = () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.onchange = async event => {
-          const file = event.target.files[0];
-          if (!file) return;
-          setWorkStatus('');
-          slotEl.classList.add('uploading');
-          try {
-            const saved = await withTimeout(uploadExigenceAnswerImage({
-              bookingId: activeBooking.id,
-              exigenceId: exigence.id,
-              propertyId: activeBooking.propertyId,
-              roomIndex: instance.roomIndex,
-              file,
-              answeredBy: currentUser.uid,
-            }), 30000);
-            activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
-            renderActiveBooking();
-          } catch (e) {
-            slotEl.classList.remove('uploading');
-            setWorkStatus(`Photo non envoyée : ${storageErrorMessage(e)}`);
-          }
-        };
-        fileInput.click();
-      };
-    }
-    row.appendChild(slotEl);
+  if (exigence.photoSlots && exigence.photoSlots.length) {
+    const slotsWrap = document.createElement('div');
+    slotsWrap.style.marginTop = '8px';
+    exigence.photoSlots.forEach((slotLabel, slotIndex) => {
+      slotsWrap.appendChild(buildPhotoSlotControl(exigence, instance, canAnswer, slotIndex, slotLabel));
+    });
+    row.appendChild(slotsWrap);
+  } else if (exigence.requiresPhoto) {
+    row.appendChild(buildPhotoSlotControl(exigence, instance, canAnswer, null, null));
   }
+
+  row.appendChild(buildAnomalyReport(exigence, instance));
 
   return row;
 }
@@ -912,6 +1104,7 @@ function loadAssignedBookings() {
       activePhotoRecords = {};
       activeExigences = [];
       activeExigenceAnswers = {};
+      activeIncidents = [];
       activeTimer = null;
       activeComments = [];
     }
@@ -959,6 +1152,10 @@ onAuthStateChanged(auth, async user => {
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
+    // Bibliothèque partagée, chargée une fois par session (pas par mission) :
+    // un changement admin en cours de session n'apparaît qu'à la prochaine
+    // connexion, compromis raisonnable pour un contenu qui change rarement.
+    protocolTemplatesCache = await loadProtocolTemplates().catch(() => []);
     loadAssignedBookings();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
