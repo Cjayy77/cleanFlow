@@ -73,6 +73,7 @@
       <button type="button" class="tab" data-tab="compta">Compta</button>
       <button type="button" class="tab" data-tab="prospects">Prospects</button>
       <button type="button" class="tab" data-tab="catalog">Catalogue</button>
+      <button type="button" class="tab" data-tab="properties">Propriétés</button>
       <button type="button" class="tab" data-tab="tarifs">Tarifs</button>
     </div>
 
@@ -234,6 +235,21 @@
         <p>Kits d'accueil, consommables et location de linge, facturés en supplément du ménage. Créez, modifiez et retirez les articles ; les prix TTC se calculent depuis la TVA (modifiable dans « Tarifs »).</p>
         <div id="catalogStatus" class="status-banner hidden" role="status"></div>
         <div id="catalogRoot"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="properties">
+      <div class="card">
+        <div class="eyebrow">Back-office</div>
+        <h2>Propriétés</h2>
+        <p>La liste d'exigences d'un logement (photos, questions oui/non) est propre à ce logement. Sélectionnez un logement pour rédiger ou modifier ses exigences ; un logement sans exigences garde l'ancien parcours photo générique.</p>
+        <div id="propertiesStatus" class="status-banner hidden" role="status"></div>
+        <div id="propertiesRoot"></div>
+      </div>
+      <div class="card hidden" id="exigencesCard">
+        <div class="eyebrow">Exigences du logement</div>
+        <h2 id="exigencesPropertyTitle"></h2>
+        <div id="exigencesRoot"></div>
       </div>
     </section>
 

@@ -5,9 +5,16 @@ import {
   storage,
   ROLE_PRESTATAIRE,
   PHOTO_SLOTS,
+  EXIGENCE_PHASES,
   loadUserDoc,
   loadPhotoDocs,
   uploadBookingImage,
+  loadExigencesForProperty,
+  loadExigenceAnswers,
+  saveExigenceYesNo,
+  uploadExigenceAnswerImage,
+  exigenceInstances,
+  exigenceAnswerDocId,
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
@@ -77,6 +84,8 @@ let allMyBookings = [];
 let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
+let activeExigences = [];
+let activeExigenceAnswers = {};
 let assignedUnsub = null;
 
 function setAuthMessage(message, type = '') {
@@ -113,6 +122,18 @@ async function loadPhotosForBooking(bookingId) {
   activePhotoRecords = photoDocs.reduce((acc, photo) => ({ ...acc, [photo.slot]: photo }), {});
 }
 
+// Logement avec sa propre liste d'exigences ? Sinon activeExigences reste
+// vide et renderActiveBooking garde l'ancien écran PHOTO_SLOTS plus bas.
+async function loadExigencesForBooking(booking) {
+  activeExigences = booking.propertyId ? await loadExigencesForProperty(booking.propertyId) : [];
+  if (activeExigences.length) {
+    const answers = await loadExigenceAnswers(booking.id);
+    activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
+  } else {
+    activeExigenceAnswers = {};
+  }
+}
+
 function countUploadedPhotos() {
   return PHOTO_SLOTS.filter(slot => activePhotoRecords[slot.key]).length;
 }
@@ -140,6 +161,7 @@ function renderAssignedList() {
       selectedMissionId = booking.id;
       activeBooking = booking;
       await loadPhotosForBooking(booking.id);
+      await loadExigencesForBooking(booking);
       renderAssignedList();
       renderActiveBooking();
     };
@@ -259,6 +281,190 @@ function renderMyCompta() {
   });
 }
 
+// Une exigence compte 1 ou 2 réponses attendues (oui/non ET/OU photo), et
+// se répète une fois par pièce pour les exigences roomScope bedroom/bathroom.
+function totalRequiredExigenceAnswers() {
+  let total = 0;
+  activeExigences.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(() => {
+      if (exigence.requiresYesNo) total += 1;
+      if (exigence.requiresPhoto) total += 1;
+    });
+  });
+  return total;
+}
+
+function countAnsweredExigences() {
+  let count = 0;
+  activeExigences.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(instance => {
+      const answer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex)];
+      if (exigence.requiresYesNo && answer && answer.answerYesNo != null) count += 1;
+      if (exigence.requiresPhoto && answer && answer.photoUrl) count += 1;
+    });
+  });
+  return count;
+}
+
+function renderExigenceChecklist(canAnswer) {
+  const wrap = document.createElement('div');
+  EXIGENCE_PHASES.forEach(phase => {
+    const items = activeExigences.filter(e => e.phase === phase.key);
+    if (!items.length) return;
+    const phaseHead = document.createElement('div');
+    phaseHead.className = 'roster-subhead';
+    phaseHead.textContent = phase.label;
+    wrap.appendChild(phaseHead);
+    items.forEach(exigence => {
+      exigenceInstances(exigence, activeBooking).forEach(instance => {
+        wrap.appendChild(buildExigenceRow(exigence, instance, canAnswer));
+      });
+    });
+  });
+  return wrap;
+}
+
+function buildExigenceRow(exigence, instance, canAnswer) {
+  const answerId = exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex);
+  const answer = activeExigenceAnswers[answerId];
+  const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
+
+  const row = document.createElement('div');
+  row.className = 'dossier exigence-row';
+
+  const title = document.createElement('div');
+  title.className = 'dossier-addr';
+  title.textContent = label;
+  row.appendChild(title);
+
+  if (exigence.referencePhotoUrl) {
+    const refImg = document.createElement('img');
+    refImg.className = 'exigence-reference';
+    refImg.src = exigence.referencePhotoUrl;
+    refImg.alt = 'Référence';
+    row.appendChild(refImg);
+  }
+
+  const answered = (!exigence.requiresYesNo || (answer && answer.answerYesNo != null))
+    && (!exigence.requiresPhoto || (answer && answer.photoUrl));
+  const pill = document.createElement('span');
+  pill.className = 'status-pill ' + (answered ? 'verified' : 'rejected');
+  pill.textContent = answered ? 'Terminé' : 'Requis';
+  row.appendChild(pill);
+
+  if (exigence.requiresYesNo) {
+    const toggle = document.createElement('div');
+    toggle.className = 'exigence-yesno';
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'btn ' + (answer && answer.answerYesNo === true ? 'primary' : 'ghost');
+    yes.textContent = 'Oui';
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'btn ' + (answer && answer.answerYesNo === false ? 'primary' : 'ghost');
+    no.textContent = 'Non';
+    const answerYesNo = async value => {
+      setWorkStatus('');
+      try {
+        const saved = await withTimeout(saveExigenceYesNo({
+          bookingId: activeBooking.id,
+          exigenceId: exigence.id,
+          propertyId: activeBooking.propertyId,
+          roomIndex: instance.roomIndex,
+          answeredBy: currentUser.uid,
+          answerYesNo: value,
+        }), 15000);
+        activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+        renderActiveBooking();
+      } catch (e) {
+        setWorkStatus(`Réponse non enregistrée : ${storageErrorMessage(e)}`);
+      }
+    };
+    if (canAnswer) {
+      yes.onclick = () => answerYesNo(true);
+      no.onclick = () => answerYesNo(false);
+    } else {
+      yes.disabled = true;
+      no.disabled = true;
+    }
+    toggle.append(yes, no);
+    row.appendChild(toggle);
+  }
+
+  if (exigence.requiresPhoto) {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
+    if (answer && answer.photoUrl) {
+      const img = document.createElement('img');
+      img.src = answer.photoUrl;
+      img.alt = label;
+      slotEl.appendChild(img);
+    } else {
+      const span = document.createElement('span');
+      span.textContent = 'Photo';
+      slotEl.appendChild(span);
+    }
+    if (canAnswer) {
+      slotEl.onclick = () => {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.onchange = async event => {
+          const file = event.target.files[0];
+          if (!file) return;
+          setWorkStatus('');
+          slotEl.classList.add('uploading');
+          try {
+            const saved = await withTimeout(uploadExigenceAnswerImage({
+              bookingId: activeBooking.id,
+              exigenceId: exigence.id,
+              propertyId: activeBooking.propertyId,
+              roomIndex: instance.roomIndex,
+              file,
+              answeredBy: currentUser.uid,
+            }), 30000);
+            activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+            renderActiveBooking();
+          } catch (e) {
+            slotEl.classList.remove('uploading');
+            setWorkStatus(`Photo non envoyée : ${storageErrorMessage(e)}`);
+          }
+        };
+        fileInput.click();
+      };
+    }
+    row.appendChild(slotEl);
+  }
+
+  return row;
+}
+
+// Même action côté Firestore pour les deux parcours (PHOTO_SLOTS ou
+// exigences) : seul ce qui déclenche l'activation du bouton diffère.
+function buildSubmitButton(label, disabled) {
+  const button = document.createElement('button');
+  button.className = 'btn gold';
+  button.type = 'button';
+  button.textContent = activeBooking.status === 'submitted'
+    ? 'Dossier envoyé, en attente de vérification Zebramoon'
+    : label;
+  button.disabled = disabled;
+  button.onclick = async () => {
+    try {
+      await withButtonLoading(button, () =>
+        withTimeout(updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' }), 15000));
+      queueEmail({
+        to: TEAM_EMAIL,
+        subject: `Zebramoon, dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+        text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · soumis par ${currentUser.name || currentUser.email}. À contrôler dans /admin/.`,
+      });
+    } catch (e) {
+      setWorkStatus(`Impossible d’envoyer le dossier : ${storageErrorMessage(e)}`);
+    }
+  };
+  return button;
+}
+
 function renderActiveBooking() {
   activeBookingContainer.innerHTML = '';
   if (!activeBooking) return;
@@ -290,70 +496,58 @@ function renderActiveBooking() {
   }
 
   const canUpload = ['accepted', 'rejected'].includes(activeBooking.status);
-  const photoGrid = document.createElement('div');
-  photoGrid.className = 'photo-grid';
-  PHOTO_SLOTS.forEach(slot => {
-    const record = activePhotoRecords[slot.key];
-    const slotEl = document.createElement('div');
-    slotEl.className = 'photo-slot' + (record ? ' uploaded' : '');
-    if (record) {
-      const img = document.createElement('img');
-      img.src = record.downloadUrl || '';
-      img.alt = slot.label;
-      slotEl.appendChild(img);
-    } else {
-      const span = document.createElement('span');
-      span.textContent = slot.label;
-      slotEl.appendChild(span);
-    }
-    if (canUpload) {
-      slotEl.onclick = () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.onchange = async event => {
-          const file = event.target.files[0];
-          if (!file) return;
-          setWorkStatus('');
-          slotEl.classList.add('uploading');
-          try {
-            await withTimeout(uploadBookingImage({ bookingId: activeBooking.id, slot: slot.key, file, uploadedBy: currentUser.uid }), 30000);
-            await loadPhotosForBooking(activeBooking.id);
-            renderActiveBooking();
-          } catch (e) {
-            slotEl.classList.remove('uploading');
-            setWorkStatus(`Photo « ${slot.label} » non envoyée : ${storageErrorMessage(e)}`);
-          }
-        };
-        fileInput.click();
-      };
-    }
-    photoGrid.appendChild(slotEl);
-  });
-  activeBookingContainer.appendChild(photoGrid);
 
-  const count = countUploadedPhotos();
-  const button = document.createElement('button');
-  button.className = 'btn gold';
-  button.type = 'button';
-  button.textContent = activeBooking.status === 'submitted'
-    ? 'Dossier envoyé, en attente de vérification Zebramoon'
-    : `Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`;
-  button.disabled = !canUpload || count < PHOTO_SLOTS.length;
-  button.onclick = async () => {
-    try {
-      await withButtonLoading(button, () =>
-        withTimeout(updateDoc(doc(db, 'bookings', activeBooking.id), { status: 'submitted' }), 15000));
-      queueEmail({
-        to: TEAM_EMAIL,
-        subject: `Zebramoon, dossier photos à vérifier · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
-        text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · soumis par ${currentUser.name || currentUser.email}. À contrôler dans /admin/.`,
-      });
-    } catch (e) {
-      setWorkStatus(`Impossible d’envoyer le dossier : ${storageErrorMessage(e)}`);
-    }
-  };
-  activeBookingContainer.appendChild(button);
+  if (activeExigences.length) {
+    activeBookingContainer.appendChild(renderExigenceChecklist(canUpload));
+    const total = totalRequiredExigenceAnswers();
+    const answered = countAnsweredExigences();
+    activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${answered}/${total})`, !canUpload || answered < total));
+  } else {
+    const photoGrid = document.createElement('div');
+    photoGrid.className = 'photo-grid';
+    PHOTO_SLOTS.forEach(slot => {
+      const record = activePhotoRecords[slot.key];
+      const slotEl = document.createElement('div');
+      slotEl.className = 'photo-slot' + (record ? ' uploaded' : '');
+      if (record) {
+        const img = document.createElement('img');
+        img.src = record.downloadUrl || '';
+        img.alt = slot.label;
+        slotEl.appendChild(img);
+      } else {
+        const span = document.createElement('span');
+        span.textContent = slot.label;
+        slotEl.appendChild(span);
+      }
+      if (canUpload) {
+        slotEl.onclick = () => {
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.accept = 'image/*';
+          fileInput.onchange = async event => {
+            const file = event.target.files[0];
+            if (!file) return;
+            setWorkStatus('');
+            slotEl.classList.add('uploading');
+            try {
+              await withTimeout(uploadBookingImage({ bookingId: activeBooking.id, slot: slot.key, file, uploadedBy: currentUser.uid }), 30000);
+              await loadPhotosForBooking(activeBooking.id);
+              renderActiveBooking();
+            } catch (e) {
+              slotEl.classList.remove('uploading');
+              setWorkStatus(`Photo « ${slot.label} » non envoyée : ${storageErrorMessage(e)}`);
+            }
+          };
+          fileInput.click();
+        };
+      }
+      photoGrid.appendChild(slotEl);
+    });
+    activeBookingContainer.appendChild(photoGrid);
+
+    const count = countUploadedPhotos();
+    activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`, !canUpload || count < PHOTO_SLOTS.length));
+  }
 
   if (activeBooking.status === 'accepted' || activeBooking.status === 'rejected') {
     const releaseBtn = document.createElement('button');
@@ -423,8 +617,11 @@ function loadAssignedBookings() {
     selectedMissionId = activeBooking ? activeBooking.id : null;
     if (activeBooking) {
       await loadPhotosForBooking(activeBooking.id);
+      await loadExigencesForBooking(activeBooking);
     } else {
       activePhotoRecords = {};
+      activeExigences = [];
+      activeExigenceAnswers = {};
     }
     renderAssignedList();
     renderActiveBooking();
