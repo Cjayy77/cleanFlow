@@ -86,6 +86,7 @@ let activeBooking = null;
 let activePhotoRecords = {};
 let activeExigences = [];
 let activeExigenceAnswers = {};
+let activeExigencePhase = null;
 let assignedUnsub = null;
 
 function setAuthMessage(message, type = '') {
@@ -132,6 +133,8 @@ async function loadExigencesForBooking(booking) {
   } else {
     activeExigenceAnswers = {};
   }
+  // Nouvelle mission : on repart de la première phase qui a des exigences.
+  activeExigencePhase = (EXIGENCE_PHASES.find(p => activeExigences.some(e => e.phase === p.key)) || EXIGENCE_PHASES[0]).key;
 }
 
 function countUploadedPhotos() {
@@ -283,24 +286,30 @@ function renderMyCompta() {
 
 // Une exigence compte 1 ou 2 réponses attendues (oui/non ET/OU photo), et
 // se répète une fois par pièce pour les exigences roomScope bedroom/bathroom.
-function totalRequiredExigenceAnswers() {
+function exigenceAnswerStats(exigence, instance) {
+  const answer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex)];
+  let required = 0;
+  let done = 0;
+  if (exigence.requiresYesNo) { required += 1; if (answer && answer.answerYesNo != null) done += 1; }
+  if (exigence.requiresPhoto) { required += 1; if (answer && answer.photoUrl) done += 1; }
+  return { required, done, answer };
+}
+
+function totalRequiredExigenceAnswers(items = activeExigences) {
   let total = 0;
-  activeExigences.forEach(exigence => {
-    exigenceInstances(exigence, activeBooking).forEach(() => {
-      if (exigence.requiresYesNo) total += 1;
-      if (exigence.requiresPhoto) total += 1;
+  items.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(instance => {
+      total += exigenceAnswerStats(exigence, instance).required;
     });
   });
   return total;
 }
 
-function countAnsweredExigences() {
+function countAnsweredExigences(items = activeExigences) {
   let count = 0;
-  activeExigences.forEach(exigence => {
+  items.forEach(exigence => {
     exigenceInstances(exigence, activeBooking).forEach(instance => {
-      const answer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex)];
-      if (exigence.requiresYesNo && answer && answer.answerYesNo != null) count += 1;
-      if (exigence.requiresPhoto && answer && answer.photoUrl) count += 1;
+      count += exigenceAnswerStats(exigence, instance).done;
     });
   });
   return count;
@@ -308,20 +317,98 @@ function countAnsweredExigences() {
 
 function renderExigenceChecklist(canAnswer) {
   const wrap = document.createElement('div');
-  EXIGENCE_PHASES.forEach(phase => {
-    const items = activeExigences.filter(e => e.phase === phase.key);
-    if (!items.length) return;
+
+  const progress = document.createElement('div');
+  progress.className = 'exigence-progress';
+  progress.textContent = `${countAnsweredExigences()} sur ${totalRequiredExigenceAnswers()} exigences`;
+  wrap.appendChild(progress);
+
+  const phasesWithItems = EXIGENCE_PHASES.filter(phase => activeExigences.some(e => e.phase === phase.key));
+  if (!phasesWithItems.some(p => p.key === activeExigencePhase)) {
+    activeExigencePhase = phasesWithItems.length ? phasesWithItems[0].key : null;
+  }
+
+  if (phasesWithItems.length > 1) {
+    const tabbar = document.createElement('div');
+    tabbar.className = 'exigence-tabbar';
+    phasesWithItems.forEach(phase => {
+      const items = activeExigences.filter(e => e.phase === phase.key);
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'tab' + (phase.key === activeExigencePhase ? ' active' : '');
+      tab.textContent = phase.label;
+      const badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      badge.textContent = `${countAnsweredExigences(items)}/${totalRequiredExigenceAnswers(items)}`;
+      tab.appendChild(badge);
+      tab.onclick = () => { activeExigencePhase = phase.key; renderActiveBooking(); };
+      tabbar.appendChild(tab);
+    });
+    wrap.appendChild(tabbar);
+  } else if (phasesWithItems.length === 1) {
+    // Une seule phase rédigée pour ce logement : pas d'onglet à cliquer
+    // (rien à basculer), mais on affiche quand même son nom.
     const phaseHead = document.createElement('div');
     phaseHead.className = 'roster-subhead';
-    phaseHead.textContent = phase.label;
+    phaseHead.textContent = phasesWithItems[0].label;
     wrap.appendChild(phaseHead);
-    items.forEach(exigence => {
-      exigenceInstances(exigence, activeBooking).forEach(instance => {
-        wrap.appendChild(buildExigenceRow(exigence, instance, canAnswer));
-      });
+  }
+
+  const activeItems = activeExigences.filter(e => e.phase === activeExigencePhase);
+  const flatItems = activeItems.filter(e => e.roomScope === 'none' || e.roomScope === 'other');
+  const roomItems = activeItems.filter(e => e.roomScope === 'bedroom' || e.roomScope === 'bathroom');
+
+  flatItems.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(instance => {
+      wrap.appendChild(buildExigenceRow(exigence, instance, canAnswer));
     });
   });
+
+  // Une pièce peut porter plusieurs exigences (ex. "vérifier les draps" ET
+  // "dépoussiérer", toutes deux par chambre) : regroupées sous un même
+  // accordéon par pièce plutôt que répétées en liste plate, pour rester
+  // lisible sur un logement avec beaucoup d'exigences.
+  const roomGroups = new Map();
+  roomItems.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(instance => {
+      const key = `${exigence.roomScope}_${instance.roomIndex}`;
+      if (!roomGroups.has(key)) roomGroups.set(key, { label: instance.label, entries: [] });
+      roomGroups.get(key).entries.push({ exigence, instance });
+    });
+  });
+  roomGroups.forEach(group => wrap.appendChild(buildRoomAccordion(group, canAnswer)));
+
   return wrap;
+}
+
+function buildRoomAccordion(group, canAnswer) {
+  const total = group.entries.reduce((sum, { exigence, instance }) => sum + exigenceAnswerStats(exigence, instance).required, 0);
+  const done = group.entries.reduce((sum, { exigence, instance }) => sum + exigenceAnswerStats(exigence, instance).done, 0);
+
+  const details = document.createElement('details');
+  details.className = 'card exigence-room';
+  if (done === total) details.open = false; else details.open = true;
+
+  const summary = document.createElement('summary');
+  const title = document.createElement('div');
+  title.className = 'dossier-addr';
+  title.textContent = group.label;
+  const pill = document.createElement('span');
+  pill.className = 'status-pill ' + (done === total ? 'verified' : 'rejected');
+  pill.textContent = `${done}/${total}`;
+  summary.append(title, pill);
+  details.appendChild(summary);
+
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+  group.entries.forEach(({ exigence, instance }) => {
+    const row = buildExigenceRow(exigence, instance, canAnswer);
+    row.querySelector('.dossier-addr').textContent = exigence.text; // la pièce est déjà dans le titre de l'accordéon
+    body.appendChild(row);
+  });
+  details.appendChild(body);
+
+  return details;
 }
 
 function buildExigenceRow(exigence, instance, canAnswer) {
@@ -345,8 +432,8 @@ function buildExigenceRow(exigence, instance, canAnswer) {
     row.appendChild(refImg);
   }
 
-  const answered = (!exigence.requiresYesNo || (answer && answer.answerYesNo != null))
-    && (!exigence.requiresPhoto || (answer && answer.photoUrl));
+  const stats = exigenceAnswerStats(exigence, instance);
+  const answered = stats.done === stats.required;
   const pill = document.createElement('span');
   pill.className = 'status-pill ' + (answered ? 'verified' : 'rejected');
   pill.textContent = answered ? 'Terminé' : 'Requis';
