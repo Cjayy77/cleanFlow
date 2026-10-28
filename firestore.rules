@@ -128,7 +128,8 @@ service cloud.firestore {
         && request.resource.data.street is string
         && request.resource.data.city is string
         && request.resource.data.postalCode is string;
-      allow update, delete: if isClient() && resource.data.ownerId == request.auth.uid;
+      allow update: if (isClient() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow delete: if isClient() && resource.data.ownerId == request.auth.uid;
     }
 
     match /bookings/{bookingId} {
@@ -333,6 +334,17 @@ service cloud.firestore {
     // logement et consommée côté mission.
     match /exigenceSuggestions/{suggestionId} {
       allow read, write: if isAdmin();
+    }
+
+    // Bibliothèque PARTAGÉE de protocoles (avant/ménage/après), appliquée à
+    // tous les logements via computeChecklistItems() côté client : un seul
+    // modèle à corriger, pas une copie par logement. Contrairement à
+    // /exigences (ajouts/surcharges propres à UN logement, toujours
+    // là), le contenu standard du cahier des charges vit ici. Lu par le
+    // prestataire pour construire sa mission, écrit seulement par l'équipe.
+    match /protocolTemplates/{templateId} {
+      allow read: if isSignedIn() && (isAdmin() || isPrestataire());
+      allow write: if isAdmin();
     }
 
     // Réponses du prestataire à une exigence, pour UNE mission précise

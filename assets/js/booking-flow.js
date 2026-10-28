@@ -949,6 +949,17 @@ async function finalizeBooking() {
         guests: Number(draft.guests) || 0,
         hours: quote.hours,
         bedrooms: quote.bedrooms,
+        // Comptes/équipements du protocole de ménage, figés au moment de la
+        // réservation comme bedrooms/bathrooms ci-dessus : absents tant que
+        // l'admin n'a pas configuré la fiche logement (nouveau logement créé
+        // à la volée pendant la réservation, notamment), computeChecklistItems
+        // traite ça comme "aucune répétition"/"équipement absent", pas une erreur.
+        wcCount: Number(property.wcCount) || 0,
+        hasSofaBed: !!property.hasSofaBed,
+        hasTerrace: !!property.hasTerrace,
+        hasClim: !!property.hasClim,
+        keyBoxCount: Number(property.keyBoxCount) || 0,
+        smokeDetectorCount: Number(property.smokeDetectorCount) || 0,
         kitCount: quote.kitCount,
         linenRequested: quote.kitCount > 0,
         prestationPrice: quote.prestation,

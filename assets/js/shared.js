@@ -447,7 +447,68 @@ export const EXIGENCE_ROOM_SCOPES = [
   { key: 'none', label: 'Exigence unique' },
   { key: 'bedroom', label: 'Une fois par chambre' },
   { key: 'bathroom', label: 'Une fois par salle de bain' },
+  { key: 'wc', label: 'Une fois par WC' },
   { key: 'other', label: 'Zone unique (sol, terrasse…)' },
+];
+
+// Catégories du protocole partagé (bibliothèque /protocolTemplates), par
+// phase. Distinctes de EXIGENCE_SUGGESTION_CATEGORIES (qui ne sert que de
+// point de départ pour les ajouts propres à un logement) : ici c'est le
+// contenu réel appliqué à tous les logements.
+export const PROTOCOL_CATEGORIES = [
+  { key: 'preparation_generale', label: 'Préparation générale et linge', phase: 'avant' },
+  { key: 'acces', label: 'Accès au logement', phase: 'avant' },
+  { key: 'materiel', label: 'Matériel et produits de nettoyage', phase: 'avant' },
+  { key: 'aeration', label: 'Aération du logement', phase: 'avant' },
+  { key: 'equipements', label: 'Vérification des équipements', phase: 'avant' },
+  { key: 'etat_initial', label: 'État initial du logement', phase: 'avant' },
+  { key: 'equipements_dispo', label: 'Équipements mis à disposition', phase: 'avant' },
+  { key: 'consommables', label: 'Consommables', phase: 'avant' },
+  { key: 'parties_communes', label: 'Respect des parties communes', phase: 'avant' },
+  { key: 'menage_preparation', label: 'Préparation générale', phase: 'menage' },
+  { key: 'chambre', label: 'Chambres', phase: 'menage' },
+  { key: 'salle_de_bain', label: 'Salles de bain', phase: 'menage' },
+  { key: 'wc', label: 'WC', phase: 'menage' },
+  { key: 'cuisine', label: 'Cuisine', phase: 'menage' },
+  { key: 'salon', label: 'Salon', phase: 'menage' },
+  { key: 'sols_entree', label: 'Sols et entrée', phase: 'menage' },
+  { key: 'securite', label: 'Sécurité et équipements', phase: 'menage' },
+  { key: 'terrasse', label: 'Terrasse', phase: 'menage' },
+  { key: 'linge', label: 'Vérification du linge', phase: 'apres' },
+  { key: 'chauffage_clim', label: 'Chauffage et climatisation', phase: 'apres' },
+  { key: 'cles', label: 'Contrôle des clés', phase: 'apres' },
+  { key: 'presentation', label: 'Présentation finale', phase: 'apres' },
+  { key: 'entree', label: "Contrôle de l'entrée", phase: 'apres' },
+  { key: 'parties_communes_apres', label: 'Parties communes', phase: 'apres' },
+  { key: 'dechets', label: 'Gestion des déchets', phase: 'apres' },
+];
+
+export const PROTOCOL_GATE_FLAGS = [
+  { key: null, label: 'Toujours (aucune condition)' },
+  { key: 'hasSofaBed', label: "Si le logement a un canapé-lit" },
+  { key: 'hasTerrace', label: 'Si le logement a une terrasse' },
+  { key: 'hasClim', label: 'Si le logement a la climatisation' },
+  { key: 'smokeDetectorCount', label: 'Selon le nombre de détecteurs de fumée' },
+  { key: 'keyBoxCount', label: 'Selon le nombre de boîtes à clés' },
+];
+
+export const ANOMALY_CATEGORIES = [
+  { key: 'linge_manquant', label: 'Linge manquant' },
+  { key: 'equipement_defectueux', label: 'Équipement défectueux' },
+  { key: 'telecommande_absente', label: 'Télécommande absente' },
+  { key: 'consommables_insuffisants', label: 'Consommables insuffisants' },
+  { key: 'moisissures', label: 'Moisissures' },
+  { key: 'degradation_mobilier', label: 'Dégradation du mobilier' },
+  { key: 'probleme_plomberie', label: 'Problème de plomberie' },
+  { key: 'broken_object', label: 'Objet cassé' },
+  { key: 'lost_object', label: 'Objet perdu' },
+  { key: 'other', label: 'Autre' },
+];
+
+export const ANOMALY_URGENCY_LEVELS = [
+  { key: 'faible', label: 'Faible' },
+  { key: 'moyenne', label: 'Moyenne' },
+  { key: 'urgente', label: 'Urgente' },
 ];
 
 export const EXIGENCE_SUGGESTION_CATEGORIES = [
@@ -598,19 +659,24 @@ export async function loadExigenceAnswers(bookingId) {
 // Id déterministe : un nouvel envoi (photo ou oui/non) remplace la réponse
 // précédente pour cette exigence (et, pour une exigence par pièce, cette
 // pièce précise) sur cette mission, même logique que la photo en slot fixe.
-export function exigenceAnswerDocId(bookingId, exigenceId, roomIndex) {
-  return roomIndex == null ? `${bookingId}_${exigenceId}` : `${bookingId}_${exigenceId}_${roomIndex}`;
+export function exigenceAnswerDocId(bookingId, exigenceId, roomIndex, slotIndex = null) {
+  const base = roomIndex == null ? `${bookingId}_${exigenceId}` : `${bookingId}_${exigenceId}_${roomIndex}`;
+  return slotIndex == null ? base : `${base}_s${slotIndex}`;
 }
 
-// Une exigence « par pièce » (roomScope bedroom/bathroom) se répète une
-// fois par pièce RÉELLE de la réservation (bedrooms/bathrooms, recopiés
-// sur le booking au moment de la réservation — pas une relecture du
-// logement, pour qu'une mission en cours ne bouge pas si le logement est
-// modifié entre-temps). Une exigence 'none'/'other' n'a qu'une instance.
+// Une exigence « par pièce » (roomScope bedroom/bathroom/wc) se répète une
+// fois par pièce RÉELLE de la réservation (bedrooms/bathrooms/wcCount,
+// recopiés sur le booking au moment de la réservation — pas une relecture
+// du logement, pour qu'une mission en cours ne bouge pas si le logement
+// est modifié entre-temps). Une exigence 'none'/'other' n'a qu'une
+// instance.
 export function exigenceInstances(exigence, booking) {
-  if (exigence.roomScope === 'bedroom' || exigence.roomScope === 'bathroom') {
-    const count = Math.max(0, Number(exigence.roomScope === 'bedroom' ? booking.bedrooms : booking.bathrooms) || 0);
-    const roomWord = exigence.roomScope === 'bedroom' ? 'Chambre' : 'Salle de bain';
+  if (exigence.roomScope === 'bedroom' || exigence.roomScope === 'bathroom' || exigence.roomScope === 'wc') {
+    const countField = exigence.roomScope === 'bedroom' ? booking.bedrooms
+      : exigence.roomScope === 'bathroom' ? booking.bathrooms
+      : booking.wcCount;
+    const count = Math.max(0, Number(countField) || 0);
+    const roomWord = exigence.roomScope === 'bedroom' ? 'Chambre' : exigence.roomScope === 'bathroom' ? 'Salle de bain' : 'WC';
     return Array.from({ length: count }, (_, i) => ({ roomIndex: i, label: `${roomWord} ${i + 1}` }));
   }
   return [{ roomIndex: null, label: null }];
@@ -627,15 +693,107 @@ export async function saveExigenceYesNo({ bookingId, exigenceId, propertyId, roo
   return answerDoc;
 }
 
-export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, file, answeredBy }) {
+// Mode 1 (confirmation simple) : une case "fait", sans sémantique oui/non
+// (donc pas de branche anomalie automatique, contrairement à saveExigenceYesNo).
+export async function saveExigenceConfirmation({ bookingId, exigenceId, propertyId, roomIndex = null, answeredBy }) {
   const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex);
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, confirmed: true, answeredAt: serverTimestamp() };
+  await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
+  return answerDoc;
+}
+
+// slotIndex distingue plusieurs photos exigées par la MÊME tâche (ex. le
+// siphon : une photo ouvert, une photo refermé, deux validations séparées) —
+// omis pour une tâche à photo unique, l'id reste identique à avant.
+export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, slotIndex = null, file, answeredBy }) {
+  const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex, slotIndex);
   const storagePath = `exigenceAnswers/${id}`;
   const storageRef = ref(storage, storagePath);
   await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
   const photoUrl = await getDownloadURL(storageRef);
-  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, photoUrl, storagePath, answeredAt: serverTimestamp() };
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, slotIndex, answeredBy, photoUrl, storagePath, answeredAt: serverTimestamp() };
   await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
   return answerDoc;
+}
+
+export async function loadProtocolTemplates() {
+  const snap = await getDocs(collection(db, 'protocolTemplates'));
+  return snap.docs
+    .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+function protocolGateSatisfied(gateFlag, booking) {
+  if (!gateFlag) return true;
+  const value = booking[gateFlag];
+  return typeof value === 'number' ? value > 0 : !!value;
+}
+
+function normalizeProtocolTemplate(template) {
+  return {
+    id: template.id,
+    source: 'template',
+    phase: template.phase,
+    category: template.category || null,
+    order: template.order || 0,
+    text: template.text,
+    instructions: template.instructions || '',
+    roomScope: template.roomScope || 'none',
+    requiresConfirmation: !!template.requiresConfirmation,
+    requiresYesNo: !!template.requiresYesNo,
+    requiresPhoto: !!template.requiresPhoto,
+    photoSlots: template.photoSlots && template.photoSlots.length ? template.photoSlots : null,
+    referencePhotoUrl: (template.referencePhotoUrls && template.referencePhotoUrls[0]) || template.referencePhotoUrl || '',
+    referencePhotoUrls: template.referencePhotoUrls && template.referencePhotoUrls.length ? template.referencePhotoUrls : null,
+    dependsOn: template.dependsOn || null,
+    active: template.active,
+  };
+}
+
+function normalizeCustomExigence(item) {
+  return {
+    id: item.id,
+    source: 'custom',
+    phase: item.phase,
+    category: null,
+    order: item.order || 0,
+    text: item.text,
+    instructions: '',
+    roomScope: item.roomScope || 'none',
+    requiresConfirmation: false,
+    requiresYesNo: !!item.requiresYesNo,
+    requiresPhoto: !!item.requiresPhoto,
+    photoSlots: null,
+    referencePhotoUrl: item.referencePhotoUrl || '',
+    referencePhotoUrls: null,
+    dependsOn: null,
+    active: item.active,
+  };
+}
+
+// Fusionne la bibliothèque PARTAGÉE (protocolTemplates, filtrée par
+// équipements du logement via gateFlag, et par dépendance via dependsOn)
+// avec les AJOUTS propres à ce logement (exigences, inchangés) : une seule
+// liste normalisée, peu importe la source, que le rendu prestataire
+// consomme ensuite via exigenceInstances/buildExigenceRow comme avant.
+// `answers` (map answerDocId -> réponse) permet de résoudre dependsOn ;
+// recalculé à chaque rendu, donc une question de relance (ex. "avez-vous
+// résolu le problème ?") apparaît ou disparaît en direct selon la réponse
+// qui la conditionne.
+export function computeChecklistItems(booking, templates, customExigences, answers = {}) {
+  const fromTemplates = (templates || [])
+    .filter(t => t.active !== false)
+    .filter(t => protocolGateSatisfied(t.gateFlag, booking))
+    .filter(t => {
+      if (!t.dependsOn) return true;
+      const depAnswer = answers[exigenceAnswerDocId(booking.id, t.dependsOn.itemId, null)];
+      return !!depAnswer && depAnswer.answerYesNo === t.dependsOn.equals;
+    })
+    .map(normalizeProtocolTemplate);
+  const fromCustom = (customExigences || [])
+    .filter(e => e.active !== false)
+    .map(normalizeCustomExigence);
+  return [...fromTemplates, ...fromCustom].sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 // Chronomètre de mission (un document par réservation, id = bookingId).

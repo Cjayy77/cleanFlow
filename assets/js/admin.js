@@ -688,6 +688,7 @@ function subscribeProperties() {
   propertiesUnsub = onSnapshot(collection(db, 'properties'), snap => {
     latestProperties = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderProperties();
+    if (selectedPropertyId) renderPropertyConfig(latestProperties.find(p => p.id === selectedPropertyId));
   }, error => setPropertiesStatus(`Impossible de charger les logements : ${authErrorMessage(error)}`, 'error'));
 }
 
@@ -737,8 +738,112 @@ function selectProperty(propertyId) {
   const titleEl = document.getElementById('exigencesPropertyTitle');
   if (card) card.classList.toggle('hidden', !property);
   if (titleEl) titleEl.textContent = property ? propertyLabel(property) : '';
+  const configCard = document.getElementById('propertyConfigCard');
+  const configTitleEl = document.getElementById('propertyConfigTitle');
+  if (configCard) configCard.classList.toggle('hidden', !property);
+  if (configTitleEl) configTitleEl.textContent = property ? propertyLabel(property) : '';
   renderProperties();
+  renderPropertyConfig(property);
   subscribeExigencesForProperty(propertyId);
+}
+
+// Les comptes/équipements protocole (WC, canapé-lit, terrasse, clim,
+// boîtes à clés, détecteurs) et les standards personnalisables (linge,
+// température) sont admin-only : le client n'a pas besoin d'y penser pour
+// réserver, et ces réglages pilotent la génération du protocole de
+// ménage, pas le tarif. Un seul formulaire persistant (pas le pattern
+// ajout/annulation des .catalog-form) puisqu'il n'y a jamais qu'une
+// fiche à la fois pour le logement sélectionné.
+function renderPropertyConfig(property) {
+  const root = document.getElementById('propertyConfigRoot');
+  if (!root) return;
+  root.innerHTML = '';
+  if (!property) return;
+
+  const linen = property.linenStandard || {};
+  const temp = property.tempStandard || {};
+
+  const form = document.createElement('form');
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fWc = catalogField('Nombre de WC (distinct des salles de bain)', 'wcCount', property.wcCount || 0, 'number');
+  const fKeyBox = catalogField('Nombre de boîtes à clés', 'keyBoxCount', property.keyBoxCount || 0, 'number');
+  const fSmoke = catalogField('Nombre de détecteurs de fumée', 'smokeDetectorCount', property.smokeDetectorCount || 0, 'number');
+  form.append(fWc, fKeyBox, fSmoke);
+
+  [['hasSofaBed', 'Canapé-lit'], ['hasTerrace', 'Terrasse'], ['hasClim', 'Climatisation']].forEach(([name, label]) => {
+    const row = document.createElement('label');
+    row.className = 'service-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.name = name; cb.checked = !!property[name];
+    row.append(cb, document.createTextNode(` ${label}`));
+    form.append(row);
+  });
+
+  const linenHead = document.createElement('div');
+  linenHead.className = 'roster-subhead';
+  linenHead.style.marginTop = '18px';
+  linenHead.textContent = 'Linge, standard par chambre';
+  form.append(linenHead);
+  [
+    ['pillowcases', 'Taies d’oreiller', 2],
+    ['sheet', 'Drap plat', 1],
+    ['duvet', 'Housse de couette', 1],
+    ['smallTowels', 'Petites serviettes', 2],
+    ['largeTowels', 'Grandes serviettes', 2],
+  ].forEach(([name, label, fallback]) => {
+    form.append(catalogField(label, `linen_${name}`, linen[name] != null ? linen[name] : fallback, 'number'));
+  });
+
+  const tempHead = document.createElement('div');
+  tempHead.className = 'roster-subhead';
+  tempHead.style.marginTop = '18px';
+  tempHead.textContent = 'Température, consigne hiver';
+  form.append(tempHead);
+  form.append(catalogField('Salon (°C)', 'temp_salonWinter', temp.salonWinter != null ? temp.salonWinter : 23, 'number'));
+  form.append(catalogField('Chambre (°C)', 'temp_bedroomWinter', temp.bedroomWinter != null ? temp.bedroomWinter : 21, 'number'));
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = 'Enregistrer';
+  actions.append(save);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      wcCount: Number(get('wcCount').value) || 0,
+      keyBoxCount: Number(get('keyBoxCount').value) || 0,
+      smokeDetectorCount: Number(get('smokeDetectorCount').value) || 0,
+      hasSofaBed: get('hasSofaBed').checked,
+      hasTerrace: get('hasTerrace').checked,
+      hasClim: get('hasClim').checked,
+      linenStandard: {
+        pillowcases: Number(get('linen_pillowcases').value) || 0,
+        sheet: Number(get('linen_sheet').value) || 0,
+        duvet: Number(get('linen_duvet').value) || 0,
+        smallTowels: Number(get('linen_smallTowels').value) || 0,
+        largeTowels: Number(get('linen_largeTowels').value) || 0,
+      },
+      tempStandard: {
+        salonWinter: Number(get('temp_salonWinter').value) || 0,
+        bedroomWinter: Number(get('temp_bedroomWinter').value) || 0,
+      },
+    };
+    savePropertyConfig(property.id, data, save);
+  });
+
+  root.appendChild(form);
+}
+
+async function savePropertyConfig(propertyId, data, btn) {
+  try {
+    await withButtonLoading(btn, () => withTimeout(updateDoc(doc(db, 'properties', propertyId), data), 15000));
+    setPropertiesStatus('Fiche de configuration enregistrée.', 'success');
+  } catch (error) {
+    setPropertiesStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
 }
 
 function subscribeExigencesForProperty(propertyId) {
