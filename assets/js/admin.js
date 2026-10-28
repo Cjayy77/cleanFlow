@@ -33,6 +33,7 @@ import {
   loadExigenceAnswers,
   exigenceInstances,
   exigenceAnswerDocId,
+  loadBookingComments,
 } from './shared.js';
 import {
   collection,
@@ -74,6 +75,7 @@ const rejectBtn = document.getElementById('rejectBtn');
 const devisBtn = document.getElementById('devisBtn');
 const rejectNote = document.getElementById('rejectNote');
 const incidentList = document.getElementById('incidentList');
+const bookingCommentList = document.getElementById('bookingCommentList');
 const adminStatus = document.getElementById('adminStatus');
 const statPending = document.getElementById('statPending');
 const statAccepted = document.getElementById('statAccepted');
@@ -2609,6 +2611,7 @@ function renderBookingDetail() {
     if (bookingCost) { bookingCost.classList.add('hidden'); bookingCost.innerHTML = ''; }
     photoGrid.innerHTML = '';
     incidentList.innerHTML = '';
+    if (bookingCommentList) bookingCommentList.innerHTML = '';
     verifyBtn.disabled = true;
     rejectBtn.disabled = true;
     if (devisBtn) devisBtn.disabled = true;
@@ -2657,6 +2660,7 @@ function renderBookingDetail() {
   }
 
   renderIncidents();
+  renderBookingComments();
 }
 
 // Même file (#photoGrid) que PHOTO_SLOTS, mais une entrée par (exigence,
@@ -2756,6 +2760,32 @@ async function renderIncidents() {
       item.appendChild(link);
     });
     incidentList.appendChild(item);
+  });
+}
+
+// Lecture seule : l'admin consulte les commentaires du prestataire ici,
+// aucune saisie admin n'est ajoutée (voir firestore.rules, allow create
+// réservé au prestataire).
+async function renderBookingComments() {
+  if (!bookingCommentList) return;
+  bookingCommentList.innerHTML = '';
+  if (!selectedBooking) return;
+  const comments = await loadBookingComments(selectedBooking.id);
+  if (comments.length === 0) {
+    bookingCommentList.innerHTML = '<div class="empty-state">Aucun commentaire pour ce dossier.</div>';
+    return;
+  }
+  comments.forEach(comment => {
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+    const meta = document.createElement('div');
+    meta.className = 'comment-meta';
+    meta.textContent = formatShortDate(comment.createdAt?.toDate ? comment.createdAt.toDate() : comment.createdAt);
+    const text = document.createElement('div');
+    text.className = 'comment-text';
+    text.textContent = comment.text;
+    item.append(meta, text);
+    bookingCommentList.appendChild(item);
   });
 }
 

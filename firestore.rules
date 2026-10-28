@@ -342,6 +342,34 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
     }
 
+    // Chronomètre de mission : un document par réservation (id = bookingId),
+    // écrit uniquement par le prestataire qui y travaille. startedAt/pausedAt
+    // sont des horodatages CLIENT (pas serverTimestamp()) : c'est un repère
+    // personnel pour le prestataire, pas une preuve horodatée opposable, donc
+    // la précision serveur n'est pas nécessaire ici.
+    match /bookingTimers/{bookingId} {
+      allow read: if isAdmin() || (isPrestataire() && resource.data.prestataireId == request.auth.uid);
+      allow create, update: if isPrestataire()
+        && request.resource.data.prestataireId == request.auth.uid
+        && get(/databases/$(database)/documents/bookings/$(bookingId)).data.prestataireId == request.auth.uid;
+    }
+
+    // Notes du prestataire sur une mission (indépendant des incidents, qui
+    // restent réservés aux problèmes à traiter). Lu par l'équipe et le
+    // prestataire assigné, écrit par le prestataire ; l'admin peut marquer
+    // une note lue mais n'en rédige pas ici.
+    match /bookingComments/{commentId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
+      );
+      allow create: if isPrestataire()
+        && request.resource.data.authorId == request.auth.uid
+        && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+
     // File d'envoi d'e-mails, consommée par l'extension « Trigger Email »
     // (qui utilise le SDK Admin et ignore ces règles). Un utilisateur
     // connecté ne peut écrire qu'à l'adresse de l'équipe ; seul un admin

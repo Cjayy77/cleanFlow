@@ -15,6 +15,12 @@ import {
   uploadExigenceAnswerImage,
   exigenceInstances,
   exigenceAnswerDocId,
+  loadBookingTimer,
+  startBookingTimer,
+  pauseBookingTimer,
+  loadBookingComments,
+  addBookingComment,
+  buildClientPriceBreakdown,
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
@@ -87,6 +93,9 @@ let activePhotoRecords = {};
 let activeExigences = [];
 let activeExigenceAnswers = {};
 let activeExigencePhase = null;
+let activeTimer = null;
+let timerTickId = null;
+let activeComments = [];
 let assignedUnsub = null;
 
 function setAuthMessage(message, type = '') {
@@ -137,6 +146,11 @@ async function loadExigencesForBooking(booking) {
   activeExigencePhase = (EXIGENCE_PHASES.find(p => activeExigences.some(e => e.phase === p.key)) || EXIGENCE_PHASES[0]).key;
 }
 
+async function loadTimerAndCommentsForBooking(booking) {
+  activeTimer = await loadBookingTimer(booking.id);
+  activeComments = await loadBookingComments(booking.id);
+}
+
 function countUploadedPhotos() {
   return PHOTO_SLOTS.filter(slot => activePhotoRecords[slot.key]).length;
 }
@@ -165,6 +179,7 @@ function renderAssignedList() {
       activeBooking = booking;
       await loadPhotosForBooking(booking.id);
       await loadExigencesForBooking(booking);
+      await loadTimerAndCommentsForBooking(booking);
       renderAssignedList();
       renderActiveBooking();
     };
@@ -552,7 +567,188 @@ function buildSubmitButton(label, disabled) {
   return button;
 }
 
+function formatElapsed(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return [h, m, sec].map(n => String(n).padStart(2, '0')).join(':');
+}
+
+function currentTimerElapsedSeconds() {
+  if (!activeTimer) return 0;
+  const base = activeTimer.totalElapsedSeconds || 0;
+  if (activeTimer.status === 'running' && activeTimer.startedAt) {
+    return base + (Date.now() - activeTimer.startedAt) / 1000;
+  }
+  return base;
+}
+
+// Chrono de mission : repère personnel pour le prestataire pendant qu'il
+// travaille, pas une preuve horodatée (voir firestore.rules). L'intervalle
+// qui fait tiquer l'affichage est nettoyé à chaque re-rendu (début de
+// renderActiveBooking) pour ne jamais en empiler plusieurs.
+function renderTimerBlock(canUpload) {
+  const wrap = document.createElement('div');
+  wrap.className = 'exigence-timer';
+
+  const display = document.createElement('span');
+  display.className = 'exigence-timer-elapsed';
+  display.textContent = formatElapsed(currentTimerElapsedSeconds());
+  wrap.appendChild(display);
+
+  const running = canUpload && activeTimer && activeTimer.status === 'running';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn ghost';
+  btn.textContent = running ? 'Mettre en pause' : (activeTimer ? 'Reprendre le chrono' : 'Démarrer le chrono');
+  btn.disabled = !canUpload;
+  btn.onclick = async () => {
+    try {
+      if (running) {
+        activeTimer = await withTimeout(pauseBookingTimer({
+          bookingId: activeBooking.id,
+          prestataireId: currentUser.uid,
+          startedAt: activeTimer.startedAt,
+          totalElapsedSeconds: activeTimer.totalElapsedSeconds,
+        }), 15000);
+      } else {
+        activeTimer = await withTimeout(startBookingTimer({
+          bookingId: activeBooking.id,
+          prestataireId: currentUser.uid,
+          resumeFrom: activeTimer ? activeTimer.totalElapsedSeconds : 0,
+        }), 15000);
+      }
+      renderActiveBooking();
+    } catch (e) {
+      setWorkStatus(`Chronomètre non enregistré : ${storageErrorMessage(e)}`);
+    }
+  };
+  wrap.appendChild(btn);
+
+  if (running) {
+    timerTickId = setInterval(() => {
+      display.textContent = formatElapsed(currentTimerElapsedSeconds());
+    }, 1000);
+  }
+
+  return wrap;
+}
+
+function buildCostsTile() {
+  const details = document.createElement('details');
+  details.className = 'card';
+  const summary = document.createElement('summary');
+  const title = document.createElement('h2');
+  title.textContent = 'Coûts';
+  summary.appendChild(title);
+  details.appendChild(summary);
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+  body.appendChild(buildClientPriceBreakdown(activeBooking));
+  details.appendChild(body);
+  return details;
+}
+
+// Pas de nouveau mécanisme d'envoi : la galerie reprend simplement les
+// photos déjà déposées via le checklist d'exigences.
+function buildAttachmentsTile() {
+  const photos = Object.values(activeExigenceAnswers).filter(a => a.photoUrl);
+  const details = document.createElement('details');
+  details.className = 'card';
+  const summary = document.createElement('summary');
+  const title = document.createElement('h2');
+  title.textContent = `Pièces jointes (${photos.length})`;
+  summary.appendChild(title);
+  details.appendChild(summary);
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+  if (photos.length) {
+    const grid = document.createElement('div');
+    grid.className = 'attachment-grid';
+    photos.forEach(a => {
+      const img = document.createElement('img');
+      img.src = a.photoUrl;
+      img.alt = 'Photo de mission';
+      grid.appendChild(img);
+    });
+    body.appendChild(grid);
+  } else {
+    const empty = document.createElement('p');
+    empty.textContent = 'Aucune photo déposée pour le moment.';
+    body.appendChild(empty);
+  }
+  details.appendChild(body);
+  return details;
+}
+
+function buildCommentsTile(canUpload) {
+  const details = document.createElement('details');
+  details.className = 'card';
+  details.open = true;
+  const summary = document.createElement('summary');
+  const title = document.createElement('h2');
+  title.textContent = `Commentaires (${activeComments.length})`;
+  summary.appendChild(title);
+  details.appendChild(summary);
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+
+  if (activeComments.length) {
+    activeComments.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'comment-item';
+      const meta = document.createElement('div');
+      meta.className = 'comment-meta';
+      meta.textContent = currentUser && c.authorId === currentUser.uid ? 'Vous' : 'Zebramoon';
+      const text = document.createElement('div');
+      text.className = 'comment-text';
+      text.textContent = c.text;
+      item.append(meta, text);
+      body.appendChild(item);
+    });
+  } else {
+    const empty = document.createElement('p');
+    empty.textContent = 'Aucun commentaire pour le moment.';
+    body.appendChild(empty);
+  }
+
+  if (canUpload) {
+    const form = document.createElement('form');
+    form.className = 'comment-form';
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = 'Ajouter un commentaire sur cette mission…';
+    textarea.required = true;
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = 'btn ghost';
+    submit.textContent = 'Envoyer';
+    form.append(textarea, submit);
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const text = textarea.value.trim();
+      if (!text) return;
+      try {
+        await withButtonLoading(submit, () => withTimeout(addBookingComment({
+          bookingId: activeBooking.id,
+          authorId: currentUser.uid,
+          text,
+        }), 15000));
+        activeComments = await loadBookingComments(activeBooking.id);
+        renderActiveBooking();
+      } catch (e) {
+        setWorkStatus(`Commentaire non envoyé : ${storageErrorMessage(e)}`);
+      }
+    };
+    body.appendChild(form);
+  }
+
+  details.appendChild(body);
+  return details;
+}
+
 function renderActiveBooking() {
+  if (timerTickId) { clearInterval(timerTickId); timerTickId = null; }
   activeBookingContainer.innerHTML = '';
   if (!activeBooking) return;
   const heading = document.createElement('div');
@@ -583,6 +779,8 @@ function renderActiveBooking() {
   }
 
   const canUpload = ['accepted', 'rejected'].includes(activeBooking.status);
+
+  activeBookingContainer.appendChild(renderTimerBlock(canUpload));
 
   if (activeExigences.length) {
     activeBookingContainer.appendChild(renderExigenceChecklist(canUpload));
@@ -635,6 +833,10 @@ function renderActiveBooking() {
     const count = countUploadedPhotos();
     activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`, !canUpload || count < PHOTO_SLOTS.length));
   }
+
+  activeBookingContainer.appendChild(buildCostsTile());
+  activeBookingContainer.appendChild(buildAttachmentsTile());
+  activeBookingContainer.appendChild(buildCommentsTile(canUpload));
 
   if (activeBooking.status === 'accepted' || activeBooking.status === 'rejected') {
     const releaseBtn = document.createElement('button');
@@ -705,10 +907,13 @@ function loadAssignedBookings() {
     if (activeBooking) {
       await loadPhotosForBooking(activeBooking.id);
       await loadExigencesForBooking(activeBooking);
+      await loadTimerAndCommentsForBooking(activeBooking);
     } else {
       activePhotoRecords = {};
       activeExigences = [];
       activeExigenceAnswers = {};
+      activeTimer = null;
+      activeComments = [];
     }
     renderAssignedList();
     renderActiveBooking();

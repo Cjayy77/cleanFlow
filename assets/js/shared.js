@@ -605,6 +605,89 @@ export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propert
   return answerDoc;
 }
 
+// Chronomètre de mission (un document par réservation, id = bookingId).
+// startedAt/pausedAt sont des Date.now() côté client, pas serverTimestamp() :
+// c'est un repère personnel affiché au prestataire pendant qu'il travaille,
+// pas une preuve horodatée, donc pas besoin d'un aller-retour serveur pour
+// calculer le temps écoulé pendant que le chrono tourne.
+export async function loadBookingTimer(bookingId) {
+  const snap = await getDoc(doc(db, 'bookingTimers', bookingId));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function startBookingTimer({ bookingId, prestataireId, resumeFrom = 0 }) {
+  const timerDoc = { bookingId, prestataireId, startedAt: Date.now(), pausedAt: null, totalElapsedSeconds: resumeFrom, status: 'running' };
+  await setDoc(doc(db, 'bookingTimers', bookingId), timerDoc);
+  return timerDoc;
+}
+
+export async function pauseBookingTimer({ bookingId, prestataireId, startedAt, totalElapsedSeconds }) {
+  const elapsed = (totalElapsedSeconds || 0) + Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+  const timerDoc = { bookingId, prestataireId, startedAt: null, pausedAt: Date.now(), totalElapsedSeconds: elapsed, status: 'paused' };
+  await setDoc(doc(db, 'bookingTimers', bookingId), timerDoc);
+  return timerDoc;
+}
+
+// Notes du prestataire sur une mission (indépendant des incidents, réservés
+// aux problèmes à signaler).
+export async function loadBookingComments(bookingId) {
+  const snap = await getDocs(query(collection(db, 'bookingComments'), where('bookingId', '==', bookingId)));
+  return snap.docs
+    .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    .sort((a, b) => (b.createdAt?.toMillis?.() || b.createdAt || 0) - (a.createdAt?.toMillis?.() || a.createdAt || 0));
+}
+
+export async function addBookingComment({ bookingId, authorId, text }) {
+  const commentDoc = { bookingId, authorId, text, read: false, createdAt: serverTimestamp() };
+  const ref2 = await addDoc(collection(db, 'bookingComments'), commentDoc);
+  return { id: ref2.id, ...commentDoc };
+}
+
+// Décomposition du prix CÔTÉ CLIENT uniquement (prestation/kits/amenities/
+// suppléments/commission/déplacement/TVA/TTC) : volontairement SANS
+// prestatairePay/adjustment (rémunération du prestataire, réservée à
+// l'admin dans la compta) tant que l'équipe n'a pas confirmé que le
+// prestataire doit voir sa propre paie par mission.
+export function buildClientPriceBreakdown(booking) {
+  const price = Number(booking.price) || 0;
+  const prestation = Number(booking.prestationPrice) || 0;
+  const travel = Number(booking.travelFee) || 0;
+  const amenities = Number(booking.amenitiesPrice) || 0;
+  const extrasHT = Number(booking.extrasHT) || 0;
+  const commission = Number(booking.commission) || 0;
+  const kits = Math.max(0, price - prestation - amenities - extrasHT - commission - travel);
+  const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
+  const rate = getPricing().vatRate;
+  const vat = Math.round(price * rate);
+
+  const hstr = booking.hours ? `${String(booking.hours).replace('.', ',')} h · ` : '';
+  const rows = [[`Prestation · ${hstr}${booking.surface ? `${booking.surface} m²` : ''}`.replace(/· $/, ''), prestation]];
+  if (kits) rows.push([`Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, kits]);
+  rows.push(['Amenities (consommables)', amenities]);
+  (booking.extras || []).forEach(e => {
+    rows.push([`${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, (Number(e.priceHT) || 0) * (Number(e.qty) || 0)]);
+  });
+  if (commission) rows.push(['Commission Zebramoon', commission]);
+  if (travel) rows.push(['Frais de déplacement', travel]);
+  rows.push(['Total HT', price, 'pb-total']);
+  rows.push([`TVA (${Math.round(rate * 100)} %)`, vat, '']);
+  rows.push(['Total TTC (payé par le client)', price + vat, 'pb-warn']);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'price-breakdown';
+  rows.forEach(([label, amount, cls]) => {
+    const line = document.createElement('div');
+    line.className = `pb-line ${cls || ''}`.trim();
+    const span = document.createElement('span');
+    span.textContent = label;
+    const b = document.createElement('b');
+    b.textContent = `${amount}€`;
+    line.append(span, b);
+    wrap.appendChild(line);
+  });
+  return wrap;
+}
+
 export function formatShortDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
