@@ -128,7 +128,8 @@ service cloud.firestore {
         && request.resource.data.street is string
         && request.resource.data.city is string
         && request.resource.data.postalCode is string;
-      allow update, delete: if isClient() && resource.data.ownerId == request.auth.uid;
+      allow update: if (isClient() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow delete: if isClient() && resource.data.ownerId == request.auth.uid;
     }
 
     match /bookings/{bookingId} {
@@ -325,6 +326,27 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Bibliothèque de suggestions réutilisables entre logements (ex. "faire
+    // le lit", "photo du tambour du lave-linge"), proposées dans l'éditeur
+    // d'exigences pour éviter de tout retaper à chaque logement. Outil de
+    // rédaction interne à l'équipe : jamais lu par le prestataire ou le
+    // client, contrairement à /exigences qui, elle, est propre à un
+    // logement et consommée côté mission.
+    match /exigenceSuggestions/{suggestionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Bibliothèque PARTAGÉE de protocoles (avant/ménage/après), appliquée à
+    // tous les logements via computeChecklistItems() côté client : un seul
+    // modèle à corriger, pas une copie par logement. Contrairement à
+    // /exigences (ajouts/surcharges propres à UN logement, toujours
+    // là), le contenu standard du cahier des charges vit ici. Lu par le
+    // prestataire pour construire sa mission, écrit seulement par l'équipe.
+    match /protocolTemplates/{templateId} {
+      allow read: if isSignedIn() && (isAdmin() || isPrestataire());
+      allow write: if isAdmin();
+    }
+
     // Réponses du prestataire à une exigence, pour UNE mission précise
     // (id déterministe bookingId_exigenceId, cf. /photos ci-dessus : un
     // nouvel envoi remplace le précédent, pas d'historique à gérer côté
@@ -340,6 +362,34 @@ service cloud.firestore {
       allow create, update: if isPrestataire()
         && request.resource.data.answeredBy == request.auth.uid
         && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
+    }
+
+    // Chronomètre de mission : un document par réservation (id = bookingId),
+    // écrit uniquement par le prestataire qui y travaille. startedAt/pausedAt
+    // sont des horodatages CLIENT (pas serverTimestamp()) : c'est un repère
+    // personnel pour le prestataire, pas une preuve horodatée opposable, donc
+    // la précision serveur n'est pas nécessaire ici.
+    match /bookingTimers/{bookingId} {
+      allow read: if isAdmin() || (isPrestataire() && resource.data.prestataireId == request.auth.uid);
+      allow create, update: if isPrestataire()
+        && request.resource.data.prestataireId == request.auth.uid
+        && get(/databases/$(database)/documents/bookings/$(bookingId)).data.prestataireId == request.auth.uid;
+    }
+
+    // Notes du prestataire sur une mission (indépendant des incidents, qui
+    // restent réservés aux problèmes à traiter). Lu par l'équipe et le
+    // prestataire assigné, écrit par le prestataire ; l'admin peut marquer
+    // une note lue mais n'en rédige pas ici.
+    match /bookingComments/{commentId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
+      );
+      allow create: if isPrestataire()
+        && request.resource.data.authorId == request.auth.uid
+        && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
     }
 
     // File d'envoi d'e-mails, consommée par l'extension « Trigger Email »
@@ -377,7 +427,12 @@ service cloud.firestore {
       );
       allow create: if isPrestataire()
         && request.resource.data.reportedBy == request.auth.uid
-        && request.resource.data.type in ['broken_object', 'lost_object', 'other']
+        && request.resource.data.type in [
+          'broken_object', 'lost_object', 'other',
+          'linge_manquant', 'equipement_defectueux', 'telecommande_absente',
+          'consommables_insuffisants', 'moisissures', 'degradation_mobilier',
+          'probleme_plomberie'
+        ]
         && request.resource.data.status == 'open';
       allow update: if isAdmin();
     }

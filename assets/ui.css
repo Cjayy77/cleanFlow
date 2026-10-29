@@ -90,6 +90,9 @@ textarea{ min-height:110px; resize:vertical; }
 .status-pill.verified{ color:var(--ok-ink); }
 .status-pill.rejected{ color:var(--danger-ink); }
 .status-pill.cancelled{ color:var(--muted); }
+.status-pill.todo{ color:var(--muted); }
+.status-pill.partial{ color:var(--gold); }
+.status-pill.anomaly{ color:var(--danger-ink); }
 .btn.ghost.danger{ color:var(--danger-ink); }
 .btn.ghost.danger:hover:not(:disabled){ border-color:var(--danger-ink); color:var(--danger-ink); }
 /* État « armé » d'une confirmation deux-clics : blanc sur rouge, prioritaire
@@ -199,6 +202,7 @@ textarea{ min-height:110px; resize:vertical; }
 .catalog-group{ margin-bottom:28px; }
 .catalog-group .roster-subhead{ margin-bottom:10px; }
 .catalog-item{ display:flex; align-items:center; gap:14px; border-top:1px solid var(--line); padding:14px 2px; }
+.catalog-item.inactive{ opacity:.55; }
 .catalog-thumb{ width:48px; height:48px; border-radius:var(--radius-md); background:var(--tint); flex-shrink:0; overflow:hidden; }
 .catalog-thumb img{ width:100%; height:100%; object-fit:cover; }
 .catalog-info{ flex:1; min-width:0; }
@@ -355,6 +359,39 @@ textarea{ min-height:110px; resize:vertical; }
 .exigence-yesno{ display:flex; gap:10px; margin:10px 0; }
 .exigence-yesno .btn{ padding:10px 20px; min-height:auto; }
 .exigence-row .photo-slot{ max-width:200px; margin-top:8px; }
+
+/* Barre d'onglets des phases (avant/ménage/après), imbriquée dans le dossier
+   de mission : mêmes .tab/.tab-badge que la console admin, mais PAS collée
+   en haut de l'écran (.tabbar l'est, pour la nav de premier niveau). */
+.exigence-progress{ font-size:13px; font-weight:700; color:var(--muted); margin-bottom:10px; }
+.exigence-tabbar{ display:flex; gap:20px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-bottom:18px; border-bottom:1px solid var(--line); }
+.exigence-tabbar::-webkit-scrollbar{ display:none; }
+.tab.locked{ opacity:.4; cursor:not-allowed; }
+.exigence-room{ margin-bottom:10px; }
+.exigence-room .exigence-row{ border-top:none; padding-top:4px; }
+.exigence-room > summary .status-pill{ margin:0; }
+
+.exigence-timer{ display:flex; align-items:center; gap:14px; margin:14px 0; padding:12px 14px; border-radius:var(--radius-md); background:var(--soft); border:1px solid var(--line); }
+.exigence-timer-elapsed{ font-size:18px; font-weight:700; color:var(--ink); min-width:76px; }
+
+/* Signalement d'anomalie, replié par défaut sous chaque ligne d'exigence :
+   action secondaire, pas la ligne principale, donc un lien discret plutôt
+   qu'un accordéon .card pleine largeur. */
+.exigence-anomaly{ margin-top:10px; }
+.exigence-anomaly > summary{ cursor:pointer; list-style:none; font-size:12.5px; font-weight:700; color:var(--danger-ink); }
+.exigence-anomaly > summary::-webkit-details-marker{ display:none; }
+.anomaly-form{ display:flex; flex-direction:column; gap:10px; margin-top:10px; padding:12px 14px; border-radius:var(--radius-md); background:var(--soft); border:1px solid var(--line); }
+.anomaly-form textarea{ min-height:60px; resize:vertical; }
+
+.attachment-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:10px; }
+.attachment-grid img{ width:100%; aspect-ratio:1; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--line); }
+
+.comment-item{ padding:10px 0; border-top:1px solid var(--line); }
+.comment-item:first-child{ border-top:none; }
+.comment-meta{ font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.comment-text{ font-size:14px; color:var(--ink); line-height:1.5; white-space:pre-wrap; }
+.comment-form{ display:flex; gap:10px; margin-top:12px; }
+.comment-form textarea{ flex:1; min-height:44px; resize:vertical; font-family:inherit; font-size:14px; padding:10px 12px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--paper); color:var(--ink); }
 
 @media (prefers-reduced-motion: reduce){
   *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }

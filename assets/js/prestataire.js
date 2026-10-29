@@ -12,9 +12,22 @@ import {
   loadExigencesForProperty,
   loadExigenceAnswers,
   saveExigenceYesNo,
+  saveExigenceConfirmation,
+  saveExigenceComment,
   uploadExigenceAnswerImage,
   exigenceInstances,
   exigenceAnswerDocId,
+  loadProtocolTemplates,
+  computeChecklistItems,
+  loadIncidentDocs,
+  ANOMALY_CATEGORIES,
+  ANOMALY_URGENCY_LEVELS,
+  loadBookingTimer,
+  startBookingTimer,
+  pauseBookingTimer,
+  loadBookingComments,
+  addBookingComment,
+  buildClientPriceBreakdown,
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
@@ -84,8 +97,24 @@ let allMyBookings = [];
 let selectedMissionId = null;
 let activeBooking = null;
 let activePhotoRecords = {};
+// Liste normalisée issue de computeChecklistItems() : fusion de la
+// bibliothèque partagée (protocolTemplates) et des ajouts propres à ce
+// logement (exigences), pas seulement ces derniers malgré le nom conservé
+// pour limiter le diff — buildExigenceRow/buildRoomAccordion/
+// exigenceAnswerStats la consomment exactement comme avant.
 let activeExigences = [];
 let activeExigenceAnswers = {};
+let activeExigencePhase = null;
+let activeIncidents = [];
+// Ajouts propres au logement (pas encore fusionnés) : conservés à part pour
+// pouvoir recalculer activeExigences à chaque rendu (voir renderActiveBooking),
+// pas seulement au chargement de la mission — sinon une question de relance
+// (dependsOn) répondue en cours de route n'apparaîtrait jamais.
+let activeCustomExigences = [];
+let protocolTemplatesCache = [];
+let activeTimer = null;
+let timerTickId = null;
+let activeComments = [];
 let assignedUnsub = null;
 
 function setAuthMessage(message, type = '') {
@@ -125,13 +154,26 @@ async function loadPhotosForBooking(bookingId) {
 // Logement avec sa propre liste d'exigences ? Sinon activeExigences reste
 // vide et renderActiveBooking garde l'ancien écran PHOTO_SLOTS plus bas.
 async function loadExigencesForBooking(booking) {
-  activeExigences = booking.propertyId ? await loadExigencesForProperty(booking.propertyId) : [];
-  if (activeExigences.length) {
-    const answers = await loadExigenceAnswers(booking.id);
-    activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
-  } else {
-    activeExigenceAnswers = {};
-  }
+  const [customExigences, answers, incidents] = await Promise.all([
+    booking.propertyId ? loadExigencesForProperty(booking.propertyId) : Promise.resolve([]),
+    loadExigenceAnswers(booking.id),
+    loadIncidentDocs(booking.id),
+  ]);
+  activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
+  activeIncidents = incidents;
+  activeCustomExigences = customExigences;
+  // computeChecklistItems résout dependsOn contre les réponses déjà
+  // données (ex. la question de relance du linge taché) : toujours
+  // recalculé avec les dernières réponses, jamais mis en cache tel quel
+  // (voir aussi renderActiveBooking, qui refait ce calcul à chaque rendu).
+  activeExigences = computeChecklistItems(booking, protocolTemplatesCache, customExigences, activeExigenceAnswers);
+  // Nouvelle mission : on repart de la première phase qui a des exigences.
+  activeExigencePhase = (EXIGENCE_PHASES.find(p => activeExigences.some(e => e.phase === p.key)) || EXIGENCE_PHASES[0]).key;
+}
+
+async function loadTimerAndCommentsForBooking(booking) {
+  activeTimer = await loadBookingTimer(booking.id);
+  activeComments = await loadBookingComments(booking.id);
 }
 
 function countUploadedPhotos() {
@@ -162,6 +204,7 @@ function renderAssignedList() {
       activeBooking = booking;
       await loadPhotosForBooking(booking.id);
       await loadExigencesForBooking(booking);
+      await loadTimerAndCommentsForBooking(booking);
       renderAssignedList();
       renderActiveBooking();
     };
@@ -281,26 +324,66 @@ function renderMyCompta() {
   });
 }
 
-// Une exigence compte 1 ou 2 réponses attendues (oui/non ET/OU photo), et
-// se répète une fois par pièce pour les exigences roomScope bedroom/bathroom.
-function totalRequiredExigenceAnswers() {
+// Une exigence compte 1 à N réponses attendues (confirmation, oui/non,
+// une photo OU plusieurs photoSlots indépendants), et se répète une fois
+// par pièce pour les exigences roomScope bedroom/bathroom/wc.
+function exigenceAnswerStats(exigence, instance) {
+  const answer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex)];
+  let required = 0;
+  let done = 0;
+  if (exigence.requiresConfirmation) { required += 1; if (answer && answer.confirmed) done += 1; }
+  if (exigence.requiresYesNo) { required += 1; if (answer && answer.answerYesNo != null) done += 1; }
+  if (exigence.photoSlots && exigence.photoSlots.length) {
+    exigence.photoSlots.forEach((label, slotIndex) => {
+      required += 1;
+      const slotAnswer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex, slotIndex)];
+      if (slotAnswer && slotAnswer.photoUrl) done += 1;
+    });
+  } else if (exigence.requiresPhoto) {
+    required += 1;
+    if (answer && answer.photoUrl) done += 1;
+  }
+  return { required, done, answer };
+}
+
+// Un signalement ouvert sur ce point précis (même tâche, même instance de
+// pièce) fait passer le statut en rouge "Anomalie", quel que soit l'état
+// des réponses — un point peut être entièrement répondu et quand même
+// porter une anomalie en cours.
+function exigenceHasOpenAnomaly(exigence, instance) {
+  return activeIncidents.some(inc => inc.itemId === exigence.id && (inc.roomIndex ?? null) === (instance.roomIndex ?? null) && inc.status === 'open');
+}
+
+const EXIGENCE_STATUS_META = {
+  todo: { cls: 'todo', label: 'À faire' },
+  partial: { cls: 'partial', label: 'En cours' },
+  done: { cls: 'verified', label: 'Terminé' },
+  anomaly: { cls: 'anomaly', label: 'Anomalie signalée' },
+};
+
+function exigenceStatusState(exigence, instance) {
+  if (exigenceHasOpenAnomaly(exigence, instance)) return 'anomaly';
+  const stats = exigenceAnswerStats(exigence, instance);
+  if (stats.required === 0 || stats.done >= stats.required) return 'done';
+  if (stats.done === 0) return 'todo';
+  return 'partial';
+}
+
+function totalRequiredExigenceAnswers(items = activeExigences) {
   let total = 0;
-  activeExigences.forEach(exigence => {
-    exigenceInstances(exigence, activeBooking).forEach(() => {
-      if (exigence.requiresYesNo) total += 1;
-      if (exigence.requiresPhoto) total += 1;
+  items.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(instance => {
+      total += exigenceAnswerStats(exigence, instance).required;
     });
   });
   return total;
 }
 
-function countAnsweredExigences() {
+function countAnsweredExigences(items = activeExigences) {
   let count = 0;
-  activeExigences.forEach(exigence => {
+  items.forEach(exigence => {
     exigenceInstances(exigence, activeBooking).forEach(instance => {
-      const answer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex)];
-      if (exigence.requiresYesNo && answer && answer.answerYesNo != null) count += 1;
-      if (exigence.requiresPhoto && answer && answer.photoUrl) count += 1;
+      count += exigenceAnswerStats(exigence, instance).done;
     });
   });
   return count;
@@ -308,19 +391,300 @@ function countAnsweredExigences() {
 
 function renderExigenceChecklist(canAnswer) {
   const wrap = document.createElement('div');
-  EXIGENCE_PHASES.forEach(phase => {
-    const items = activeExigences.filter(e => e.phase === phase.key);
-    if (!items.length) return;
+
+  const progress = document.createElement('div');
+  progress.className = 'exigence-progress';
+  progress.textContent = `${countAnsweredExigences()} sur ${totalRequiredExigenceAnswers()} exigences`;
+  wrap.appendChild(progress);
+
+  const phasesWithItems = EXIGENCE_PHASES.filter(phase => activeExigences.some(e => e.phase === phase.key));
+  if (!phasesWithItems.some(p => p.key === activeExigencePhase)) {
+    activeExigencePhase = phasesWithItems.length ? phasesWithItems[0].key : null;
+  }
+
+  if (phasesWithItems.length > 1) {
+    const tabbar = document.createElement('div');
+    tabbar.className = 'exigence-tabbar';
+    // Le prestataire ne peut pas commencer une phase avant d'avoir terminé
+    // la précédente (ex. Ménage reste verrouillé tant qu'Avant ménage
+    // n'est pas complet) — verrouillage relatif aux phases RÉELLEMENT
+    // présentes pour ce logement, pas à l'ordre fixe avant/ménage/après :
+    // un logement sans contenu "avant" ne bloque jamais sur une phase vide.
+    phasesWithItems.forEach((phase, index) => {
+      const items = activeExigences.filter(e => e.phase === phase.key);
+      const prevPhase = index > 0 ? phasesWithItems[index - 1] : null;
+      let locked = false;
+      if (prevPhase) {
+        const prevItems = activeExigences.filter(e => e.phase === prevPhase.key);
+        locked = countAnsweredExigences(prevItems) < totalRequiredExigenceAnswers(prevItems);
+      }
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'tab' + (phase.key === activeExigencePhase ? ' active' : '') + (locked ? ' locked' : '');
+      tab.textContent = phase.label;
+      const badge = document.createElement('span');
+      badge.className = 'tab-badge';
+      badge.textContent = `${countAnsweredExigences(items)}/${totalRequiredExigenceAnswers(items)}`;
+      tab.appendChild(badge);
+      if (locked) {
+        tab.disabled = true;
+        tab.title = `Terminez d’abord « ${prevPhase.label} »`;
+      } else {
+        tab.onclick = () => { activeExigencePhase = phase.key; renderActiveBooking(); };
+      }
+      tabbar.appendChild(tab);
+    });
+    wrap.appendChild(tabbar);
+  } else if (phasesWithItems.length === 1) {
+    // Une seule phase rédigée pour ce logement : pas d'onglet à cliquer
+    // (rien à basculer), mais on affiche quand même son nom.
     const phaseHead = document.createElement('div');
     phaseHead.className = 'roster-subhead';
-    phaseHead.textContent = phase.label;
+    phaseHead.textContent = phasesWithItems[0].label;
     wrap.appendChild(phaseHead);
-    items.forEach(exigence => {
-      exigenceInstances(exigence, activeBooking).forEach(instance => {
-        wrap.appendChild(buildExigenceRow(exigence, instance, canAnswer));
-      });
+  }
+
+  const activeItems = activeExigences.filter(e => e.phase === activeExigencePhase);
+  // 'none'/'other' ne se répètent jamais ; tout le reste (bedroom/bathroom/
+  // wc/smoke_detector/key_box…) se répète et va dans un accordéon par
+  // instance — négatif plutôt que positif pour qu'un futur roomScope
+  // répétable n'ait pas besoin d'une modification ici en plus de
+  // exigenceInstances()/REPEATABLE_ROOM_SCOPES (shared.js).
+  const flatItems = activeItems.filter(e => e.roomScope === 'none' || e.roomScope === 'other');
+  const roomItems = activeItems.filter(e => e.roomScope !== 'none' && e.roomScope !== 'other');
+
+  flatItems.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(instance => {
+      wrap.appendChild(buildExigenceRow(exigence, instance, canAnswer));
     });
   });
+
+  // Une pièce peut porter plusieurs exigences (ex. "vérifier les draps" ET
+  // "dépoussiérer", toutes deux par chambre) : regroupées sous un même
+  // accordéon par pièce plutôt que répétées en liste plate, pour rester
+  // lisible sur un logement avec beaucoup d'exigences.
+  const roomGroups = new Map();
+  roomItems.forEach(exigence => {
+    exigenceInstances(exigence, activeBooking).forEach(instance => {
+      const key = `${exigence.roomScope}_${instance.roomIndex}`;
+      if (!roomGroups.has(key)) roomGroups.set(key, { label: instance.label, entries: [] });
+      roomGroups.get(key).entries.push({ exigence, instance });
+    });
+  });
+  roomGroups.forEach(group => wrap.appendChild(buildRoomAccordion(group, canAnswer)));
+
+  return wrap;
+}
+
+function buildRoomAccordion(group, canAnswer) {
+  const total = group.entries.reduce((sum, { exigence, instance }) => sum + exigenceAnswerStats(exigence, instance).required, 0);
+  const done = group.entries.reduce((sum, { exigence, instance }) => sum + exigenceAnswerStats(exigence, instance).done, 0);
+
+  const details = document.createElement('details');
+  details.className = 'card exigence-room';
+  if (done === total) details.open = false; else details.open = true;
+
+  const summary = document.createElement('summary');
+  const title = document.createElement('div');
+  title.className = 'dossier-addr';
+  title.textContent = group.label;
+  const pill = document.createElement('span');
+  pill.className = 'status-pill ' + (done === total ? 'verified' : 'rejected');
+  pill.textContent = `${done}/${total}`;
+  summary.append(title, pill);
+  details.appendChild(summary);
+
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+  group.entries.forEach(({ exigence, instance }) => {
+    const row = buildExigenceRow(exigence, instance, canAnswer);
+    row.querySelector('.dossier-addr').textContent = exigence.text; // la pièce est déjà dans le titre de l'accordéon
+    body.appendChild(row);
+  });
+  details.appendChild(body);
+
+  return details;
+}
+
+function buildPhotoSlotControl(exigence, instance, canAnswer, slotIndex, slotLabel) {
+  const answerId = exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex, slotIndex);
+  const answer = activeExigenceAnswers[answerId];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:inline-block;vertical-align:top;margin-right:10px;';
+  if (slotLabel) {
+    const cap = document.createElement('div');
+    cap.className = 'task-meta';
+    cap.textContent = slotLabel;
+    wrap.appendChild(cap);
+  }
+  const slotEl = document.createElement('div');
+  slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
+  if (answer && answer.photoUrl) {
+    const img = document.createElement('img');
+    img.src = answer.photoUrl;
+    img.alt = slotLabel || 'Photo';
+    slotEl.appendChild(img);
+  } else {
+    const span = document.createElement('span');
+    span.textContent = 'Photo';
+    slotEl.appendChild(span);
+  }
+  if (canAnswer) {
+    slotEl.onclick = () => {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.onchange = async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        setWorkStatus('');
+        slotEl.classList.add('uploading');
+        try {
+          const saved = await withTimeout(uploadExigenceAnswerImage({
+            bookingId: activeBooking.id,
+            exigenceId: exigence.id,
+            propertyId: activeBooking.propertyId,
+            roomIndex: instance.roomIndex,
+            slotIndex,
+            file,
+            answeredBy: currentUser.uid,
+          }), 30000);
+          activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+          renderActiveBooking();
+        } catch (e) {
+          slotEl.classList.remove('uploading');
+          setWorkStatus(`Photo non envoyée : ${storageErrorMessage(e)}`);
+        }
+      };
+      fileInput.click();
+    };
+  }
+  wrap.appendChild(slotEl);
+  return wrap;
+}
+
+function buildAnomalyReport(exigence, instance) {
+  const details = document.createElement('details');
+  details.className = 'exigence-anomaly';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Signaler un problème';
+  details.appendChild(summary);
+
+  const form = document.createElement('form');
+  form.className = 'anomaly-form';
+
+  const catLabel = document.createElement('label');
+  catLabel.className = 'form-row';
+  const catSel = document.createElement('select');
+  ANOMALY_CATEGORIES.forEach(cat => {
+    const o = document.createElement('option'); o.value = cat.key; o.textContent = cat.label;
+    catSel.appendChild(o);
+  });
+  catLabel.append(catSel);
+  form.append(catLabel);
+
+  const urgLabel = document.createElement('label');
+  urgLabel.className = 'form-row';
+  const urgSel = document.createElement('select');
+  ANOMALY_URGENCY_LEVELS.forEach(level => {
+    const o = document.createElement('option'); o.value = level.key; o.textContent = `Urgence : ${level.label}`;
+    urgSel.appendChild(o);
+  });
+  urgLabel.append(urgSel);
+  form.append(urgLabel);
+
+  const descArea = document.createElement('textarea');
+  descArea.placeholder = 'Décrire le problème…';
+  descArea.required = true;
+  form.append(descArea);
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.multiple = true;
+  form.append(fileInput);
+
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.className = 'btn ghost';
+  submit.textContent = 'Envoyer le signalement';
+  form.append(submit);
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const description = descArea.value.trim();
+    if (!description) return;
+    try {
+      await withButtonLoading(submit, async () => {
+        const photoRefs = [];
+        const files = Array.from(fileInput.files || []);
+        for (const file of files) {
+          const path = `incidents/${activeBooking.id}/${Date.now()}_${file.name}`;
+          const storageRef = ref(storage, path);
+          await withTimeout(uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' }), 30000);
+          photoRefs.push(await withTimeout(getDownloadURL(storageRef), 15000));
+        }
+        await withTimeout(addDoc(collection(db, 'incidents'), {
+          bookingId: activeBooking.id,
+          reportedBy: currentUser.uid,
+          type: catSel.value,
+          urgency: urgSel.value,
+          description,
+          itemId: exigence.id,
+          roomIndex: instance.roomIndex ?? null,
+          phase: exigence.phase,
+          photoRefs,
+          reportedAt: serverTimestamp(),
+          status: 'open',
+        }), 15000);
+        activeIncidents = await loadIncidentDocs(activeBooking.id);
+        queueEmail({
+          to: TEAM_EMAIL,
+          subject: `Zebramoon, anomalie signalée · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
+          text: `${exigence.text} · ${description} · signalé par ${currentUser.name || currentUser.email}.`,
+        });
+        renderActiveBooking();
+      });
+    } catch (e) {
+      setWorkStatus(`Signalement non envoyé : ${storageErrorMessage(e)}`);
+    }
+  });
+
+  details.appendChild(form);
+  return details;
+}
+
+// Champ libre, informatif uniquement (ex. "préciser les difficultés
+// rencontrées" pour les déchets) : jamais compté dans exigenceAnswerStats,
+// ne bloque donc jamais la progression.
+function buildCommentField(exigence, instance, canAnswer, answerId, answer) {
+  const wrap = document.createElement('div');
+  wrap.style.marginTop = '8px';
+  const textarea = document.createElement('textarea');
+  textarea.placeholder = 'Commentaire (optionnel)…';
+  textarea.value = (answer && answer.commentText) || '';
+  textarea.disabled = !canAnswer;
+  textarea.rows = 2;
+  let saveTimer = null;
+  textarea.oninput = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try {
+        const saved = await withTimeout(saveExigenceComment({
+          bookingId: activeBooking.id,
+          exigenceId: exigence.id,
+          propertyId: activeBooking.propertyId,
+          roomIndex: instance.roomIndex,
+          answeredBy: currentUser.uid,
+          commentText: textarea.value.trim(),
+        }), 15000);
+        activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+      } catch (e) {
+        setWorkStatus(`Commentaire non enregistré : ${storageErrorMessage(e)}`);
+      }
+    }, 600);
+  };
+  wrap.appendChild(textarea);
   return wrap;
 }
 
@@ -345,12 +709,37 @@ function buildExigenceRow(exigence, instance, canAnswer) {
     row.appendChild(refImg);
   }
 
-  const answered = (!exigence.requiresYesNo || (answer && answer.answerYesNo != null))
-    && (!exigence.requiresPhoto || (answer && answer.photoUrl));
+  const state = exigenceStatusState(exigence, instance);
+  const meta = EXIGENCE_STATUS_META[state];
   const pill = document.createElement('span');
-  pill.className = 'status-pill ' + (answered ? 'verified' : 'rejected');
-  pill.textContent = answered ? 'Terminé' : 'Requis';
+  pill.className = 'status-pill ' + meta.cls;
+  pill.textContent = meta.label;
   row.appendChild(pill);
+
+  if (exigence.requiresConfirmation) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn ' + (answer && answer.confirmed ? 'primary' : 'ghost');
+    btn.textContent = answer && answer.confirmed ? 'Fait ✓' : 'Marquer comme fait';
+    btn.disabled = !canAnswer;
+    btn.onclick = async () => {
+      setWorkStatus('');
+      try {
+        const saved = await withTimeout(saveExigenceConfirmation({
+          bookingId: activeBooking.id,
+          exigenceId: exigence.id,
+          propertyId: activeBooking.propertyId,
+          roomIndex: instance.roomIndex,
+          answeredBy: currentUser.uid,
+        }), 15000);
+        activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+        renderActiveBooking();
+      } catch (e) {
+        setWorkStatus(`Confirmation non enregistrée : ${storageErrorMessage(e)}`);
+      }
+    };
+    row.appendChild(btn);
+  }
 
   if (exigence.requiresYesNo) {
     const toggle = document.createElement('div');
@@ -391,50 +780,22 @@ function buildExigenceRow(exigence, instance, canAnswer) {
     row.appendChild(toggle);
   }
 
-  if (exigence.requiresPhoto) {
-    const slotEl = document.createElement('div');
-    slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
-    if (answer && answer.photoUrl) {
-      const img = document.createElement('img');
-      img.src = answer.photoUrl;
-      img.alt = label;
-      slotEl.appendChild(img);
-    } else {
-      const span = document.createElement('span');
-      span.textContent = 'Photo';
-      slotEl.appendChild(span);
-    }
-    if (canAnswer) {
-      slotEl.onclick = () => {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = 'image/*';
-        fileInput.onchange = async event => {
-          const file = event.target.files[0];
-          if (!file) return;
-          setWorkStatus('');
-          slotEl.classList.add('uploading');
-          try {
-            const saved = await withTimeout(uploadExigenceAnswerImage({
-              bookingId: activeBooking.id,
-              exigenceId: exigence.id,
-              propertyId: activeBooking.propertyId,
-              roomIndex: instance.roomIndex,
-              file,
-              answeredBy: currentUser.uid,
-            }), 30000);
-            activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
-            renderActiveBooking();
-          } catch (e) {
-            slotEl.classList.remove('uploading');
-            setWorkStatus(`Photo non envoyée : ${storageErrorMessage(e)}`);
-          }
-        };
-        fileInput.click();
-      };
-    }
-    row.appendChild(slotEl);
+  if (exigence.photoSlots && exigence.photoSlots.length) {
+    const slotsWrap = document.createElement('div');
+    slotsWrap.style.marginTop = '8px';
+    exigence.photoSlots.forEach((slotLabel, slotIndex) => {
+      slotsWrap.appendChild(buildPhotoSlotControl(exigence, instance, canAnswer, slotIndex, slotLabel));
+    });
+    row.appendChild(slotsWrap);
+  } else if (exigence.requiresPhoto) {
+    row.appendChild(buildPhotoSlotControl(exigence, instance, canAnswer, null, null));
   }
+
+  if (exigence.allowsComment) {
+    row.appendChild(buildCommentField(exigence, instance, canAnswer, answerId, answer));
+  }
+
+  row.appendChild(buildAnomalyReport(exigence, instance));
 
   return row;
 }
@@ -465,9 +826,197 @@ function buildSubmitButton(label, disabled) {
   return button;
 }
 
+function formatElapsed(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return [h, m, sec].map(n => String(n).padStart(2, '0')).join(':');
+}
+
+function currentTimerElapsedSeconds() {
+  if (!activeTimer) return 0;
+  const base = activeTimer.totalElapsedSeconds || 0;
+  if (activeTimer.status === 'running' && activeTimer.startedAt) {
+    return base + (Date.now() - activeTimer.startedAt) / 1000;
+  }
+  return base;
+}
+
+// Chrono de mission : repère personnel pour le prestataire pendant qu'il
+// travaille, pas une preuve horodatée (voir firestore.rules). L'intervalle
+// qui fait tiquer l'affichage est nettoyé à chaque re-rendu (début de
+// renderActiveBooking) pour ne jamais en empiler plusieurs.
+function renderTimerBlock(canUpload) {
+  const wrap = document.createElement('div');
+  wrap.className = 'exigence-timer';
+
+  const display = document.createElement('span');
+  display.className = 'exigence-timer-elapsed';
+  display.textContent = formatElapsed(currentTimerElapsedSeconds());
+  wrap.appendChild(display);
+
+  const running = canUpload && activeTimer && activeTimer.status === 'running';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn ghost';
+  btn.textContent = running ? 'Mettre en pause' : (activeTimer ? 'Reprendre le chrono' : 'Démarrer le chrono');
+  btn.disabled = !canUpload;
+  btn.onclick = async () => {
+    try {
+      if (running) {
+        activeTimer = await withTimeout(pauseBookingTimer({
+          bookingId: activeBooking.id,
+          prestataireId: currentUser.uid,
+          startedAt: activeTimer.startedAt,
+          totalElapsedSeconds: activeTimer.totalElapsedSeconds,
+        }), 15000);
+      } else {
+        activeTimer = await withTimeout(startBookingTimer({
+          bookingId: activeBooking.id,
+          prestataireId: currentUser.uid,
+          resumeFrom: activeTimer ? activeTimer.totalElapsedSeconds : 0,
+        }), 15000);
+      }
+      renderActiveBooking();
+    } catch (e) {
+      setWorkStatus(`Chronomètre non enregistré : ${storageErrorMessage(e)}`);
+    }
+  };
+  wrap.appendChild(btn);
+
+  if (running) {
+    timerTickId = setInterval(() => {
+      display.textContent = formatElapsed(currentTimerElapsedSeconds());
+    }, 1000);
+  }
+
+  return wrap;
+}
+
+function buildCostsTile() {
+  const details = document.createElement('details');
+  details.className = 'card';
+  const summary = document.createElement('summary');
+  const title = document.createElement('h2');
+  title.textContent = 'Coûts';
+  summary.appendChild(title);
+  details.appendChild(summary);
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+  body.appendChild(buildClientPriceBreakdown(activeBooking));
+  details.appendChild(body);
+  return details;
+}
+
+// Pas de nouveau mécanisme d'envoi : la galerie reprend simplement les
+// photos déjà déposées via le checklist d'exigences.
+function buildAttachmentsTile() {
+  const photos = Object.values(activeExigenceAnswers).filter(a => a.photoUrl);
+  const details = document.createElement('details');
+  details.className = 'card';
+  const summary = document.createElement('summary');
+  const title = document.createElement('h2');
+  title.textContent = `Pièces jointes (${photos.length})`;
+  summary.appendChild(title);
+  details.appendChild(summary);
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+  if (photos.length) {
+    const grid = document.createElement('div');
+    grid.className = 'attachment-grid';
+    photos.forEach(a => {
+      const img = document.createElement('img');
+      img.src = a.photoUrl;
+      img.alt = 'Photo de mission';
+      grid.appendChild(img);
+    });
+    body.appendChild(grid);
+  } else {
+    const empty = document.createElement('p');
+    empty.textContent = 'Aucune photo déposée pour le moment.';
+    body.appendChild(empty);
+  }
+  details.appendChild(body);
+  return details;
+}
+
+function buildCommentsTile(canUpload) {
+  const details = document.createElement('details');
+  details.className = 'card';
+  details.open = true;
+  const summary = document.createElement('summary');
+  const title = document.createElement('h2');
+  title.textContent = `Commentaires (${activeComments.length})`;
+  summary.appendChild(title);
+  details.appendChild(summary);
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+
+  if (activeComments.length) {
+    activeComments.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'comment-item';
+      const meta = document.createElement('div');
+      meta.className = 'comment-meta';
+      meta.textContent = currentUser && c.authorId === currentUser.uid ? 'Vous' : 'Zebramoon';
+      const text = document.createElement('div');
+      text.className = 'comment-text';
+      text.textContent = c.text;
+      item.append(meta, text);
+      body.appendChild(item);
+    });
+  } else {
+    const empty = document.createElement('p');
+    empty.textContent = 'Aucun commentaire pour le moment.';
+    body.appendChild(empty);
+  }
+
+  if (canUpload) {
+    const form = document.createElement('form');
+    form.className = 'comment-form';
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = 'Ajouter un commentaire sur cette mission…';
+    textarea.required = true;
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.className = 'btn ghost';
+    submit.textContent = 'Envoyer';
+    form.append(textarea, submit);
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const text = textarea.value.trim();
+      if (!text) return;
+      try {
+        await withButtonLoading(submit, () => withTimeout(addBookingComment({
+          bookingId: activeBooking.id,
+          authorId: currentUser.uid,
+          text,
+        }), 15000));
+        activeComments = await loadBookingComments(activeBooking.id);
+        renderActiveBooking();
+      } catch (e) {
+        setWorkStatus(`Commentaire non envoyé : ${storageErrorMessage(e)}`);
+      }
+    };
+    body.appendChild(form);
+  }
+
+  details.appendChild(body);
+  return details;
+}
+
 function renderActiveBooking() {
+  if (timerTickId) { clearInterval(timerTickId); timerTickId = null; }
   activeBookingContainer.innerHTML = '';
   if (!activeBooking) return;
+  // Recalculé à CHAQUE rendu, pas seulement au chargement de la mission :
+  // une réponse qui vient d'être enregistrée peut révéler une question
+  // dependsOn (ex. la relance du linge taché), qui doit apparaître dans ce
+  // même rendu sans attendre un rechargement de mission. Inoffensif pour
+  // un logement sans protocole ni exigence propre (retombe sur [] comme
+  // avant, le parcours PHOTO_SLOTS n'est pas affecté).
+  activeExigences = computeChecklistItems(activeBooking, protocolTemplatesCache, activeCustomExigences, activeExigenceAnswers);
   const heading = document.createElement('div');
   heading.className = 'eyebrow';
   heading.textContent = `Dossier ${activeBooking.id.slice(0, 6).toUpperCase()} · ${formatBookingStatus(activeBooking.status)}`;
@@ -496,6 +1045,8 @@ function renderActiveBooking() {
   }
 
   const canUpload = ['accepted', 'rejected'].includes(activeBooking.status);
+
+  activeBookingContainer.appendChild(renderTimerBlock(canUpload));
 
   if (activeExigences.length) {
     activeBookingContainer.appendChild(renderExigenceChecklist(canUpload));
@@ -548,6 +1099,10 @@ function renderActiveBooking() {
     const count = countUploadedPhotos();
     activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`, !canUpload || count < PHOTO_SLOTS.length));
   }
+
+  activeBookingContainer.appendChild(buildCostsTile());
+  activeBookingContainer.appendChild(buildAttachmentsTile());
+  activeBookingContainer.appendChild(buildCommentsTile(canUpload));
 
   if (activeBooking.status === 'accepted' || activeBooking.status === 'rejected') {
     const releaseBtn = document.createElement('button');
@@ -618,10 +1173,15 @@ function loadAssignedBookings() {
     if (activeBooking) {
       await loadPhotosForBooking(activeBooking.id);
       await loadExigencesForBooking(activeBooking);
+      await loadTimerAndCommentsForBooking(activeBooking);
     } else {
       activePhotoRecords = {};
       activeExigences = [];
       activeExigenceAnswers = {};
+      activeIncidents = [];
+      activeCustomExigences = [];
+      activeTimer = null;
+      activeComments = [];
     }
     renderAssignedList();
     renderActiveBooking();
@@ -667,6 +1227,10 @@ onAuthStateChanged(auth, async user => {
     }
     currentUser = { uid: user.uid, ...docData };
     showApp();
+    // Bibliothèque partagée, chargée une fois par session (pas par mission) :
+    // un changement admin en cours de session n'apparaît qu'à la prochaine
+    // connexion, compromis raisonnable pour un contenu qui change rarement.
+    protocolTemplatesCache = await loadProtocolTemplates().catch(() => []);
     loadAssignedBookings();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };

@@ -28,11 +28,21 @@ import {
   openLogementQr,
   EXIGENCE_PHASES,
   EXIGENCE_ROOM_SCOPES,
+  EXIGENCE_SUGGESTION_CATEGORIES,
+  DEFAULT_EXIGENCE_SUGGESTIONS,
   uploadExigenceReferenceImage,
   loadExigencesForProperty,
   loadExigenceAnswers,
   exigenceInstances,
   exigenceAnswerDocId,
+  loadBookingComments,
+  PROTOCOL_CATEGORIES,
+  PROTOCOL_GATE_FLAGS,
+  DEFAULT_PROTOCOL_TEMPLATES,
+  loadProtocolTemplates,
+  computeChecklistItems,
+  ANOMALY_CATEGORIES,
+  ANOMALY_URGENCY_LEVELS,
 } from './shared.js';
 import {
   collection,
@@ -74,6 +84,8 @@ const rejectBtn = document.getElementById('rejectBtn');
 const devisBtn = document.getElementById('devisBtn');
 const rejectNote = document.getElementById('rejectNote');
 const incidentList = document.getElementById('incidentList');
+const bookingCommentList = document.getElementById('bookingCommentList');
+const importDefaultProtocolsBtn = document.getElementById('importDefaultProtocolsBtn');
 const adminStatus = document.getElementById('adminStatus');
 const statPending = document.getElementById('statPending');
 const statAccepted = document.getElementById('statAccepted');
@@ -109,6 +121,10 @@ let latestProperties = [];
 let selectedPropertyId = null;
 let exigencesUnsub = null;
 let latestExigences = [];
+let suggestionsUnsub = null;
+let latestSuggestions = [];
+let protocolsUnsub = null;
+let latestProtocolTemplates = [];
 let prospectsUnsub = null;
 let latestProspects = [];
 
@@ -682,6 +698,7 @@ function subscribeProperties() {
   propertiesUnsub = onSnapshot(collection(db, 'properties'), snap => {
     latestProperties = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderProperties();
+    if (selectedPropertyId) renderPropertyConfig(latestProperties.find(p => p.id === selectedPropertyId));
   }, error => setPropertiesStatus(`Impossible de charger les logements : ${authErrorMessage(error)}`, 'error'));
 }
 
@@ -731,8 +748,112 @@ function selectProperty(propertyId) {
   const titleEl = document.getElementById('exigencesPropertyTitle');
   if (card) card.classList.toggle('hidden', !property);
   if (titleEl) titleEl.textContent = property ? propertyLabel(property) : '';
+  const configCard = document.getElementById('propertyConfigCard');
+  const configTitleEl = document.getElementById('propertyConfigTitle');
+  if (configCard) configCard.classList.toggle('hidden', !property);
+  if (configTitleEl) configTitleEl.textContent = property ? propertyLabel(property) : '';
   renderProperties();
+  renderPropertyConfig(property);
   subscribeExigencesForProperty(propertyId);
+}
+
+// Les comptes/équipements protocole (WC, canapé-lit, terrasse, clim,
+// boîtes à clés, détecteurs) et les standards personnalisables (linge,
+// température) sont admin-only : le client n'a pas besoin d'y penser pour
+// réserver, et ces réglages pilotent la génération du protocole de
+// ménage, pas le tarif. Un seul formulaire persistant (pas le pattern
+// ajout/annulation des .catalog-form) puisqu'il n'y a jamais qu'une
+// fiche à la fois pour le logement sélectionné.
+function renderPropertyConfig(property) {
+  const root = document.getElementById('propertyConfigRoot');
+  if (!root) return;
+  root.innerHTML = '';
+  if (!property) return;
+
+  const linen = property.linenStandard || {};
+  const temp = property.tempStandard || {};
+
+  const form = document.createElement('form');
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fWc = catalogField('Nombre de WC (distinct des salles de bain)', 'wcCount', property.wcCount || 0, 'number');
+  const fKeyBox = catalogField('Nombre de boîtes à clés', 'keyBoxCount', property.keyBoxCount || 0, 'number');
+  const fSmoke = catalogField('Nombre de détecteurs de fumée', 'smokeDetectorCount', property.smokeDetectorCount || 0, 'number');
+  form.append(fWc, fKeyBox, fSmoke);
+
+  [['hasSofaBed', 'Canapé-lit'], ['hasTerrace', 'Terrasse'], ['hasClim', 'Climatisation']].forEach(([name, label]) => {
+    const row = document.createElement('label');
+    row.className = 'service-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.name = name; cb.checked = !!property[name];
+    row.append(cb, document.createTextNode(` ${label}`));
+    form.append(row);
+  });
+
+  const linenHead = document.createElement('div');
+  linenHead.className = 'roster-subhead';
+  linenHead.style.marginTop = '18px';
+  linenHead.textContent = 'Linge, standard par chambre';
+  form.append(linenHead);
+  [
+    ['pillowcases', 'Taies d’oreiller', 2],
+    ['sheet', 'Drap plat', 1],
+    ['duvet', 'Housse de couette', 1],
+    ['smallTowels', 'Petites serviettes', 2],
+    ['largeTowels', 'Grandes serviettes', 2],
+  ].forEach(([name, label, fallback]) => {
+    form.append(catalogField(label, `linen_${name}`, linen[name] != null ? linen[name] : fallback, 'number'));
+  });
+
+  const tempHead = document.createElement('div');
+  tempHead.className = 'roster-subhead';
+  tempHead.style.marginTop = '18px';
+  tempHead.textContent = 'Température, consigne hiver';
+  form.append(tempHead);
+  form.append(catalogField('Salon (°C)', 'temp_salonWinter', temp.salonWinter != null ? temp.salonWinter : 23, 'number'));
+  form.append(catalogField('Chambre (°C)', 'temp_bedroomWinter', temp.bedroomWinter != null ? temp.bedroomWinter : 21, 'number'));
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = 'Enregistrer';
+  actions.append(save);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = {
+      wcCount: Number(get('wcCount').value) || 0,
+      keyBoxCount: Number(get('keyBoxCount').value) || 0,
+      smokeDetectorCount: Number(get('smokeDetectorCount').value) || 0,
+      hasSofaBed: get('hasSofaBed').checked,
+      hasTerrace: get('hasTerrace').checked,
+      hasClim: get('hasClim').checked,
+      linenStandard: {
+        pillowcases: Number(get('linen_pillowcases').value) || 0,
+        sheet: Number(get('linen_sheet').value) || 0,
+        duvet: Number(get('linen_duvet').value) || 0,
+        smallTowels: Number(get('linen_smallTowels').value) || 0,
+        largeTowels: Number(get('linen_largeTowels').value) || 0,
+      },
+      tempStandard: {
+        salonWinter: Number(get('temp_salonWinter').value) || 0,
+        bedroomWinter: Number(get('temp_bedroomWinter').value) || 0,
+      },
+    };
+    savePropertyConfig(property.id, data, save);
+  });
+
+  root.appendChild(form);
+}
+
+async function savePropertyConfig(propertyId, data, btn) {
+  try {
+    await withButtonLoading(btn, () => withTimeout(updateDoc(doc(db, 'properties', propertyId), data), 15000));
+    setPropertiesStatus('Fiche de configuration enregistrée.', 'success');
+  } catch (error) {
+    setPropertiesStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
 }
 
 function subscribeExigencesForProperty(propertyId) {
@@ -767,7 +888,7 @@ function renderExigences() {
       empty.textContent = 'Aucune exigence pour cette phase.';
       group.appendChild(empty);
     } else {
-      items.forEach(item => group.appendChild(buildExigenceCard(item)));
+      items.forEach((item, index) => group.appendChild(buildExigenceCard(item, items, index)));
     }
 
     const addBtn = document.createElement('button');
@@ -788,9 +909,9 @@ function roomScopeLabel(key) {
   return (EXIGENCE_ROOM_SCOPES.find(s => s.key === key) || {}).label || key;
 }
 
-function buildExigenceCard(item) {
+function buildExigenceCard(item, items, index) {
   const card = document.createElement('div');
-  card.className = 'catalog-item';
+  card.className = 'catalog-item' + (item.active === false ? ' inactive' : '');
 
   const thumb = document.createElement('div');
   thumb.className = 'catalog-thumb';
@@ -811,11 +932,31 @@ function buildExigenceCard(item) {
   if (item.requiresYesNo) bits.push('Oui/Non');
   if (item.requiresPhoto) bits.push('Photo');
   if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
+  if (item.active === false) bits.push('Désactivée');
   meta.textContent = bits.join(' · ') || '—';
   info.append(name, meta);
 
   const actions = document.createElement('div');
   actions.className = 'catalog-actions';
+
+  const up = document.createElement('button');
+  up.type = 'button'; up.className = 'mini-btn'; up.textContent = '↑';
+  up.setAttribute('aria-label', 'Monter');
+  up.disabled = index === 0;
+  up.onclick = () => moveExigence(items[index], items[index - 1]);
+  const down = document.createElement('button');
+  down.type = 'button'; down.className = 'mini-btn'; down.textContent = '↓';
+  down.setAttribute('aria-label', 'Descendre');
+  down.disabled = index === items.length - 1;
+  down.onclick = () => moveExigence(items[index], items[index + 1]);
+  actions.append(up, down);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button'; toggle.className = 'mini-btn';
+  toggle.textContent = item.active === false ? 'Activer' : 'Désactiver';
+  toggle.onclick = () => toggleExigenceActive(item);
+  actions.append(toggle);
+
   const edit = document.createElement('button');
   edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
   edit.onclick = () => {
@@ -837,6 +978,47 @@ function exigenceItemForm(phaseKey, existing) {
   const form = document.createElement('form');
   form.className = 'catalog-form';
   const get = n => form.querySelector(`[name="${n}"]`);
+
+  // Pré-remplissage à partir d'une suggestion (bibliothèque par défaut +
+  // celle de l'équipe) : uniquement à la création, pas en modification, où
+  // les champs portent déjà de vraies valeurs. L'admin garde la main pour
+  // ajuster avant d'enregistrer, le choix ne sauvegarde rien par lui-même.
+  if (!existing) {
+    const fSuggest = document.createElement('label');
+    fSuggest.className = 'form-row';
+    const sugSpan = document.createElement('span');
+    sugSpan.textContent = "Partir d'une suggestion (optionnel)";
+    sugSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+    const sugSel = document.createElement('select');
+    const blank = document.createElement('option'); blank.value = ''; blank.textContent = 'Choisir une suggestion…';
+    sugSel.appendChild(blank);
+    const allSuggestions = [...DEFAULT_EXIGENCE_SUGGESTIONS, ...latestSuggestions];
+    EXIGENCE_SUGGESTION_CATEGORIES.forEach(category => {
+      const items = allSuggestions.filter(s => s.category === category.key);
+      if (!items.length) return;
+      const group = document.createElement('optgroup');
+      group.label = category.label;
+      items.forEach((item, i) => {
+        const o = document.createElement('option');
+        o.value = `${category.key}__${i}`;
+        o.textContent = item.text;
+        o._suggestion = item;
+        group.appendChild(o);
+      });
+      sugSel.appendChild(group);
+    });
+    sugSel.onchange = () => {
+      const picked = sugSel.selectedOptions[0] && sugSel.selectedOptions[0]._suggestion;
+      if (!picked) return;
+      get('text').value = picked.text;
+      get('roomScope').value = picked.roomScope || 'none';
+      get('requiresYesNo').checked = !!picked.requiresYesNo;
+      get('requiresPhoto').checked = !!picked.requiresPhoto;
+      sugSel.value = '';
+    };
+    fSuggest.append(sugSpan, sugSel);
+    form.append(fSuggest);
+  }
 
   const fText = document.createElement('label');
   fText.className = 'form-row';
@@ -957,6 +1139,29 @@ async function deleteExigence(id) {
   }
 }
 
+// Échange le rang affiché de deux exigences voisines (ordre stable même
+// avec des "order" non contigus : seules les deux valeurs échangées comptent).
+async function moveExigence(item, neighbor) {
+  try {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'exigences', item.id), { order: neighbor.order || 0 });
+    batch.update(doc(db, 'exigences', neighbor.id), { order: item.order || 0 });
+    await withTimeout(batch.commit(), 15000);
+  } catch (error) {
+    setPropertiesStatus(`Réorganisation impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// Masque l'exigence côté prestataire (loadExigencesForProperty filtre
+// active !== false) sans perdre son historique de réponses déjà données.
+async function toggleExigenceActive(item) {
+  try {
+    await withTimeout(updateDoc(doc(db, 'exigences', item.id), { active: item.active === false }), 15000);
+  } catch (error) {
+    setPropertiesStatus(`Changement de statut impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
 // Repartir d'un logement déjà rédigé plutôt que retaper ~80 exigences :
 // copie toutes les exigences actives d'un autre logement vers celui-ci.
 function buildDuplicatePicker() {
@@ -1023,6 +1228,502 @@ async function duplicateExigencesFromProperty(sourcePropertyId, btn) {
   } catch (error) {
     setPropertiesStatus(`Duplication impossible : ${authErrorMessage(error)}`, 'error');
   }
+}
+
+// ---- Bibliothèque de suggestions d'exigences (voir exigenceItemForm, qui
+// les propose en pré-remplissage) : une liste par défaut fournie en dur
+// dans le code, plus celles que l'équipe ajoute elle-même ici. Les deux se
+// mélangent dans le sélecteur ; seules les secondes sont modifiables.
+function subscribeSuggestions() {
+  if (suggestionsUnsub) suggestionsUnsub();
+  suggestionsUnsub = onSnapshot(collection(db, 'exigenceSuggestions'), snap => {
+    latestSuggestions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderSuggestions();
+  }, error => setSuggestionsStatus(`Impossible de charger les suggestions : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setSuggestionsStatus(message, type) {
+  const el = document.getElementById('suggestionsStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function renderSuggestions() {
+  const root = document.getElementById('suggestionsRoot');
+  if (!root) return;
+  root.innerHTML = '';
+
+  EXIGENCE_SUGGESTION_CATEGORIES.forEach(category => {
+    const group = document.createElement('div');
+    group.className = 'catalog-group';
+    const head = document.createElement('div');
+    head.className = 'roster-subhead';
+    head.textContent = category.label;
+    group.appendChild(head);
+
+    DEFAULT_EXIGENCE_SUGGESTIONS
+      .filter(s => s.category === category.key)
+      .forEach(item => group.appendChild(buildSuggestionCard(item, false)));
+    latestSuggestions
+      .filter(s => s.category === category.key)
+      .sort((a, b) => (a.text || '').localeCompare(b.text || ''))
+      .forEach(item => group.appendChild(buildSuggestionCard(item, true)));
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn ghost';
+    addBtn.style.marginTop = '12px';
+    addBtn.textContent = '+ Ajouter une suggestion';
+    addBtn.onclick = () => {
+      if (group.querySelector('.catalog-form')) return;
+      addBtn.before(suggestionItemForm(category.key, null));
+    };
+    group.appendChild(addBtn);
+    root.appendChild(group);
+  });
+}
+
+function buildSuggestionCard(item, editable) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item';
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = item.text || '(sans texte)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [];
+  if (!editable) bits.push('Par défaut');
+  if (item.requiresYesNo) bits.push('Oui/Non');
+  if (item.requiresPhoto) bits.push('Photo');
+  if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
+  meta.textContent = bits.join(' · ') || '—';
+  info.append(name, meta);
+
+  card.appendChild(info);
+
+  if (editable) {
+    const actions = document.createElement('div');
+    actions.className = 'catalog-actions';
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+    edit.onclick = () => {
+      if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+        card.nextElementSibling.remove(); return;
+      }
+      card.after(suggestionItemForm(item.category, item));
+    };
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+    armInlineConfirm(del, 'Confirmer la suppression', () => deleteSuggestion(item.id));
+    actions.append(edit, del);
+    card.appendChild(actions);
+  }
+
+  return card;
+}
+
+function suggestionItemForm(categoryKey, existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fText = document.createElement('label');
+  fText.className = 'form-row';
+  const tSpan = document.createElement('span');
+  tSpan.textContent = 'Instruction';
+  tSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const tArea = document.createElement('textarea');
+  tArea.name = 'text';
+  tArea.value = existing ? existing.text || '' : '';
+  fText.append(tSpan, tArea);
+  form.append(fText);
+
+  const fScope = document.createElement('label');
+  fScope.className = 'form-row';
+  const sSpan = document.createElement('span');
+  sSpan.textContent = 'Répétition';
+  sSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const sSel = document.createElement('select');
+  sSel.name = 'roomScope';
+  EXIGENCE_ROOM_SCOPES.forEach(scope => {
+    const o = document.createElement('option'); o.value = scope.key; o.textContent = scope.label;
+    if ((existing ? existing.roomScope : 'none') === scope.key) o.selected = true;
+    sSel.appendChild(o);
+  });
+  fScope.append(sSpan, sSel);
+  form.append(fScope);
+
+  const fYesNo = document.createElement('label');
+  fYesNo.className = 'service-option';
+  const cbYesNo = document.createElement('input');
+  cbYesNo.type = 'checkbox'; cbYesNo.name = 'requiresYesNo';
+  cbYesNo.checked = existing ? !!existing.requiresYesNo : true;
+  fYesNo.append(cbYesNo, document.createTextNode(' Réponse oui/non exigée'));
+  form.append(fYesNo);
+
+  const fPhoto = document.createElement('label');
+  fPhoto.className = 'service-option';
+  const cbPhoto = document.createElement('input');
+  cbPhoto.type = 'checkbox'; cbPhoto.name = 'requiresPhoto';
+  cbPhoto.checked = existing ? !!existing.requiresPhoto : false;
+  fPhoto.append(cbPhoto, document.createTextNode(' Photo exigée'));
+  form.append(fPhoto);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = get('text').value.trim();
+    if (!text) { setSuggestionsStatus("L'instruction est obligatoire.", 'error'); return; }
+    const data = {
+      category: categoryKey,
+      text,
+      roomScope: get('roomScope').value,
+      requiresYesNo: get('requiresYesNo').checked,
+      requiresPhoto: get('requiresPhoto').checked,
+    };
+    saveSuggestion(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveSuggestion(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'exigenceSuggestions', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'exigenceSuggestions'), { ...data, createdAt: serverTimestamp() }), 15000));
+    setSuggestionsStatus(id ? 'Suggestion mise à jour.' : 'Suggestion ajoutée.', 'success');
+  } catch (error) {
+    setSuggestionsStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteSuggestion(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'exigenceSuggestions', id)), 15000);
+    setSuggestionsStatus('Suggestion supprimée.', 'success');
+  } catch (error) {
+    setSuggestionsStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// ---- Bibliothèque PARTAGÉE de protocoles (voir computeChecklistItems,
+// shared.js) : contrairement à /exigences (propre à UN logement) et
+// /exigenceSuggestions (suggestions de copie), ce contenu s'applique à
+// tous les logements d'un coup. Modifier un point de contrôle ici le
+// modifie pour chaque mission future qui l'utilise.
+function subscribeProtocolTemplates() {
+  if (protocolsUnsub) protocolsUnsub();
+  protocolsUnsub = onSnapshot(collection(db, 'protocolTemplates'), snap => {
+    latestProtocolTemplates = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
+    renderProtocolTemplates();
+  }, error => setProtocolsStatus(`Impossible de charger les protocoles : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setProtocolsStatus(message, type) {
+  const el = document.getElementById('protocolsStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function gateFlagLabel(key) {
+  return (PROTOCOL_GATE_FLAGS.find(g => g.key === key) || {}).label || '';
+}
+
+function renderProtocolTemplates() {
+  const root = document.getElementById('protocolsRoot');
+  if (!root) return;
+  root.innerHTML = '';
+
+  EXIGENCE_PHASES.forEach(phase => {
+    const phaseHead = document.createElement('h3');
+    phaseHead.textContent = phase.label;
+    phaseHead.style.marginTop = '26px';
+    root.appendChild(phaseHead);
+
+    PROTOCOL_CATEGORIES.filter(c => c.phase === phase.key).forEach(category => {
+      const group = document.createElement('div');
+      group.className = 'catalog-group';
+      const head = document.createElement('div');
+      head.className = 'roster-subhead';
+      head.textContent = category.label;
+      group.appendChild(head);
+
+      const items = latestProtocolTemplates.filter(t => t.category === category.key);
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = 'Aucun point de contrôle pour cette catégorie.';
+        group.appendChild(empty);
+      } else {
+        items.forEach((item, index) => group.appendChild(buildProtocolTemplateCard(item, items, index)));
+      }
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'btn ghost';
+      addBtn.style.marginTop = '12px';
+      addBtn.textContent = '+ Ajouter un point de contrôle';
+      addBtn.onclick = () => {
+        if (group.querySelector('.catalog-form')) return;
+        addBtn.before(protocolTemplateItemForm(phase.key, category.key, null));
+      };
+      group.appendChild(addBtn);
+      root.appendChild(group);
+    });
+  });
+}
+
+function buildProtocolTemplateCard(item, items, index) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item' + (item.active === false ? ' inactive' : '');
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = item.text || '(sans texte)';
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [];
+  if (item.active === false) bits.push('Désactivé');
+  if (item.requiresConfirmation) bits.push('Confirmation');
+  if (item.requiresYesNo) bits.push('Oui/Non');
+  if (item.photoSlots && item.photoSlots.length) bits.push(`Photos (${item.photoSlots.length})`);
+  else if (item.requiresPhoto) bits.push('Photo');
+  if (item.roomScope && item.roomScope !== 'none') bits.push(roomScopeLabel(item.roomScope));
+  if (item.gateFlag) bits.push(gateFlagLabel(item.gateFlag));
+  if (item.allowsComment) bits.push('Commentaire');
+  if (item.dependsOn) bits.push('Conditionnel');
+  meta.textContent = bits.join(' · ') || '—';
+  info.append(name, meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'catalog-actions';
+
+  const up = document.createElement('button');
+  up.type = 'button'; up.className = 'mini-btn'; up.textContent = '↑';
+  up.setAttribute('aria-label', 'Monter');
+  up.disabled = index === 0;
+  up.onclick = () => moveProtocolTemplate(items[index], items[index - 1]);
+  const down = document.createElement('button');
+  down.type = 'button'; down.className = 'mini-btn'; down.textContent = '↓';
+  down.setAttribute('aria-label', 'Descendre');
+  down.disabled = index === items.length - 1;
+  down.onclick = () => moveProtocolTemplate(items[index], items[index + 1]);
+  actions.append(up, down);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button'; toggle.className = 'mini-btn';
+  toggle.textContent = item.active === false ? 'Activer' : 'Désactiver';
+  toggle.onclick = () => toggleProtocolTemplateActive(item);
+  actions.append(toggle);
+
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Modifier';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+      card.nextElementSibling.remove(); return;
+    }
+    card.after(protocolTemplateItemForm(item.phase, item.category, item));
+  };
+  const del = document.createElement('button');
+  del.type = 'button'; del.className = 'mini-btn danger'; del.textContent = 'Supprimer';
+  armInlineConfirm(del, 'Confirmer la suppression', () => deleteProtocolTemplate(item.id));
+  actions.append(edit, del);
+
+  card.append(info, actions);
+  return card;
+}
+
+function protocolTemplateItemForm(phaseKey, categoryKey, existing) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fText = document.createElement('label');
+  fText.className = 'form-row';
+  const tSpan = document.createElement('span');
+  tSpan.textContent = 'Instruction';
+  tSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const tArea = document.createElement('textarea');
+  tArea.name = 'text';
+  tArea.value = existing ? existing.text || '' : '';
+  fText.append(tSpan, tArea);
+  form.append(fText);
+
+  const fScope = document.createElement('label');
+  fScope.className = 'form-row';
+  const sSpan = document.createElement('span');
+  sSpan.textContent = 'Répétition';
+  sSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const sSel = document.createElement('select');
+  sSel.name = 'roomScope';
+  EXIGENCE_ROOM_SCOPES.forEach(scope => {
+    const o = document.createElement('option'); o.value = scope.key; o.textContent = scope.label;
+    if ((existing ? existing.roomScope : 'none') === scope.key) o.selected = true;
+    sSel.appendChild(o);
+  });
+  fScope.append(sSpan, sSel);
+  form.append(fScope);
+
+  const fGate = document.createElement('label');
+  fGate.className = 'form-row';
+  const gSpan = document.createElement('span');
+  gSpan.textContent = "Condition d'apparition";
+  gSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const gSel = document.createElement('select');
+  gSel.name = 'gateFlag';
+  PROTOCOL_GATE_FLAGS.forEach(flag => {
+    const o = document.createElement('option'); o.value = flag.key || ''; o.textContent = flag.label;
+    if ((existing ? existing.gateFlag : null) === flag.key) o.selected = true;
+    gSel.appendChild(o);
+  });
+  fGate.append(gSpan, gSel);
+  form.append(fGate);
+
+  [['requiresConfirmation', 'Confirmation simple (mode 1)'], ['requiresYesNo', 'Réponse oui/non exigée'], ['requiresPhoto', 'Photo exigée'], ['allowsComment', 'Champ commentaire (ex. préciser une difficulté)']].forEach(([name, label]) => {
+    const row = document.createElement('label');
+    row.className = 'service-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.name = name;
+    cb.checked = existing ? !!existing[name] : false;
+    row.append(cb, document.createTextNode(` ${label}`));
+    form.append(row);
+  });
+
+  const fSlots = catalogField('Photos multiples (ex. "Siphon ouvert, Siphon refermé" — laisser vide pour une seule photo)', 'photoSlots', existing && existing.photoSlots ? existing.photoSlots.join(', ') : '');
+  form.append(fSlots);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = existing ? 'Enregistrer' : 'Ajouter';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = get('text').value.trim();
+    if (!text) { setProtocolsStatus("L'instruction est obligatoire.", 'error'); return; }
+    const slotsRaw = get('photoSlots').value.trim();
+    const photoSlots = slotsRaw ? slotsRaw.split(',').map(s => s.trim()).filter(Boolean) : null;
+    const data = {
+      phase: phaseKey,
+      category: categoryKey,
+      text,
+      roomScope: get('roomScope').value,
+      gateFlag: get('gateFlag').value || null,
+      requiresConfirmation: get('requiresConfirmation').checked,
+      requiresYesNo: get('requiresYesNo').checked,
+      requiresPhoto: photoSlots ? true : get('requiresPhoto').checked,
+      allowsComment: get('allowsComment').checked,
+      photoSlots,
+      active: true,
+      order: existing ? (existing.order || 0) : latestProtocolTemplates.filter(t => t.category === categoryKey).length,
+    };
+    saveProtocolTemplate(existing ? existing.id : null, data, save);
+  });
+  return form;
+}
+
+async function saveProtocolTemplate(id, data, btn) {
+  try {
+    await withButtonLoading(btn, () => id
+      ? withTimeout(updateDoc(doc(db, 'protocolTemplates', id), data), 15000)
+      : withTimeout(addDoc(collection(db, 'protocolTemplates'), { ...data, createdAt: serverTimestamp() }), 15000));
+    setProtocolsStatus(id ? 'Point de contrôle mis à jour.' : 'Point de contrôle ajouté.', 'success');
+  } catch (error) {
+    setProtocolsStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function deleteProtocolTemplate(id) {
+  try {
+    await withTimeout(deleteDoc(doc(db, 'protocolTemplates', id)), 15000);
+    setProtocolsStatus('Point de contrôle supprimé.', 'success');
+  } catch (error) {
+    setProtocolsStatus(`Suppression impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function moveProtocolTemplate(item, neighbor) {
+  try {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'protocolTemplates', item.id), { order: neighbor.order || 0 });
+    batch.update(doc(db, 'protocolTemplates', neighbor.id), { order: item.order || 0 });
+    await withTimeout(batch.commit(), 15000);
+  } catch (error) {
+    setProtocolsStatus(`Réorganisation impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function toggleProtocolTemplateActive(item) {
+  try {
+    await withTimeout(updateDoc(doc(db, 'protocolTemplates', item.id), { active: item.active === false }), 15000);
+  } catch (error) {
+    setProtocolsStatus(`Changement de statut impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+// Idempotent : n'ajoute que les modèles par défaut dont le texte n'existe
+// pas déjà pour cette phase+catégorie, pour qu'un second clic (ou un futur
+// ajout de phase au tableau par défaut) ne duplique rien.
+async function importDefaultProtocols(btn) {
+  try {
+    await withButtonLoading(btn, async () => {
+      const existingKeys = new Set(latestProtocolTemplates.map(t => `${t.phase}__${t.category}__${t.text}`));
+      const missing = DEFAULT_PROTOCOL_TEMPLATES.filter(t => !existingKeys.has(`${t.phase}__${t.category}__${t.text}`));
+      if (!missing.length) {
+        setProtocolsStatus('Tous les modèles par défaut sont déjà présents.', 'success');
+        return;
+      }
+      // dependsOn (ex. la question de relance du linge taché) référence
+      // l'autre item par une "key" locale au tableau par défaut, pas un
+      // itemId Firestore (inconnu avant la création) : on résout vers le
+      // vrai id ici, à partir des items déjà importés (leur key est
+      // conservée sur le document) et de ceux créés dans ce même lot.
+      const keyToId = {};
+      latestProtocolTemplates.forEach(t => { if (t.key) keyToId[t.key] = t.id; });
+      const refs = missing.map(t => ({ t, ref: doc(collection(db, 'protocolTemplates')) }));
+      refs.forEach(({ t, ref }) => { if (t.key) keyToId[t.key] = ref.id; });
+
+      const batch = writeBatch(db);
+      refs.forEach(({ t, ref }, i) => {
+        const { dependsOn, ...rest } = t;
+        const resolvedDependsOn = dependsOn && keyToId[dependsOn.key]
+          ? { itemId: keyToId[dependsOn.key], equals: dependsOn.equals }
+          : null;
+        batch.set(ref, { ...rest, dependsOn: resolvedDependsOn, active: true, order: t.order != null ? t.order : i, createdAt: serverTimestamp() });
+      });
+      await withTimeout(batch.commit(), 20000);
+      setProtocolsStatus(`${missing.length} modèle(s) importé(s).`, 'success');
+    });
+  } catch (error) {
+    setProtocolsStatus(`Import impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+if (importDefaultProtocolsBtn) {
+  importDefaultProtocolsBtn.addEventListener('click', () => importDefaultProtocols(importDefaultProtocolsBtn));
 }
 
 // ---- CRM : prospects ----
@@ -2609,6 +3310,7 @@ function renderBookingDetail() {
     if (bookingCost) { bookingCost.classList.add('hidden'); bookingCost.innerHTML = ''; }
     photoGrid.innerHTML = '';
     incidentList.innerHTML = '';
+    if (bookingCommentList) bookingCommentList.innerHTML = '';
     verifyBtn.disabled = true;
     rejectBtn.disabled = true;
     if (devisBtn) devisBtn.disabled = true;
@@ -2657,49 +3359,83 @@ function renderBookingDetail() {
   }
 
   renderIncidents();
+  renderBookingComments();
 }
 
-// Même file (#photoGrid) que PHOTO_SLOTS, mais une entrée par (exigence,
-// instance de pièce) : celles qui exigent une photo l'affichent comme un
-// .photo-slot, celles qui exigent oui/non affichent la réponse, le Valider
-// reste bloqué tant que toutes les réponses exigées ne sont pas là.
+// Rapport d'intervention : même file (#photoGrid) que PHOTO_SLOTS, groupée
+// par phase (avant/ménage/après), une entrée par (exigence, instance de
+// pièce) — confirmation/oui-non affichent la réponse, photo (simple ou
+// plusieurs photoSlots indépendants) l'affiche comme un .photo-slot. Le
+// Valider reste bloqué tant que toutes les réponses exigées ne sont pas là,
+// quel que soit le mode. selectedBooking.exigences est déjà la liste
+// FUSIONNÉE (bibliothèque partagée + ajouts du logement), via
+// computeChecklistItems dans refreshBookingDetail — pas seulement les
+// exigences propres au logement comme avant.
 function renderExigenceAnswers() {
   let allAnswered = true;
-  selectedBooking.exigences.forEach(exigence => {
-    exigenceInstances(exigence, selectedBooking).forEach(instance => {
-      const answerId = exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex);
-      const answer = selectedBooking.exigenceAnswers[answerId];
-      const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
 
-      if (exigence.requiresPhoto) {
-        const slotEl = document.createElement('div');
-        slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
-        if (answer && answer.photoUrl) {
-          const img = document.createElement('img');
-          img.src = answer.photoUrl; img.alt = label;
-          slotEl.appendChild(img);
-          const link = document.createElement('a');
-          link.href = answer.photoUrl; link.target = '_blank'; link.rel = 'noopener';
-          link.className = 'photo-caption'; link.textContent = label;
-          slotEl.appendChild(link);
-        } else {
-          const span = document.createElement('span');
-          span.textContent = `${label}, manquante`;
-          slotEl.appendChild(span);
-          allAnswered = false;
+  const buildPhotoCell = (label, url) => {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'photo-slot' + (url ? ' uploaded' : '');
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url; img.alt = label;
+      slotEl.appendChild(img);
+      const link = document.createElement('a');
+      link.href = url; link.target = '_blank'; link.rel = 'noopener';
+      link.className = 'photo-caption'; link.textContent = label;
+      slotEl.appendChild(link);
+    } else {
+      const span = document.createElement('span');
+      span.textContent = `${label}, manquante`;
+      slotEl.appendChild(span);
+      allAnswered = false;
+    }
+    return slotEl;
+  };
+
+  const buildTextCell = (label, text, done) => {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'photo-slot' + (done ? ' uploaded' : '');
+    const span = document.createElement('span');
+    span.textContent = text;
+    slotEl.appendChild(span);
+    if (!done) allAnswered = false;
+    return slotEl;
+  };
+
+  EXIGENCE_PHASES.forEach(phase => {
+    const items = selectedBooking.exigences.filter(e => e.phase === phase.key);
+    if (!items.length) return;
+    const phaseHead = document.createElement('div');
+    phaseHead.className = 'roster-subhead';
+    phaseHead.textContent = phase.label;
+    photoGrid.appendChild(phaseHead);
+
+    items.forEach(exigence => {
+      exigenceInstances(exigence, selectedBooking).forEach(instance => {
+        const answerId = exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex);
+        const answer = selectedBooking.exigenceAnswers[answerId];
+        const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
+
+        if (exigence.requiresConfirmation) {
+          photoGrid.appendChild(buildTextCell(label, answer && answer.confirmed ? `${label} : fait` : `${label}, non confirmé`, !!(answer && answer.confirmed)));
         }
-        photoGrid.appendChild(slotEl);
-      }
 
-      if (exigence.requiresYesNo && (!answer || answer.answerYesNo == null)) allAnswered = false;
-      if (exigence.requiresYesNo) {
-        const slotEl = document.createElement('div');
-        slotEl.className = 'photo-slot' + (answer && answer.answerYesNo != null ? ' uploaded' : '');
-        const span = document.createElement('span');
-        span.textContent = answer && answer.answerYesNo != null ? `${label} : ${answer.answerYesNo ? 'Oui' : 'Non'}` : `${label}, sans réponse`;
-        slotEl.appendChild(span);
-        photoGrid.appendChild(slotEl);
-      }
+        if (exigence.requiresYesNo) {
+          const done = !!(answer && answer.answerYesNo != null);
+          photoGrid.appendChild(buildTextCell(label, done ? `${label} : ${answer.answerYesNo ? 'Oui' : 'Non'}` : `${label}, sans réponse`, done));
+        }
+
+        if (exigence.photoSlots && exigence.photoSlots.length) {
+          exigence.photoSlots.forEach((slotLabel, slotIndex) => {
+            const slotAnswer = selectedBooking.exigenceAnswers[exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex, slotIndex)];
+            photoGrid.appendChild(buildPhotoCell(`${label} — ${slotLabel}`, slotAnswer && slotAnswer.photoUrl));
+          });
+        } else if (exigence.requiresPhoto) {
+          photoGrid.appendChild(buildPhotoCell(label, answer && answer.photoUrl));
+        }
+      });
     });
   });
   verifyBtn.disabled = !allAnswered;
@@ -2714,17 +3450,19 @@ async function refreshBookingDetail() {
   selectedBooking = { id: bookingSnap.id, clientEmail, ...bookingSnap.data() };
   const photos = await loadPhotoDocs(selectedBooking.id);
   selectedBooking.photos = photos.reduce((acc, photo) => ({ ...acc, [photo.slot]: photo }), {});
-  // Logement avec sa propre liste d'exigences ? Sinon, le dossier garde
-  // l'ancien contrôle photo générique (PHOTO_SLOTS) plus bas.
-  selectedBooking.exigences = selectedBooking.propertyId
+  // Même fusion que côté prestataire (computeChecklistItems) : bibliothèque
+  // partagée (latestProtocolTemplates, déjà chargée en continu pour
+  // l'onglet Protocoles) + ajouts propres au logement. Sans ça, l'admin ne
+  // verrait jamais ce que le prestataire a réellement rempli dès qu'un
+  // logement n'a que des modèles partagés et aucune exigence propre — le
+  // cas normal désormais. Logement sans propertyId ni aucun contenu ?
+  // Liste vide, le dossier garde l'ancien contrôle PHOTO_SLOTS plus bas.
+  const customExigences = selectedBooking.propertyId
     ? await loadExigencesForProperty(selectedBooking.propertyId)
     : [];
-  if (selectedBooking.exigences.length) {
-    const answers = await loadExigenceAnswers(selectedBooking.id);
-    selectedBooking.exigenceAnswers = answers.reduce((acc, answer) => ({ ...acc, [answer.id]: answer }), {});
-  } else {
-    selectedBooking.exigenceAnswers = {};
-  }
+  const answers = await loadExigenceAnswers(selectedBooking.id);
+  selectedBooking.exigenceAnswers = answers.reduce((acc, answer) => ({ ...acc, [answer.id]: answer }), {});
+  selectedBooking.exigences = computeChecklistItems(selectedBooking, latestProtocolTemplates, customExigences, selectedBooking.exigenceAnswers);
 }
 
 async function renderIncidents() {
@@ -2738,13 +3476,29 @@ async function renderIncidents() {
   incidents.forEach(incident => {
     const item = document.createElement('div');
     item.className = 'incident-item';
-    const typeLabel = incident.type === 'broken_object' ? 'Objet cassé' : incident.type === 'lost_object' ? 'Objet perdu' : 'Autre';
+    const typeLabel = (ANOMALY_CATEGORIES.find(c => c.key === incident.type) || {}).label || 'Autre';
     const title = document.createElement('strong');
     title.textContent = typeLabel;
+    if (incident.urgency) {
+      const urgLabel = (ANOMALY_URGENCY_LEVELS.find(u => u.key === incident.urgency) || {}).label || incident.urgency;
+      const urgBadge = document.createElement('span');
+      urgBadge.className = 'status-pill' + (incident.urgency === 'urgente' ? ' anomaly' : incident.urgency === 'moyenne' ? ' partial' : '');
+      urgBadge.style.marginLeft = '8px';
+      urgBadge.textContent = `Urgence : ${urgLabel}`;
+      title.appendChild(urgBadge);
+    }
+    item.appendChild(title);
+    if (incident.itemId) {
+      const linkedTemplate = latestProtocolTemplates.find(t => t.id === incident.itemId);
+      const phaseLabel = (EXIGENCE_PHASES.find(p => p.key === incident.phase) || {}).label;
+      const linked = document.createElement('div');
+      linked.className = 'task-meta';
+      linked.textContent = [phaseLabel, linkedTemplate && linkedTemplate.text].filter(Boolean).join(' · ') || 'Point de contrôle lié';
+      item.appendChild(linked);
+    }
     const description = document.createElement('div');
     description.className = 'task-meta';
     description.textContent = incident.description;
-    item.appendChild(title);
     item.appendChild(description);
     (incident.photoRefs || []).forEach((url, index) => {
       const link = document.createElement('a');
@@ -2756,6 +3510,32 @@ async function renderIncidents() {
       item.appendChild(link);
     });
     incidentList.appendChild(item);
+  });
+}
+
+// Lecture seule : l'admin consulte les commentaires du prestataire ici,
+// aucune saisie admin n'est ajoutée (voir firestore.rules, allow create
+// réservé au prestataire).
+async function renderBookingComments() {
+  if (!bookingCommentList) return;
+  bookingCommentList.innerHTML = '';
+  if (!selectedBooking) return;
+  const comments = await loadBookingComments(selectedBooking.id);
+  if (comments.length === 0) {
+    bookingCommentList.innerHTML = '<div class="empty-state">Aucun commentaire pour ce dossier.</div>';
+    return;
+  }
+  comments.forEach(comment => {
+    const item = document.createElement('div');
+    item.className = 'comment-item';
+    const meta = document.createElement('div');
+    meta.className = 'comment-meta';
+    meta.textContent = formatShortDate(comment.createdAt?.toDate ? comment.createdAt.toDate() : comment.createdAt);
+    const text = document.createElement('div');
+    text.className = 'comment-text';
+    text.textContent = comment.text;
+    item.append(meta, text);
+    bookingCommentList.appendChild(item);
   });
 }
 
@@ -2906,6 +3686,8 @@ onAuthStateChanged(auth, async user => {
     subscribePricing();
     subscribeCatalog();
     subscribeProperties();
+    subscribeSuggestions();
+    subscribeProtocolTemplates();
     subscribeProspects();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };

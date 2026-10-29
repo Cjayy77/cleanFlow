@@ -74,6 +74,8 @@
       <button type="button" class="tab" data-tab="prospects">Prospects</button>
       <button type="button" class="tab" data-tab="catalog">Catalogue</button>
       <button type="button" class="tab" data-tab="properties">Propriétés</button>
+      <button type="button" class="tab" data-tab="suggestions">Suggestions</button>
+      <button type="button" class="tab" data-tab="protocols">Protocoles</button>
       <button type="button" class="tab" data-tab="tarifs">Tarifs</button>
     </div>
 
@@ -158,6 +160,8 @@
           </div>
           <div class="eyebrow" style="margin-top:26px;">Incidents signalés</div>
           <div id="incidentList"></div>
+          <div class="eyebrow" style="margin-top:26px;">Commentaires du prestataire</div>
+          <div id="bookingCommentList"></div>
         </div>
       </div>
     </section>
@@ -246,10 +250,39 @@
         <div id="propertiesStatus" class="status-banner hidden" role="status"></div>
         <div id="propertiesRoot"></div>
       </div>
+      <div class="card hidden" id="propertyConfigCard">
+        <div class="eyebrow">Fiche de configuration</div>
+        <h2 id="propertyConfigTitle"></h2>
+        <p>Comptes et équipements utilisés par le protocole de ménage standard (chambres/salles de bain/WC répétés automatiquement, sections conditionnées à l'équipement présent).</p>
+        <div id="propertyConfigStatus" class="status-banner hidden" role="status"></div>
+        <div id="propertyConfigRoot"></div>
+      </div>
       <div class="card hidden" id="exigencesCard">
         <div class="eyebrow">Exigences du logement</div>
         <h2 id="exigencesPropertyTitle"></h2>
+        <p>Ajouts ou surcharges propres à ce logement, en plus du protocole standard (onglet Protocoles).</p>
         <div id="exigencesRoot"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="suggestions">
+      <div class="card">
+        <div class="eyebrow">Back-office</div>
+        <h2>Suggestions d'exigences</h2>
+        <p>Une bibliothèque d'exigences courantes (en plus d'une liste déjà fournie par défaut), proposée lors de la rédaction des exigences d'un logement pour éviter de tout retaper. Modifier ou supprimer une suggestion ici ne change rien aux exigences déjà créées sur les logements.</p>
+        <div id="suggestionsStatus" class="status-banner hidden" role="status"></div>
+        <div id="suggestionsRoot"></div>
+      </div>
+    </section>
+
+    <section class="admin-section hidden" data-tab="protocols">
+      <div class="card">
+        <div class="eyebrow">Back-office</div>
+        <h2>Protocoles de ménage</h2>
+        <p>Bibliothèque PARTAGÉE appliquée à tous les logements (contrairement aux exigences, propres à un seul logement). Modifier un point de contrôle ici le modifie pour chaque mission qui l'utilise. Les sections "Si…" n'apparaissent que pour les logements ayant l'équipement correspondant (configurable dans l'onglet Propriétés).</p>
+        <div id="protocolsStatus" class="status-banner hidden" role="status"></div>
+        <button type="button" class="btn ghost" id="importDefaultProtocolsBtn">Importer les modèles par défaut</button>
+        <div id="protocolsRoot" style="margin-top:18px;"></div>
       </div>
     </section>
 

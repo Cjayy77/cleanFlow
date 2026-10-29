@@ -447,7 +447,429 @@ export const EXIGENCE_ROOM_SCOPES = [
   { key: 'none', label: 'Exigence unique' },
   { key: 'bedroom', label: 'Une fois par chambre' },
   { key: 'bathroom', label: 'Une fois par salle de bain' },
+  { key: 'wc', label: 'Une fois par WC' },
+  { key: 'smoke_detector', label: 'Une fois par détecteur de fumée' },
+  { key: 'key_box', label: 'Une fois par boîte à clés' },
   { key: 'other', label: 'Zone unique (sol, terrasse…)' },
+];
+
+// Catégories du protocole partagé (bibliothèque /protocolTemplates), par
+// phase. Distinctes de EXIGENCE_SUGGESTION_CATEGORIES (qui ne sert que de
+// point de départ pour les ajouts propres à un logement) : ici c'est le
+// contenu réel appliqué à tous les logements.
+export const PROTOCOL_CATEGORIES = [
+  { key: 'preparation_generale', label: 'Préparation générale et linge', phase: 'avant' },
+  { key: 'acces', label: 'Accès au logement', phase: 'avant' },
+  { key: 'materiel', label: 'Matériel et produits de nettoyage', phase: 'avant' },
+  { key: 'aeration', label: 'Aération du logement', phase: 'avant' },
+  { key: 'equipements', label: 'Vérification des équipements', phase: 'avant' },
+  { key: 'etat_initial', label: 'État initial du logement', phase: 'avant' },
+  { key: 'equipements_dispo', label: 'Équipements mis à disposition', phase: 'avant' },
+  { key: 'consommables', label: 'Consommables', phase: 'avant' },
+  { key: 'parties_communes', label: 'Respect des parties communes', phase: 'avant' },
+  { key: 'menage_preparation', label: 'Préparation générale', phase: 'menage' },
+  { key: 'chambre', label: 'Chambres', phase: 'menage' },
+  { key: 'salle_de_bain', label: 'Salles de bain', phase: 'menage' },
+  { key: 'wc', label: 'WC', phase: 'menage' },
+  { key: 'cuisine', label: 'Cuisine', phase: 'menage' },
+  { key: 'salon', label: 'Salon', phase: 'menage' },
+  { key: 'sols_entree', label: 'Sols et entrée', phase: 'menage' },
+  { key: 'securite', label: 'Sécurité et équipements', phase: 'menage' },
+  { key: 'terrasse', label: 'Terrasse', phase: 'menage' },
+  { key: 'linge', label: 'Vérification du linge', phase: 'apres' },
+  { key: 'chauffage_clim', label: 'Chauffage et climatisation', phase: 'apres' },
+  { key: 'cles', label: 'Contrôle des clés', phase: 'apres' },
+  { key: 'presentation', label: 'Présentation finale', phase: 'apres' },
+  { key: 'entree', label: "Contrôle de l'entrée", phase: 'apres' },
+  { key: 'parties_communes_apres', label: 'Parties communes', phase: 'apres' },
+  { key: 'dechets', label: 'Gestion des déchets', phase: 'apres' },
+];
+
+export const PROTOCOL_GATE_FLAGS = [
+  { key: null, label: 'Toujours (aucune condition)' },
+  { key: 'hasSofaBed', label: "Si le logement a un canapé-lit" },
+  { key: 'hasTerrace', label: 'Si le logement a une terrasse' },
+  { key: 'hasClim', label: 'Si le logement a la climatisation' },
+  { key: 'smokeDetectorCount', label: 'Selon le nombre de détecteurs de fumée' },
+  { key: 'keyBoxCount', label: 'Selon le nombre de boîtes à clés' },
+];
+
+export const ANOMALY_CATEGORIES = [
+  { key: 'linge_manquant', label: 'Linge manquant' },
+  { key: 'equipement_defectueux', label: 'Équipement défectueux' },
+  { key: 'telecommande_absente', label: 'Télécommande absente' },
+  { key: 'consommables_insuffisants', label: 'Consommables insuffisants' },
+  { key: 'moisissures', label: 'Moisissures' },
+  { key: 'degradation_mobilier', label: 'Dégradation du mobilier' },
+  { key: 'probleme_plomberie', label: 'Problème de plomberie' },
+  { key: 'broken_object', label: 'Objet cassé' },
+  { key: 'lost_object', label: 'Objet perdu' },
+  { key: 'other', label: 'Autre' },
+];
+
+export const ANOMALY_URGENCY_LEVELS = [
+  { key: 'faible', label: 'Faible' },
+  { key: 'moyenne', label: 'Moyenne' },
+  { key: 'urgente', label: 'Urgente' },
+];
+
+export const EXIGENCE_SUGGESTION_CATEGORIES = [
+  { key: 'cuisine', label: 'Cuisine' },
+  { key: 'salle_de_bain', label: 'Salle de bain' },
+  { key: 'chambre', label: 'Chambre' },
+  { key: 'electromenager', label: 'Électroménager' },
+  { key: 'general', label: 'Général / zones communes' },
+];
+
+// Suggestions de départ, prêtes à l'emploi sans rien configurer : l'admin
+// peut aussi enrichir sa propre bibliothèque (onglet Suggestions), qui se
+// mélange à cette liste dans le sélecteur de l'éditeur d'exigences.
+export const DEFAULT_EXIGENCE_SUGGESTIONS = [
+  { category: 'cuisine', text: 'Nettoyer la vaisselle et ranger le lave-vaisselle', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'cuisine', text: 'Essuyer les plans de travail et la table', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'cuisine', text: 'Vider et nettoyer le réfrigérateur si besoin', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'cuisine', text: 'Photo du four et de la plaque de cuisson', roomScope: 'none', requiresYesNo: false, requiresPhoto: true },
+  { category: 'cuisine', text: 'Sortir les poubelles et le recyclage', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'salle_de_bain', text: 'Nettoyer et désinfecter les toilettes', roomScope: 'bathroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'salle_de_bain', text: 'Changer les serviettes', roomScope: 'bathroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'salle_de_bain', text: 'Photo de la douche ou de la baignoire nettoyée', roomScope: 'bathroom', requiresYesNo: false, requiresPhoto: true },
+  { category: 'salle_de_bain', text: 'Vérifier le niveau de papier toilette', roomScope: 'bathroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'chambre', text: 'Faire le lit avec du linge propre', roomScope: 'bedroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'chambre', text: 'Dépoussiérer les surfaces', roomScope: 'bedroom', requiresYesNo: true, requiresPhoto: false },
+  { category: 'chambre', text: 'Photo de la chambre rangée', roomScope: 'bedroom', requiresYesNo: false, requiresPhoto: true },
+  { category: 'electromenager', text: 'Photo du tambour de la machine à laver vide', roomScope: 'none', requiresYesNo: false, requiresPhoto: true },
+  { category: 'electromenager', text: 'Vérifier et nettoyer le filtre du lave-linge', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'electromenager', text: 'Vider le filtre du sèche-linge', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'general', text: 'Aspirer et laver les sols', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'general', text: 'Vérifier que le wifi fonctionne', roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+  { category: 'general', text: 'Photo générale du salon rangé', roomScope: 'none', requiresYesNo: false, requiresPhoto: true },
+  { category: 'general', text: "Vérifier qu'il ne manque pas d'ampoules", roomScope: 'none', requiresYesNo: true, requiresPhoto: false },
+];
+
+// Bibliothèque standard du protocole (cahiers des charges Avant Ménage /
+// Ménage / Après Ménage) : contenu RÉEL appliqué à tous les logements via
+// computeChecklistItems(), pas de simples suggestions. Chaque lettre du
+// document Avant Ménage devient une ou plusieurs entrées ici ; une lettre
+// qui regroupe plusieurs vérifications indépendantes sous un seul "Oui/
+// Non" est éclatée en items distincts (ex. D : éclairages ET wifi) pour
+// que le signalement d'anomalie reste précis — c'est l'esprit même du
+// document (§1 : "éviter les litiges", traçabilité par point de contrôle).
+// Les phases Ménage et Après Ménage sont ajoutées dans les phases
+// suivantes du développement, pas encore ici.
+export const DEFAULT_PROTOCOL_TEMPLATES = [
+  // --- AVANT MÉNAGE (document 1) ---
+  {
+    phase: 'avant', category: 'acces', order: 0,
+    text: 'Photographier les clés présentes dans la boîte à clés et vérifier leur présence',
+    roomScope: 'none', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'materiel', order: 0,
+    text: 'Photographier les produits et le matériel de nettoyage disponibles (désinfectant, anticalcaire, microfibres, éponges, autres équipements nécessaires)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'aeration', order: 0,
+    text: 'Ouvrir les fenêtres des pièces concernées et photographier l’aération du logement',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'equipements', order: 0,
+    text: 'Contrôler le fonctionnement des éclairages',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'equipements', order: 1,
+    text: 'Vérifier la connexion Wi-Fi',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'etat_initial', order: 0,
+    text: 'Vérifier l’absence d’objets oubliés par les précédents occupants',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'etat_initial', order: 1,
+    text: 'Vérifier l’absence de dégradations visibles',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'etat_initial', order: 2,
+    text: 'Vérifier l’absence d’odeurs inhabituelles (cigarette, humidité, etc.)',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'equipements_dispo', order: 0,
+    text: 'Photographier les équipements mis à disposition (aspirateur, fer et table à repasser, étendoir, équipements bébé le cas échéant, couettes et oreillers supplémentaires)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'avant', category: 'consommables', order: 0,
+    text: 'Contrôler les stocks de consommables (papier toilette, essuie-tout, savon, gel douche, shampooing, après-shampooing, café, thé, sucre, autres consommables prévus) et signaler les quantités insuffisantes',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+  {
+    phase: 'avant', category: 'parties_communes', order: 0,
+    text: 'Confirmer qu’aucun matériel, sac de linge ou déchet n’est déposé dans les parties communes de l’immeuble',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+
+  // --- MÉNAGE (document 2) ---
+  {
+    phase: 'menage', category: 'menage_preparation', order: 0,
+    text: 'Détartrer et désinfecter les surfaces (robinetterie, parois de douche, joints) — respecter 10 min de temps d’action',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'menage_preparation', order: 1,
+    text: 'Vérifier que le linge livré correspond à la configuration du logement (quantités, propreté, absence de taches ou de détérioration)',
+    roomScope: 'none', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'menage_preparation', order: 2,
+    text: 'Désinfecter les WC (produit adapté, 10 min de temps d’action)',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'menage_preparation', order: 3,
+    text: 'Vérifier l’absence de moisissures (joints, murs, plafonds) et le bon fonctionnement de la VMC',
+    roomScope: 'none', requiresYesNo: true,
+  },
+
+  {
+    phase: 'menage', category: 'chambre', order: 0,
+    text: 'Vérifier la propreté et la présence d’une alèse propre sur chaque matelas, photographier le matelas avec l’alèse visible',
+    roomScope: 'bedroom', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'chambre', order: 1,
+    text: 'Nettoyer et dépoussiérer le mobilier (placards, bureaux, étagères, interrupteurs, poignées, luminaires, tiroirs)',
+    roomScope: 'bedroom', requiresConfirmation: true, requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'chambre', order: 2,
+    text: 'Préparer le lit (linge propre, présentation soignée) et disposer les serviettes prévues, photographier le résultat',
+    roomScope: 'bedroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'chambre', order: 3,
+    text: 'Contrôle final de la chambre (propreté, rangement, absence d’objets oubliés, présentation)',
+    roomScope: 'bedroom', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 0,
+    text: 'Nettoyer les joints (traces de savon et de calcaire)',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 1,
+    text: 'Nettoyer la douche ou la baignoire (parois, robinetterie, receveur, traces de savon et de calcaire)',
+    roomScope: 'bathroom', requiresConfirmation: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 2,
+    text: 'Contrôle du siphon',
+    roomScope: 'bathroom',
+    photoSlots: ['Siphon ouvert, avec de l’eau visible, après nettoyage', 'Siphon correctement refermé et remis en place'],
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 3,
+    text: 'Présentation finale de la douche (pommeau, tapis de bain, joints, propreté générale)',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 4,
+    text: 'Vérifier le sèche-serviettes et l’éteindre conformément aux instructions du logement',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 5,
+    text: 'Vérifier la présence et le niveau des produits d’accueil (gel douche, shampooing, après-shampooing, savon mains), disposés comme la référence',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 6,
+    text: 'Vérifier, tester et nettoyer le sèche-cheveux, le ranger à son emplacement prévu',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salle_de_bain', order: 7,
+    text: 'Nettoyer le porte-savon (calcaire, résidus de savon)',
+    roomScope: 'bathroom', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'wc', order: 0,
+    text: 'Nettoyer les toilettes (cuvette, abattant, chasse d’eau, support et brosse, recharge de papier toilette)',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'wc', order: 1,
+    text: 'Vérifier que la brosse WC est propre, en bon état et correctement rangée',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'wc', order: 2,
+    text: 'Vérifier la réserve de papier toilette (3 rouleaux disponibles, dont celui installé)',
+    roomScope: 'wc', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'cuisine', order: 0,
+    text: 'Nettoyer et ranger la vaisselle, vider et remplir la carafe d’eau',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 1,
+    text: 'Vérifier la propreté des casseroles et poêles, nettoyer et ranger si nécessaire',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 2,
+    text: 'Nettoyer et ranger le placard sous évier (sacs-poubelle, pelle et balayette, bassine, lessive, pastilles et sel lave-vaisselle, liquide de rinçage, matériel de lavage des sols)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 3,
+    text: 'Nettoyer l’intérieur du réfrigérateur et vérifier la présence de la bouteille d’eau prévue',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 4,
+    text: 'Vider et nettoyer l’intérieur du lave-vaisselle',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 5,
+    text: 'Vider la machine à laver, nettoyer le joint, le tiroir à lessive et le hublot',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 6,
+    text: 'Tester, nettoyer et ranger le petit électroménager (bouilloire, machine à café, grille-pain)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 7,
+    text: 'Nettoyer l’intérieur du four et du micro-ondes',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 8,
+    text: 'Vérifier la réserve de sacs-poubelle destinés au client',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'cuisine', order: 9,
+    text: 'Vérifier les produits de cuisine (liquide vaisselle, éponge, torchon, essuie-tout)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'salon', order: 0,
+    text: 'Nettoyer et ranger le salon (dépoussiérer, mobilier, chaises, télécommandes, rideaux, lampes)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salon', order: 1,
+    text: 'Ouvrir le canapé-lit, vérifier sa propreté et la présence d’une alèse',
+    roomScope: 'none', requiresPhoto: true, gateFlag: 'hasSofaBed',
+  },
+  {
+    phase: 'menage', category: 'salon', order: 2,
+    text: 'Présenter le canapé (coussins, éléments décoratifs) conformément à la photo de référence',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'salon', order: 3,
+    text: 'Vérifier la présence de la télécommande de climatisation',
+    roomScope: 'none', requiresYesNo: true, gateFlag: 'hasClim',
+  },
+  {
+    phase: 'menage', category: 'salon', order: 4,
+    text: 'Allumer la télévision, vérifier son fonctionnement et tester la télécommande',
+    roomScope: 'none', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'sols_entree', order: 0,
+    text: 'Aspirer l’ensemble du logement, y compris sous les meubles accessibles',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+  {
+    phase: 'menage', category: 'sols_entree', order: 1,
+    text: 'Laver les sols de toutes les pièces accessibles',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'sols_entree', order: 2,
+    text: 'Nettoyer l’entrée du logement (porte, poignées, murs accessibles, sol)',
+    roomScope: 'none', requiresConfirmation: true,
+  },
+
+  {
+    phase: 'menage', category: 'securite', order: 0,
+    text: 'Vérifier la présence du détecteur de fumée et photographier son emplacement',
+    roomScope: 'smoke_detector', requiresPhoto: true,
+  },
+
+  {
+    phase: 'menage', category: 'terrasse', order: 0,
+    text: 'Nettoyer la terrasse (mobilier, balayage, déchets, objets abandonnés, mobilier remis en place)',
+    roomScope: 'none', requiresPhoto: true, gateFlag: 'hasTerrace',
+  },
+
+  // --- APRÈS MÉNAGE (document 3) ---
+  // key sert uniquement à ce tableau (résolu en vrai itemId Firestore à
+  // l'import, voir importDefaultProtocols dans admin.js) : dependsOn ne
+  // peut pas connaître d'avance l'id auto-généré de l'item dont il dépend.
+  {
+    phase: 'apres', category: 'linge', order: 0, key: 'apres_linge_tache',
+    text: 'Le linge est-il taché ?',
+    roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'apres', category: 'linge', order: 1,
+    text: 'Avez-vous résolu le problème et remplacé le linge taché ?',
+    roomScope: 'none', requiresYesNo: true,
+    dependsOn: { key: 'apres_linge_tache', equals: true },
+  },
+  {
+    phase: 'apres', category: 'chauffage_clim', order: 0,
+    text: 'Vérifier le réglage du chauffage et de la climatisation selon les instructions du logement (voir standard de température dans la fiche du logement)',
+    roomScope: 'none', requiresYesNo: true, requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'cles', order: 0,
+    text: 'Photographier la boîte à clés (présence, rangement, fermeture) conformément à la référence',
+    roomScope: 'key_box', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'presentation', order: 0,
+    text: 'Ouvrir et positionner correctement les rideaux',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'presentation', order: 1,
+    text: 'Fermer et vérifier toutes les fenêtres',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'entree', order: 0,
+    text: 'Contrôle final de l’entrée (propreté, rangement, présentation, absence de matériel oublié)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'parties_communes_apres', order: 0,
+    text: 'Vérifier les parties communes de l’immeuble (déchets, sacs de linge, matériel de nettoyage)',
+    roomScope: 'none', requiresPhoto: true,
+  },
+  {
+    phase: 'apres', category: 'dechets', order: 0,
+    text: 'Évacuer les déchets en respectant le tri sélectif et les emplacements prévus',
+    roomScope: 'none', requiresConfirmation: true, requiresPhoto: true, allowsComment: true,
+  },
 ];
 
 const configMissing = Object.values(firebaseConfig).some(value => String(value).startsWith('REPLACE'));
@@ -565,20 +987,33 @@ export async function loadExigenceAnswers(bookingId) {
 // Id déterministe : un nouvel envoi (photo ou oui/non) remplace la réponse
 // précédente pour cette exigence (et, pour une exigence par pièce, cette
 // pièce précise) sur cette mission, même logique que la photo en slot fixe.
-export function exigenceAnswerDocId(bookingId, exigenceId, roomIndex) {
-  return roomIndex == null ? `${bookingId}_${exigenceId}` : `${bookingId}_${exigenceId}_${roomIndex}`;
+export function exigenceAnswerDocId(bookingId, exigenceId, roomIndex, slotIndex = null) {
+  const base = roomIndex == null ? `${bookingId}_${exigenceId}` : `${bookingId}_${exigenceId}_${roomIndex}`;
+  return slotIndex == null ? base : `${base}_s${slotIndex}`;
 }
 
-// Une exigence « par pièce » (roomScope bedroom/bathroom) se répète une
-// fois par pièce RÉELLE de la réservation (bedrooms/bathrooms, recopiés
-// sur le booking au moment de la réservation — pas une relecture du
-// logement, pour qu'une mission en cours ne bouge pas si le logement est
-// modifié entre-temps). Une exigence 'none'/'other' n'a qu'une instance.
+// Une exigence « par pièce » (roomScope bedroom/bathroom/wc) se répète une
+// fois par pièce RÉELLE de la réservation (bedrooms/bathrooms/wcCount,
+// recopiés sur le booking au moment de la réservation — pas une relecture
+// du logement, pour qu'une mission en cours ne bouge pas si le logement
+// est modifié entre-temps). Une exigence 'none'/'other' n'a qu'une
+// instance.
+// Chaque entrée répétable associe son roomScope au champ de comptage gelé
+// sur le booking (voir booking-flow.js) et au mot utilisé pour numéroter
+// les instances (Chambre 1, Détecteur 2…).
+const REPEATABLE_ROOM_SCOPES = {
+  bedroom: { countField: 'bedrooms', word: 'Chambre' },
+  bathroom: { countField: 'bathrooms', word: 'Salle de bain' },
+  wc: { countField: 'wcCount', word: 'WC' },
+  smoke_detector: { countField: 'smokeDetectorCount', word: 'Détecteur' },
+  key_box: { countField: 'keyBoxCount', word: 'Boîte à clés' },
+};
+
 export function exigenceInstances(exigence, booking) {
-  if (exigence.roomScope === 'bedroom' || exigence.roomScope === 'bathroom') {
-    const count = Math.max(0, Number(exigence.roomScope === 'bedroom' ? booking.bedrooms : booking.bathrooms) || 0);
-    const roomWord = exigence.roomScope === 'bedroom' ? 'Chambre' : 'Salle de bain';
-    return Array.from({ length: count }, (_, i) => ({ roomIndex: i, label: `${roomWord} ${i + 1}` }));
+  const repeat = REPEATABLE_ROOM_SCOPES[exigence.roomScope];
+  if (repeat) {
+    const count = Math.max(0, Number(booking[repeat.countField]) || 0);
+    return Array.from({ length: count }, (_, i) => ({ roomIndex: i, label: `${repeat.word} ${i + 1}` }));
   }
   return [{ roomIndex: null, label: null }];
 }
@@ -594,15 +1029,202 @@ export async function saveExigenceYesNo({ bookingId, exigenceId, propertyId, roo
   return answerDoc;
 }
 
-export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, file, answeredBy }) {
+// Mode 1 (confirmation simple) : une case "fait", sans sémantique oui/non
+// (donc pas de branche anomalie automatique, contrairement à saveExigenceYesNo).
+export async function saveExigenceConfirmation({ bookingId, exigenceId, propertyId, roomIndex = null, answeredBy }) {
   const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex);
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, confirmed: true, answeredAt: serverTimestamp() };
+  await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
+  return answerDoc;
+}
+
+// Commentaire libre sur une exigence (ex. "préciser les difficultés
+// rencontrées" pour les déchets, après ménage) : purement informatif, ne
+// compte jamais dans exigenceAnswerStats/required-done, donc ne bloque
+// jamais la progression ni l'envoi du dossier.
+export async function saveExigenceComment({ bookingId, exigenceId, propertyId, roomIndex = null, answeredBy, commentText }) {
+  const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex);
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, commentText, answeredAt: serverTimestamp() };
+  await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
+  return answerDoc;
+}
+
+// slotIndex distingue plusieurs photos exigées par la MÊME tâche (ex. le
+// siphon : une photo ouvert, une photo refermé, deux validations séparées) —
+// omis pour une tâche à photo unique, l'id reste identique à avant.
+export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, slotIndex = null, file, answeredBy }) {
+  const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex, slotIndex);
   const storagePath = `exigenceAnswers/${id}`;
   const storageRef = ref(storage, storagePath);
   await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
   const photoUrl = await getDownloadURL(storageRef);
-  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, answeredBy, photoUrl, storagePath, answeredAt: serverTimestamp() };
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, slotIndex, answeredBy, photoUrl, storagePath, answeredAt: serverTimestamp() };
   await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
   return answerDoc;
+}
+
+export async function loadProtocolTemplates() {
+  const snap = await getDocs(collection(db, 'protocolTemplates'));
+  return snap.docs
+    .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+function protocolGateSatisfied(gateFlag, booking) {
+  if (!gateFlag) return true;
+  const value = booking[gateFlag];
+  return typeof value === 'number' ? value > 0 : !!value;
+}
+
+function normalizeProtocolTemplate(template) {
+  return {
+    id: template.id,
+    source: 'template',
+    phase: template.phase,
+    category: template.category || null,
+    order: template.order || 0,
+    text: template.text,
+    instructions: template.instructions || '',
+    roomScope: template.roomScope || 'none',
+    requiresConfirmation: !!template.requiresConfirmation,
+    requiresYesNo: !!template.requiresYesNo,
+    requiresPhoto: !!template.requiresPhoto,
+    photoSlots: template.photoSlots && template.photoSlots.length ? template.photoSlots : null,
+    referencePhotoUrl: (template.referencePhotoUrls && template.referencePhotoUrls[0]) || template.referencePhotoUrl || '',
+    referencePhotoUrls: template.referencePhotoUrls && template.referencePhotoUrls.length ? template.referencePhotoUrls : null,
+    allowsComment: !!template.allowsComment,
+    dependsOn: template.dependsOn || null,
+    active: template.active,
+  };
+}
+
+function normalizeCustomExigence(item) {
+  return {
+    id: item.id,
+    source: 'custom',
+    phase: item.phase,
+    category: null,
+    order: item.order || 0,
+    text: item.text,
+    instructions: '',
+    roomScope: item.roomScope || 'none',
+    requiresConfirmation: false,
+    requiresYesNo: !!item.requiresYesNo,
+    requiresPhoto: !!item.requiresPhoto,
+    photoSlots: null,
+    referencePhotoUrl: item.referencePhotoUrl || '',
+    referencePhotoUrls: null,
+    dependsOn: null,
+    active: item.active,
+  };
+}
+
+// Fusionne la bibliothèque PARTAGÉE (protocolTemplates, filtrée par
+// équipements du logement via gateFlag, et par dépendance via dependsOn)
+// avec les AJOUTS propres à ce logement (exigences, inchangés) : une seule
+// liste normalisée, peu importe la source, que le rendu prestataire
+// consomme ensuite via exigenceInstances/buildExigenceRow comme avant.
+// `answers` (map answerDocId -> réponse) permet de résoudre dependsOn ;
+// recalculé à chaque rendu, donc une question de relance (ex. "avez-vous
+// résolu le problème ?") apparaît ou disparaît en direct selon la réponse
+// qui la conditionne.
+export function computeChecklistItems(booking, templates, customExigences, answers = {}) {
+  const fromTemplates = (templates || [])
+    .filter(t => t.active !== false)
+    .filter(t => protocolGateSatisfied(t.gateFlag, booking))
+    .filter(t => {
+      if (!t.dependsOn) return true;
+      const depAnswer = answers[exigenceAnswerDocId(booking.id, t.dependsOn.itemId, null)];
+      return !!depAnswer && depAnswer.answerYesNo === t.dependsOn.equals;
+    })
+    .map(normalizeProtocolTemplate);
+  const fromCustom = (customExigences || [])
+    .filter(e => e.active !== false)
+    .map(normalizeCustomExigence);
+  return [...fromTemplates, ...fromCustom].sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+// Chronomètre de mission (un document par réservation, id = bookingId).
+// startedAt/pausedAt sont des Date.now() côté client, pas serverTimestamp() :
+// c'est un repère personnel affiché au prestataire pendant qu'il travaille,
+// pas une preuve horodatée, donc pas besoin d'un aller-retour serveur pour
+// calculer le temps écoulé pendant que le chrono tourne.
+export async function loadBookingTimer(bookingId) {
+  const snap = await getDoc(doc(db, 'bookingTimers', bookingId));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function startBookingTimer({ bookingId, prestataireId, resumeFrom = 0 }) {
+  const timerDoc = { bookingId, prestataireId, startedAt: Date.now(), pausedAt: null, totalElapsedSeconds: resumeFrom, status: 'running' };
+  await setDoc(doc(db, 'bookingTimers', bookingId), timerDoc);
+  return timerDoc;
+}
+
+export async function pauseBookingTimer({ bookingId, prestataireId, startedAt, totalElapsedSeconds }) {
+  const elapsed = (totalElapsedSeconds || 0) + Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+  const timerDoc = { bookingId, prestataireId, startedAt: null, pausedAt: Date.now(), totalElapsedSeconds: elapsed, status: 'paused' };
+  await setDoc(doc(db, 'bookingTimers', bookingId), timerDoc);
+  return timerDoc;
+}
+
+// Notes du prestataire sur une mission (indépendant des incidents, réservés
+// aux problèmes à signaler).
+export async function loadBookingComments(bookingId) {
+  const snap = await getDocs(query(collection(db, 'bookingComments'), where('bookingId', '==', bookingId)));
+  return snap.docs
+    .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+    .sort((a, b) => (b.createdAt?.toMillis?.() || b.createdAt || 0) - (a.createdAt?.toMillis?.() || a.createdAt || 0));
+}
+
+export async function addBookingComment({ bookingId, authorId, text }) {
+  const commentDoc = { bookingId, authorId, text, read: false, createdAt: serverTimestamp() };
+  const ref2 = await addDoc(collection(db, 'bookingComments'), commentDoc);
+  return { id: ref2.id, ...commentDoc };
+}
+
+// Décomposition du prix CÔTÉ CLIENT uniquement (prestation/kits/amenities/
+// suppléments/commission/déplacement/TVA/TTC) : volontairement SANS
+// prestatairePay/adjustment (rémunération du prestataire, réservée à
+// l'admin dans la compta) tant que l'équipe n'a pas confirmé que le
+// prestataire doit voir sa propre paie par mission.
+export function buildClientPriceBreakdown(booking) {
+  const price = Number(booking.price) || 0;
+  const prestation = Number(booking.prestationPrice) || 0;
+  const travel = Number(booking.travelFee) || 0;
+  const amenities = Number(booking.amenitiesPrice) || 0;
+  const extrasHT = Number(booking.extrasHT) || 0;
+  const commission = Number(booking.commission) || 0;
+  const kits = Math.max(0, price - prestation - amenities - extrasHT - commission - travel);
+  const rooms = Number(booking.bedrooms != null ? booking.bedrooms : booking.kitCount) || 0;
+  const rate = getPricing().vatRate;
+  const vat = Math.round(price * rate);
+
+  const hstr = booking.hours ? `${String(booking.hours).replace('.', ',')} h · ` : '';
+  const rows = [[`Prestation · ${hstr}${booking.surface ? `${booking.surface} m²` : ''}`.replace(/· $/, ''), prestation]];
+  if (kits) rows.push([`Kits de bienvenue${rooms ? ` · ${rooms} chambre${rooms > 1 ? 's' : ''}` : ''}`, kits]);
+  rows.push(['Amenities (consommables)', amenities]);
+  (booking.extras || []).forEach(e => {
+    rows.push([`${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, (Number(e.priceHT) || 0) * (Number(e.qty) || 0)]);
+  });
+  if (commission) rows.push(['Commission Zebramoon', commission]);
+  if (travel) rows.push(['Frais de déplacement', travel]);
+  rows.push(['Total HT', price, 'pb-total']);
+  rows.push([`TVA (${Math.round(rate * 100)} %)`, vat, '']);
+  rows.push(['Total TTC (payé par le client)', price + vat, 'pb-warn']);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'price-breakdown';
+  rows.forEach(([label, amount, cls]) => {
+    const line = document.createElement('div');
+    line.className = `pb-line ${cls || ''}`.trim();
+    const span = document.createElement('span');
+    span.textContent = label;
+    const b = document.createElement('b');
+    b.textContent = `${amount}€`;
+    line.append(span, b);
+    wrap.appendChild(line);
+  });
+  return wrap;
 }
 
 export function formatShortDate(dateString) {
