@@ -53,6 +53,7 @@ import {
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { mount as mountBookingFlow, reset as resetBookingFlow } from './booking-flow.js';
+import { getPhotoDownloadUrl } from './r2-upload.js';
 
 const loadingScreen = document.getElementById('loadingScreen');
 const authScreen = document.getElementById('authScreen');
@@ -500,13 +501,13 @@ async function renderMissionReportBody(body, booking, address) {
           if (exigence.photoSlots && exigence.photoSlots.length) {
             exigence.photoSlots.forEach((slotLabel, slotIndex) => {
               const slotAnswer = answersById[exigenceAnswerDocId(booking.id, exigence.id, instance.roomIndex, slotIndex)];
-              if (slotAnswer && slotAnswer.photoUrl) rows.push({ label: `${label} — ${slotLabel}`, photoUrl: slotAnswer.photoUrl });
+              if (slotAnswer && slotAnswer.photoKey) rows.push({ label: `${label} — ${slotLabel}`, photoKey: slotAnswer.photoKey });
             });
-          } else if (answer && (answer.photoUrl || answer.confirmed || answer.answerYesNo != null)) {
+          } else if (answer && (answer.photoKey || answer.confirmed || answer.answerYesNo != null)) {
             let text = null;
             if (answer.confirmed) text = 'Fait';
             else if (answer.answerYesNo != null) text = answer.answerYesNo ? 'Oui' : 'Non';
-            rows.push({ label, photoUrl: answer.photoUrl || null, text });
+            rows.push({ label, photoKey: answer.photoKey || null, text });
           }
         });
       });
@@ -520,15 +521,18 @@ async function renderMissionReportBody(body, booking, address) {
       grid.className = 'photo-grid';
       rows.forEach(row => {
         const cell = document.createElement('div');
-        cell.className = 'photo-slot' + (row.photoUrl ? ' uploaded' : '');
-        if (row.photoUrl) {
+        cell.className = 'photo-slot' + (row.photoKey ? ' uploaded' : '');
+        if (row.photoKey) {
           const img = document.createElement('img');
-          img.src = row.photoUrl; img.alt = row.label;
+          img.alt = row.label;
           cell.appendChild(img);
           const link = document.createElement('a');
-          link.href = row.photoUrl; link.target = '_blank'; link.rel = 'noopener';
+          link.target = '_blank'; link.rel = 'noopener';
           link.className = 'photo-caption'; link.textContent = row.label;
           cell.appendChild(link);
+          getPhotoDownloadUrl({ bookingId: booking.id, scope: 'bookings', objectKey: row.photoKey })
+            .then(url => { img.src = url; link.href = url; })
+            .catch(() => {});
         } else {
           const span = document.createElement('span');
           span.textContent = row.text ? `${row.label} : ${row.text}` : row.label;
@@ -541,7 +545,9 @@ async function renderMissionReportBody(body, booking, address) {
   } else {
     // Dossier antérieur à la refonte du protocole : parcours photo générique.
     const photos = await loadPhotoDocs(booking.id).catch(() => []);
-    const uploaded = photos.filter(p => p.downloadUrl);
+    // downloadUrl : anciennes photos Firebase Storage (URL permanente).
+    // objectKey : photos R2, URL signée à résoudre à l'affichage.
+    const uploaded = photos.filter(p => p.downloadUrl || p.objectKey);
     if (uploaded.length) {
       anyContent = true;
       const grid = document.createElement('div');
@@ -551,8 +557,15 @@ async function renderMissionReportBody(body, booking, address) {
         const cell = document.createElement('div');
         cell.className = 'photo-slot uploaded';
         const img = document.createElement('img');
-        img.src = photo.downloadUrl; img.alt = slotDef ? slotDef.label : photo.slot;
+        img.alt = slotDef ? slotDef.label : photo.slot;
         cell.appendChild(img);
+        if (photo.downloadUrl) {
+          img.src = photo.downloadUrl;
+        } else {
+          getPhotoDownloadUrl({ bookingId: booking.id, scope: 'bookings', objectKey: photo.objectKey })
+            .then(url => { img.src = url; })
+            .catch(() => {});
+        }
         grid.appendChild(cell);
       });
       body.appendChild(grid);

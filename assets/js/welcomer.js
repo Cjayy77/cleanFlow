@@ -3,7 +3,6 @@
 import {
   auth,
   db,
-  storage,
   ROLE_WELCOMER,
   loadUserDoc,
   formatShortDate,
@@ -17,8 +16,8 @@ import {
   TEAM_EMAIL,
   welcomerTier,
 } from './shared.js';
-import { collection, query, where, onSnapshot, updateDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+import { uploadPhotoToR2 } from './r2-upload.js';
+import { collection, query, where, onSnapshot, updateDoc, doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 const loadingScreen = document.getElementById('loadingScreen');
@@ -275,17 +274,18 @@ function buildValidationForm(booking) {
   // Photos horodatées
   const phHead = document.createElement('div'); phHead.className = 'eyebrow'; phHead.style.marginTop = '16px'; phHead.textContent = 'Photos';
   form.appendChild(phHead);
-  const photoUrls = [];
+  // objectKeys R2 (pas des URLs permanentes : stockage privé, voir
+  // r2-upload.js). L'aperçu local utilise URL.createObjectURL, pas besoin
+  // d'attendre une URL signée pour afficher la miniature.
+  const photoObjectKeys = [];
   const preview = document.createElement('div'); preview.className = 'wc-photos';
   const fileIn = document.createElement('input'); fileIn.type = 'file'; fileIn.accept = 'image/*'; fileIn.multiple = true;
   fileIn.addEventListener('change', async () => {
     for (const file of Array.from(fileIn.files || [])) {
       try {
-        const r = ref(storage, `welcomer/${booking.id}/${Date.now()}-${(file.name || 'photo').replace(/[^a-zA-Z0-9._-]/g, '_')}`);
-        await withTimeout(uploadBytes(r, file, { contentType: file.type || 'image/jpeg' }), 30000);
-        const url = await withTimeout(getDownloadURL(r), 15000);
-        photoUrls.push(url);
-        const img = document.createElement('img'); img.src = url; preview.appendChild(img);
+        const objectKey = await withTimeout(uploadPhotoToR2({ bookingId: booking.id, scope: 'welcomer', file }), 30000);
+        photoObjectKeys.push(objectKey);
+        const img = document.createElement('img'); img.src = URL.createObjectURL(file); preview.appendChild(img);
       } catch (e) { setWorkStatus(`Photo non envoyée : ${authErrorMessage(e)}`); }
     }
     fileIn.value = '';
@@ -337,7 +337,7 @@ function buildValidationForm(booking) {
       status: level === 1 ? 'verified' : 'rejected',
       welcomerLevel: level,
       welcomerChecklist: checklist,
-      welcomerPhotos: photoUrls,
+      welcomerPhotos: photoObjectKeys,
       welcomerSignature: signed ? canvas.toDataURL('image/png') : '',
       welcomerNote: note.value.trim(),
       validatedAt: serverTimestamp(),
@@ -347,8 +347,20 @@ function buildValidationForm(booking) {
       queueEmail({
         to: TEAM_EMAIL,
         subject: `Zebramoon, contrôle Welcomer niveau ${level} · ${booking.propertyAddress || ''}`,
-        text: `Réf ${booking.id.slice(0, 6).toUpperCase()} · niveau ${level} · ${photoUrls.length} photo(s).${payload.welcomerNote ? ' Note : ' + payload.welcomerNote : ''}`,
+        text: `Réf ${booking.id.slice(0, 6).toUpperCase()} · niveau ${level} · ${photoObjectKeys.length} photo(s).${payload.welcomerNote ? ' Note : ' + payload.welcomerNote : ''}`,
       });
+      if (level === 1 && booking.clientId) {
+        try {
+          const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
+          if (clientSnap.exists() && clientSnap.data().email) {
+            queueEmail({
+              to: clientSnap.data().email,
+              subject: `Zebramoon, votre ménage du ${formatShortDate(booking.scheduledDate)} est confirmé ✓`,
+              text: `Bonne nouvelle : le ménage de ${booking.propertyAddress || 'votre bien'} a été réalisé et contrôlé sur place par l'équipe Zebramoon. Retrouvez le détail dans votre espace client.`,
+            });
+          }
+        } catch (e) { /* la notification ne doit jamais bloquer la validation */ }
+      }
       setWorkStatus(level === 1 ? 'Logement validé, le propriétaire est notifié.' : 'Contrôle enregistré, mission renvoyée.', 'success');
     } catch (e) {
       setWorkStatus(`Validation impossible : ${authErrorMessage(e)}`);

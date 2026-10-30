@@ -2,7 +2,6 @@
 import {
   auth,
   db,
-  storage,
   ROLE_PRESTATAIRE,
   PHOTO_SLOTS,
   EXIGENCE_PHASES,
@@ -55,7 +54,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+import { uploadPhotoToR2, resolvePhotoUrl } from './r2-upload.js';
 
 const loadingScreen = document.getElementById('loadingScreen');
 const authScreen = document.getElementById('authScreen');
@@ -343,11 +342,11 @@ function exigenceAnswerStats(exigence, instance) {
     exigence.photoSlots.forEach((label, slotIndex) => {
       required += 1;
       const slotAnswer = activeExigenceAnswers[exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex, slotIndex)];
-      if (slotAnswer && slotAnswer.photoUrl) done += 1;
+      if (slotAnswer && slotAnswer.photoKey) done += 1;
     });
   } else if (exigence.requiresPhoto) {
     required += 1;
-    if (answer && answer.photoUrl) done += 1;
+    if (answer && answer.photoKey) done += 1;
   }
   return { required, done, answer };
 }
@@ -524,12 +523,14 @@ function buildPhotoSlotControl(exigence, instance, canAnswer, slotIndex, slotLab
     wrap.appendChild(cap);
   }
   const slotEl = document.createElement('div');
-  slotEl.className = 'photo-slot' + (answer && answer.photoUrl ? ' uploaded' : '');
-  if (answer && answer.photoUrl) {
+  slotEl.className = 'photo-slot' + (answer && answer.photoKey ? ' uploaded' : '');
+  if (answer && answer.photoKey) {
     const img = document.createElement('img');
-    img.src = answer.photoUrl;
     img.alt = slotLabel || 'Photo';
     slotEl.appendChild(img);
+    resolvePhotoUrl(answer, { bookingId: activeBooking.id, scope: 'bookings' }).then(url => {
+      img.src = url;
+    });
   } else {
     const span = document.createElement('span');
     span.textContent = 'Photo';
@@ -625,10 +626,8 @@ function buildAnomalyReport(exigence, instance) {
         const photoRefs = [];
         const files = Array.from(fileInput.files || []);
         for (const file of files) {
-          const path = `incidents/${activeBooking.id}/${Date.now()}_${file.name}`;
-          const storageRef = ref(storage, path);
-          await withTimeout(uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' }), 30000);
-          photoRefs.push(await withTimeout(getDownloadURL(storageRef), 15000));
+          const objectKey = await withTimeout(uploadPhotoToR2({ bookingId: activeBooking.id, scope: 'incidents', file }), 30000);
+          photoRefs.push(objectKey);
         }
         await withTimeout(addDoc(collection(db, 'incidents'), {
           bookingId: activeBooking.id,
@@ -918,7 +917,7 @@ function buildCostsTile() {
 // Pas de nouveau mécanisme d'envoi : la galerie reprend simplement les
 // photos déjà déposées via le checklist d'exigences.
 function buildAttachmentsTile() {
-  const photos = Object.values(activeExigenceAnswers).filter(a => a.photoUrl);
+  const photos = Object.values(activeExigenceAnswers).filter(a => a.photoKey);
   const details = document.createElement('details');
   details.className = 'card';
   const summary = document.createElement('summary');
@@ -933,9 +932,11 @@ function buildAttachmentsTile() {
     grid.className = 'attachment-grid';
     photos.forEach(a => {
       const img = document.createElement('img');
-      img.src = a.photoUrl;
       img.alt = 'Photo de mission';
       grid.appendChild(img);
+      resolvePhotoUrl(a, { bookingId: activeBooking.id, scope: 'bookings' }).then(url => {
+        img.src = url;
+      });
     });
     body.appendChild(grid);
   } else {
@@ -1068,9 +1069,11 @@ function renderActiveBooking() {
       slotEl.className = 'photo-slot' + (record ? ' uploaded' : '');
       if (record) {
         const img = document.createElement('img');
-        img.src = record.downloadUrl || '';
         img.alt = slot.label;
         slotEl.appendChild(img);
+        resolvePhotoUrl(record, { bookingId: activeBooking.id, scope: 'bookings' }).then(url => {
+          img.src = url;
+        });
       } else {
         const span = document.createElement('span');
         span.textContent = slot.label;
@@ -1291,10 +1294,8 @@ incidentForm.addEventListener('submit', async event => {
   try {
     await withButtonLoading(incidentForm.querySelector('button[type="submit"]'), async () => {
       if (file) {
-        const incidentPath = `incidents/${activeBooking.id}/${Date.now()}_${file.name}`;
-        const incidentRef = ref(storage, incidentPath);
-        await withTimeout(uploadBytes(incidentRef, file, { contentType: file.type || 'image/jpeg' }), 30000);
-        incidentPayload.photoRefs = [await withTimeout(getDownloadURL(incidentRef), 15000)];
+        const objectKey = await withTimeout(uploadPhotoToR2({ bookingId: activeBooking.id, scope: 'incidents', file }), 30000);
+        incidentPayload.photoRefs = [objectKey];
       }
       await withTimeout(addDoc(collection(db, 'incidents'), incidentPayload), 15000);
     });
