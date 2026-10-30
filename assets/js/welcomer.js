@@ -17,7 +17,7 @@ import {
   welcomerTier,
 } from './shared.js';
 import { uploadPhotoToR2 } from './r2-upload.js';
-import { collection, query, where, onSnapshot, updateDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, query, where, onSnapshot, updateDoc, doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 const loadingScreen = document.getElementById('loadingScreen');
@@ -349,6 +349,18 @@ function buildValidationForm(booking) {
         subject: `Zebramoon, contrôle Welcomer niveau ${level} · ${booking.propertyAddress || ''}`,
         text: `Réf ${booking.id.slice(0, 6).toUpperCase()} · niveau ${level} · ${photoObjectKeys.length} photo(s).${payload.welcomerNote ? ' Note : ' + payload.welcomerNote : ''}`,
       });
+      if (level === 1 && booking.clientId) {
+        try {
+          const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
+          if (clientSnap.exists() && clientSnap.data().email) {
+            queueEmail({
+              to: clientSnap.data().email,
+              subject: `Zebramoon, votre ménage du ${formatShortDate(booking.scheduledDate)} est confirmé ✓`,
+              text: `Bonne nouvelle : le ménage de ${booking.propertyAddress || 'votre bien'} a été réalisé et contrôlé sur place par l'équipe Zebramoon. Retrouvez le détail dans votre espace client.`,
+            });
+          }
+        } catch (e) { /* la notification ne doit jamais bloquer la validation */ }
+      }
       setWorkStatus(level === 1 ? 'Logement validé, le propriétaire est notifié.' : 'Contrôle enregistré, mission renvoyée.', 'success');
     } catch (e) {
       setWorkStatus(`Validation impossible : ${authErrorMessage(e)}`);
