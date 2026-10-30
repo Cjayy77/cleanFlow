@@ -322,7 +322,27 @@ service cloud.firestore {
     // lecture publique-aux-connectés que /catalog, mais pas de lecture
     // anonyme : ce n'est pas un contenu marketing.
     match /exigences/{exigenceId} {
-      allow read: if isSignedIn() && (isAdmin() || isPrestataire());
+      allow read: if isSignedIn() && (
+        isAdmin() || isPrestataire()
+        || (isClient() && get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.ownerId == request.auth.uid)
+      );
+      allow write: if isAdmin();
+    }
+
+    // Surcharges PAR LOGEMENT d'un modèle partagé (masquer, reformuler,
+    // remplacer la photo de référence) — cahier des charges Avant Ménage
+    // §8 : "l'administrateur doit pouvoir ajouter, modifier ou supprimer
+    // des points de contrôle selon les caractéristiques du bien", et
+    // Ménage §13 : les photos de référence doivent être personnalisables
+    // par logement. Id déterministe propertyId_templateId (une surcharge
+    // par couple logement/modèle, un nouvel enregistrement remplace le
+    // précédent). Lue par le prestataire (pour construire sa mission) et
+    // le client (pour son rapport), écrite seulement par l'équipe.
+    match /propertyTemplateOverrides/{overrideId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || isPrestataire()
+        || (isClient() && get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.ownerId == request.auth.uid)
+      );
       allow write: if isAdmin();
     }
 
@@ -343,7 +363,7 @@ service cloud.firestore {
     // là), le contenu standard du cahier des charges vit ici. Lu par le
     // prestataire pour construire sa mission, écrit seulement par l'équipe.
     match /protocolTemplates/{templateId} {
-      allow read: if isSignedIn() && (isAdmin() || isPrestataire());
+      allow read: if isSignedIn() && (isAdmin() || isPrestataire() || isClient());
       allow write: if isAdmin();
     }
 
@@ -384,6 +404,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         isAdmin()
         || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
+        || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
       );
       allow create: if isPrestataire()
         && request.resource.data.authorId == request.auth.uid
@@ -424,6 +445,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         isAdmin()
         || (isPrestataire() && resource.data.reportedBy == request.auth.uid)
+        || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
       );
       allow create: if isPrestataire()
         && request.resource.data.reportedBy == request.auth.uid

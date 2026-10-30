@@ -19,6 +19,7 @@ import {
   exigenceAnswerDocId,
   loadProtocolTemplates,
   computeChecklistItems,
+  loadPropertyTemplateOverrides,
   loadIncidentDocs,
   ANOMALY_CATEGORIES,
   ANOMALY_URGENCY_LEVELS,
@@ -111,6 +112,9 @@ let activeIncidents = [];
 // pas seulement au chargement de la mission — sinon une question de relance
 // (dependsOn) répondue en cours de route n'apparaîtrait jamais.
 let activeCustomExigences = [];
+// Surcharges par logement (masquage/reformulation) du protocole partagé,
+// mêmes raisons de persistance que activeCustomExigences ci-dessus.
+let activePropertyOverrides = [];
 let protocolTemplatesCache = [];
 let activeTimer = null;
 let timerTickId = null;
@@ -154,19 +158,21 @@ async function loadPhotosForBooking(bookingId) {
 // Logement avec sa propre liste d'exigences ? Sinon activeExigences reste
 // vide et renderActiveBooking garde l'ancien écran PHOTO_SLOTS plus bas.
 async function loadExigencesForBooking(booking) {
-  const [customExigences, answers, incidents] = await Promise.all([
+  const [customExigences, answers, incidents, overrides] = await Promise.all([
     booking.propertyId ? loadExigencesForProperty(booking.propertyId) : Promise.resolve([]),
     loadExigenceAnswers(booking.id),
     loadIncidentDocs(booking.id),
+    booking.propertyId ? loadPropertyTemplateOverrides(booking.propertyId) : Promise.resolve([]),
   ]);
   activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
   activeIncidents = incidents;
   activeCustomExigences = customExigences;
+  activePropertyOverrides = overrides;
   // computeChecklistItems résout dependsOn contre les réponses déjà
   // données (ex. la question de relance du linge taché) : toujours
   // recalculé avec les dernières réponses, jamais mis en cache tel quel
   // (voir aussi renderActiveBooking, qui refait ce calcul à chaque rendu).
-  activeExigences = computeChecklistItems(booking, protocolTemplatesCache, customExigences, activeExigenceAnswers);
+  activeExigences = computeChecklistItems(booking, protocolTemplatesCache, customExigences, activeExigenceAnswers, overrides);
   // Nouvelle mission : on repart de la première phase qui a des exigences.
   activeExigencePhase = (EXIGENCE_PHASES.find(p => activeExigences.some(e => e.phase === p.key)) || EXIGENCE_PHASES[0]).key;
 }
@@ -1016,7 +1022,7 @@ function renderActiveBooking() {
   // même rendu sans attendre un rechargement de mission. Inoffensif pour
   // un logement sans protocole ni exigence propre (retombe sur [] comme
   // avant, le parcours PHOTO_SLOTS n'est pas affecté).
-  activeExigences = computeChecklistItems(activeBooking, protocolTemplatesCache, activeCustomExigences, activeExigenceAnswers);
+  activeExigences = computeChecklistItems(activeBooking, protocolTemplatesCache, activeCustomExigences, activeExigenceAnswers, activePropertyOverrides);
   const heading = document.createElement('div');
   heading.className = 'eyebrow';
   heading.textContent = `Dossier ${activeBooking.id.slice(0, 6).toUpperCase()} · ${formatBookingStatus(activeBooking.status)}`;
@@ -1180,6 +1186,7 @@ function loadAssignedBookings() {
       activeExigenceAnswers = {};
       activeIncidents = [];
       activeCustomExigences = [];
+      activePropertyOverrides = [];
       activeTimer = null;
       activeComments = [];
     }

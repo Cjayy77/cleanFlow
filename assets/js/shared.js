@@ -12,6 +12,7 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
@@ -1070,6 +1071,32 @@ export async function loadProtocolTemplates() {
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
+// Id déterministe : au plus une surcharge par couple logement/modèle, un
+// nouvel enregistrement remplace le précédent (même logique que les autres
+// collections à id composé de ce fichier).
+export function propertyTemplateOverrideDocId(propertyId, templateId) {
+  return `${propertyId}_${templateId}`;
+}
+
+export async function loadPropertyTemplateOverrides(propertyId) {
+  const snap = await getDocs(query(collection(db, 'propertyTemplateOverrides'), where('propertyId', '==', propertyId)));
+  return snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+}
+
+export async function savePropertyTemplateOverride(propertyId, templateId, data) {
+  const id = propertyTemplateOverrideDocId(propertyId, templateId);
+  const overrideDoc = { propertyId, templateId, ...data, updatedAt: serverTimestamp() };
+  await setDoc(doc(db, 'propertyTemplateOverrides', id), overrideDoc, { merge: true });
+  return overrideDoc;
+}
+
+// Remet un point de contrôle dans son état par défaut pour ce logement
+// (plus de masquage, plus de reformulation, photo de référence standard).
+export async function clearPropertyTemplateOverride(propertyId, templateId) {
+  const id = propertyTemplateOverrideDocId(propertyId, templateId);
+  await deleteDoc(doc(db, 'propertyTemplateOverrides', id));
+}
+
 function protocolGateSatisfied(gateFlag, booking) {
   if (!gateFlag) return true;
   const value = booking[gateFlag];
@@ -1128,16 +1155,38 @@ function normalizeCustomExigence(item) {
 // recalculé à chaque rendu, donc une question de relance (ex. "avez-vous
 // résolu le problème ?") apparaît ou disparaît en direct selon la réponse
 // qui la conditionne.
-export function computeChecklistItems(booking, templates, customExigences, answers = {}) {
+// Applique une surcharge PAR LOGEMENT (propertyTemplateOverrides) sur un
+// modèle déjà normalisé : masquage total, reformulation, ou remplacement
+// de la/les photo(s) de référence — jamais les champs de validation
+// (requiresYesNo/Photo/Confirmation, photoSlots), qui restent définis au
+// niveau du modèle partagé pour ne pas faire diverger le sens de la tâche
+// d'un logement à l'autre.
+function applyTemplateOverride(item, override) {
+  if (!override) return item;
+  const next = { ...item };
+  if (override.textOverride) next.text = override.textOverride;
+  if (override.referencePhotoUrlOverride) next.referencePhotoUrl = override.referencePhotoUrlOverride;
+  if (override.referencePhotoUrlsOverride && override.referencePhotoUrlsOverride.length) {
+    next.referencePhotoUrls = override.referencePhotoUrlsOverride;
+    next.referencePhotoUrl = override.referencePhotoUrlsOverride[0];
+  }
+  return next;
+}
+
+export function computeChecklistItems(booking, templates, customExigences, answers = {}, overrides = []) {
+  const overrideByTemplateId = {};
+  (overrides || []).forEach(o => { overrideByTemplateId[o.templateId] = o; });
   const fromTemplates = (templates || [])
     .filter(t => t.active !== false)
     .filter(t => protocolGateSatisfied(t.gateFlag, booking))
+    .filter(t => !(overrideByTemplateId[t.id] && overrideByTemplateId[t.id].hidden))
     .filter(t => {
       if (!t.dependsOn) return true;
       const depAnswer = answers[exigenceAnswerDocId(booking.id, t.dependsOn.itemId, null)];
       return !!depAnswer && depAnswer.answerYesNo === t.dependsOn.equals;
     })
-    .map(normalizeProtocolTemplate);
+    .map(normalizeProtocolTemplate)
+    .map(item => applyTemplateOverride(item, overrideByTemplateId[item.id]));
   const fromCustom = (customExigences || [])
     .filter(e => e.active !== false)
     .map(normalizeCustomExigence);
