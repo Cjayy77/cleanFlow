@@ -21,6 +21,20 @@ import {
   resetPassword,
   queueEmail,
   TEAM_EMAIL,
+  loadPhotoDocs,
+  loadExigencesForProperty,
+  loadExigenceAnswers,
+  loadProtocolTemplates,
+  loadPropertyTemplateOverrides,
+  computeChecklistItems,
+  exigenceInstances,
+  exigenceAnswerDocId,
+  loadIncidentDocs,
+  loadBookingComments,
+  loadBookingTimer,
+  PHOTO_SLOTS,
+  EXIGENCE_PHASES,
+  ANOMALY_CATEGORIES,
 } from './shared.js';
 import {
   collection,
@@ -400,8 +414,193 @@ function renderBookings() {
       devisBtn.onclick = () => openDevisDocument(booking, currentUser);
       card.appendChild(devisBtn);
     }
+    // Rapport : seulement une fois que le prestataire a au moins soumis
+    // son dossier (rien à montrer avant), même logement "rejected" (le
+    // client voit ce qui a été fait, en attendant la correction).
+    if (['submitted', 'verified', 'rejected'].includes(booking.status)) {
+      card.appendChild(buildMissionReportSection(booking, address));
+    }
     bookingsWrap.appendChild(card);
   });
+}
+
+// Rapport de mission, lecture seule : chargé une seule fois, à la première
+// ouverture (pas de onSnapshot, ce n'est pas un contenu qui change pendant
+// que le client le consulte). Reprend le même calcul que côté prestataire/
+// admin (computeChecklistItems) pour montrer exactement ce qui a été
+// rempli, groupé par phase, plus les anomalies signalées et les échanges
+// avec le prestataire.
+function buildMissionReportSection(booking, address) {
+  const details = document.createElement('details');
+  details.className = 'card';
+  const summary = document.createElement('summary');
+  const h = document.createElement('h2');
+  h.textContent = 'Rapport de la mission';
+  summary.appendChild(h);
+  details.appendChild(summary);
+
+  const body = document.createElement('div');
+  body.className = 'collapse-body';
+  body.textContent = 'Chargement…';
+  details.appendChild(body);
+
+  let loaded = false;
+  details.addEventListener('toggle', () => {
+    if (!details.open || loaded) return;
+    loaded = true;
+    renderMissionReportBody(body, booking, address).catch(() => {
+      body.textContent = 'Impossible de charger le rapport pour le moment.';
+    });
+  });
+
+  return details;
+}
+
+function formatReportDuration(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h > 0 ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`;
+}
+
+async function renderMissionReportBody(body, booking, address) {
+  const [customExigences, templates, overrides, answers, incidents, comments, timer] = await Promise.all([
+    booking.propertyId ? loadExigencesForProperty(booking.propertyId) : Promise.resolve([]),
+    loadProtocolTemplates(),
+    booking.propertyId ? loadPropertyTemplateOverrides(booking.propertyId) : Promise.resolve([]),
+    loadExigenceAnswers(booking.id),
+    loadIncidentDocs(booking.id).catch(() => []),
+    loadBookingComments(booking.id).catch(() => []),
+    loadBookingTimer(booking.id).catch(() => null),
+  ]);
+  const answersById = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
+  const checklist = computeChecklistItems(booking, templates, customExigences, answersById, overrides);
+
+  body.innerHTML = '';
+
+  if (timer && timer.totalElapsedSeconds) {
+    const durationLine = document.createElement('p');
+    durationLine.className = 'task-meta';
+    durationLine.textContent = `Durée de l'intervention : ${formatReportDuration(timer.totalElapsedSeconds)}`;
+    body.appendChild(durationLine);
+  }
+
+  let anyContent = false;
+
+  if (checklist.length) {
+    EXIGENCE_PHASES.forEach(phase => {
+      const items = checklist.filter(e => e.phase === phase.key);
+      if (!items.length) return;
+      const rows = [];
+      items.forEach(exigence => {
+        exigenceInstances(exigence, booking).forEach(instance => {
+          const answerId = exigenceAnswerDocId(booking.id, exigence.id, instance.roomIndex);
+          const answer = answersById[answerId];
+          const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
+          if (exigence.photoSlots && exigence.photoSlots.length) {
+            exigence.photoSlots.forEach((slotLabel, slotIndex) => {
+              const slotAnswer = answersById[exigenceAnswerDocId(booking.id, exigence.id, instance.roomIndex, slotIndex)];
+              if (slotAnswer && slotAnswer.photoUrl) rows.push({ label: `${label} — ${slotLabel}`, photoUrl: slotAnswer.photoUrl });
+            });
+          } else if (answer && (answer.photoUrl || answer.confirmed || answer.answerYesNo != null)) {
+            let text = null;
+            if (answer.confirmed) text = 'Fait';
+            else if (answer.answerYesNo != null) text = answer.answerYesNo ? 'Oui' : 'Non';
+            rows.push({ label, photoUrl: answer.photoUrl || null, text });
+          }
+        });
+      });
+      if (!rows.length) return;
+      anyContent = true;
+      const phaseHead = document.createElement('div');
+      phaseHead.className = 'roster-subhead';
+      phaseHead.textContent = phase.label;
+      body.appendChild(phaseHead);
+      const grid = document.createElement('div');
+      grid.className = 'photo-grid';
+      rows.forEach(row => {
+        const cell = document.createElement('div');
+        cell.className = 'photo-slot' + (row.photoUrl ? ' uploaded' : '');
+        if (row.photoUrl) {
+          const img = document.createElement('img');
+          img.src = row.photoUrl; img.alt = row.label;
+          cell.appendChild(img);
+          const link = document.createElement('a');
+          link.href = row.photoUrl; link.target = '_blank'; link.rel = 'noopener';
+          link.className = 'photo-caption'; link.textContent = row.label;
+          cell.appendChild(link);
+        } else {
+          const span = document.createElement('span');
+          span.textContent = row.text ? `${row.label} : ${row.text}` : row.label;
+          cell.appendChild(span);
+        }
+        grid.appendChild(cell);
+      });
+      body.appendChild(grid);
+    });
+  } else {
+    // Dossier antérieur à la refonte du protocole : parcours photo générique.
+    const photos = await loadPhotoDocs(booking.id).catch(() => []);
+    const uploaded = photos.filter(p => p.downloadUrl);
+    if (uploaded.length) {
+      anyContent = true;
+      const grid = document.createElement('div');
+      grid.className = 'photo-grid';
+      uploaded.forEach(photo => {
+        const slotDef = PHOTO_SLOTS.find(s => s.key === photo.slot);
+        const cell = document.createElement('div');
+        cell.className = 'photo-slot uploaded';
+        const img = document.createElement('img');
+        img.src = photo.downloadUrl; img.alt = slotDef ? slotDef.label : photo.slot;
+        cell.appendChild(img);
+        grid.appendChild(cell);
+      });
+      body.appendChild(grid);
+    }
+  }
+
+  if (incidents.length) {
+    anyContent = true;
+    const head = document.createElement('div');
+    head.className = 'roster-subhead';
+    head.textContent = 'Anomalies signalées';
+    body.appendChild(head);
+    incidents.forEach(incident => {
+      const item = document.createElement('div');
+      item.className = 'incident-item';
+      const title = document.createElement('strong');
+      title.textContent = (ANOMALY_CATEGORIES.find(c => c.key === incident.type) || {}).label || 'Autre';
+      item.appendChild(title);
+      const desc = document.createElement('div');
+      desc.className = 'task-meta';
+      desc.textContent = incident.description;
+      item.appendChild(desc);
+      body.appendChild(item);
+    });
+  }
+
+  if (comments.length) {
+    anyContent = true;
+    const head = document.createElement('div');
+    head.className = 'roster-subhead';
+    head.textContent = 'Échanges avec le prestataire';
+    body.appendChild(head);
+    comments.forEach(comment => {
+      const item = document.createElement('div');
+      item.className = 'incident-item';
+      const text = document.createElement('div');
+      text.className = 'task-meta';
+      text.textContent = comment.text;
+      item.appendChild(text);
+      body.appendChild(item);
+    });
+  }
+
+  if (!anyContent) {
+    const empty = document.createElement('p');
+    empty.textContent = 'Le rapport sera disponible une fois le ménage effectué.';
+    body.appendChild(empty);
+  }
 }
 
 function buildRating(booking) {

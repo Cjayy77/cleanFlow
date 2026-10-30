@@ -43,6 +43,9 @@ import {
   computeChecklistItems,
   ANOMALY_CATEGORIES,
   ANOMALY_URGENCY_LEVELS,
+  loadPropertyTemplateOverrides,
+  savePropertyTemplateOverride,
+  clearPropertyTemplateOverride,
 } from './shared.js';
 import {
   collection,
@@ -125,6 +128,8 @@ let suggestionsUnsub = null;
 let latestSuggestions = [];
 let protocolsUnsub = null;
 let latestProtocolTemplates = [];
+let propertyOverridesUnsub = null;
+let latestPropertyOverrides = [];
 let prospectsUnsub = null;
 let latestProspects = [];
 
@@ -752,9 +757,12 @@ function selectProperty(propertyId) {
   const configTitleEl = document.getElementById('propertyConfigTitle');
   if (configCard) configCard.classList.toggle('hidden', !property);
   if (configTitleEl) configTitleEl.textContent = property ? propertyLabel(property) : '';
+  const overridesCard = document.getElementById('propertyOverridesCard');
+  if (overridesCard) overridesCard.classList.toggle('hidden', !property);
   renderProperties();
   renderPropertyConfig(property);
   subscribeExigencesForProperty(propertyId);
+  subscribePropertyOverrides(propertyId);
 }
 
 // Les comptes/équipements protocole (WC, canapé-lit, terrasse, clim,
@@ -1430,6 +1438,7 @@ function subscribeProtocolTemplates() {
   protocolsUnsub = onSnapshot(collection(db, 'protocolTemplates'), snap => {
     latestProtocolTemplates = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
     renderProtocolTemplates();
+    if (selectedPropertyId) renderPropertyOverrides();
   }, error => setProtocolsStatus(`Impossible de charger les protocoles : ${authErrorMessage(error)}`, 'error'));
 }
 
@@ -1724,6 +1733,191 @@ async function importDefaultProtocols(btn) {
 
 if (importDefaultProtocolsBtn) {
   importDefaultProtocolsBtn.addEventListener('click', () => importDefaultProtocols(importDefaultProtocolsBtn));
+}
+
+// ---- Surcharges par logement d'un point de contrôle du protocole partagé
+// (masquer, reformuler, photo de référence différente) — cahier des
+// charges Avant Ménage §8 et Ménage §13. Contrairement à l'onglet
+// Protocoles (qui modifie TOUS les logements), ceci ne touche que celui
+// actuellement sélectionné.
+function subscribePropertyOverrides(propertyId) {
+  if (propertyOverridesUnsub) propertyOverridesUnsub();
+  propertyOverridesUnsub = onSnapshot(
+    query(collection(db, 'propertyTemplateOverrides'), where('propertyId', '==', propertyId)),
+    snap => {
+      latestPropertyOverrides = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderPropertyOverrides();
+    },
+    error => setPropertyOverridesStatus(`Impossible de charger les personnalisations : ${authErrorMessage(error)}`, 'error'));
+}
+
+function setPropertyOverridesStatus(message, type) {
+  const el = document.getElementById('propertyOverridesStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = `status-banner ${type || ''}`.trim();
+  el.classList.toggle('hidden', !message);
+}
+
+function renderPropertyOverrides() {
+  const root = document.getElementById('propertyOverridesRoot');
+  if (!root || !selectedPropertyId) return;
+  root.innerHTML = '';
+  const overrideByTemplateId = {};
+  latestPropertyOverrides.forEach(o => { overrideByTemplateId[o.templateId] = o; });
+
+  EXIGENCE_PHASES.forEach(phase => {
+    PROTOCOL_CATEGORIES.filter(c => c.phase === phase.key).forEach(category => {
+      const items = latestProtocolTemplates.filter(t => t.category === category.key && t.active !== false);
+      if (!items.length) return;
+      const group = document.createElement('div');
+      group.className = 'catalog-group';
+      const head = document.createElement('div');
+      head.className = 'roster-subhead';
+      head.textContent = `${phase.label} · ${category.label}`;
+      group.appendChild(head);
+      items.forEach(template => group.appendChild(buildPropertyOverrideCard(template, overrideByTemplateId[template.id])));
+      root.appendChild(group);
+    });
+  });
+}
+
+function buildPropertyOverrideCard(template, override) {
+  const card = document.createElement('div');
+  card.className = 'catalog-item' + (override && override.hidden ? ' inactive' : '');
+
+  const info = document.createElement('div');
+  info.className = 'catalog-info';
+  const name = document.createElement('div');
+  name.className = 'catalog-name';
+  name.textContent = (override && override.textOverride) || template.text;
+  const meta = document.createElement('div');
+  meta.className = 'task-meta';
+  const bits = [];
+  if (override && override.hidden) bits.push('Masqué pour ce logement');
+  if (override && override.textOverride) bits.push('Texte personnalisé');
+  if (override && (override.referencePhotoUrlOverride || (override.referencePhotoUrlsOverride && override.referencePhotoUrlsOverride.length))) bits.push('Photo personnalisée');
+  meta.textContent = bits.join(' · ') || 'Standard';
+  info.append(name, meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'catalog-actions';
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button'; toggle.className = 'mini-btn';
+  toggle.textContent = override && override.hidden ? 'Réafficher' : 'Masquer';
+  toggle.onclick = () => savePropertyOverrideField(template.id, { hidden: !(override && override.hidden) });
+  actions.appendChild(toggle);
+
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Personnaliser';
+  edit.onclick = () => {
+    if (card.nextElementSibling && card.nextElementSibling.classList.contains('catalog-form')) {
+      card.nextElementSibling.remove(); return;
+    }
+    card.after(propertyOverrideForm(template, override));
+  };
+  actions.appendChild(edit);
+
+  if (override && (override.textOverride || override.referencePhotoUrlOverride || override.hidden)) {
+    const reset = document.createElement('button');
+    reset.type = 'button'; reset.className = 'mini-btn danger'; reset.textContent = 'Réinitialiser';
+    armInlineConfirm(reset, 'Confirmer la réinitialisation', () => clearPropertyOverride(template.id));
+    actions.appendChild(reset);
+  }
+
+  card.append(info, actions);
+  return card;
+}
+
+function propertyOverrideForm(template, override) {
+  const form = document.createElement('form');
+  form.className = 'catalog-form';
+  const get = n => form.querySelector(`[name="${n}"]`);
+
+  const fText = document.createElement('label');
+  fText.className = 'form-row';
+  const tSpan = document.createElement('span');
+  tSpan.textContent = 'Texte personnalisé pour ce logement (laisser le texte standard pour ne pas le changer)';
+  tSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const tArea = document.createElement('textarea');
+  tArea.name = 'text';
+  tArea.value = (override && override.textOverride) || template.text;
+  fText.append(tSpan, tArea);
+  form.append(fText);
+
+  const fPhoto = catalogField('Photo de référence personnalisée (URL, optionnel)', 'referencePhotoUrl', (override && override.referencePhotoUrlOverride) || '');
+  form.append(fPhoto);
+
+  const upWrap = document.createElement('label');
+  upWrap.className = 'form-row';
+  const upSpan = document.createElement('span');
+  upSpan.textContent = 'Téléverser une photo de référence personnalisée';
+  upSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const upInput = document.createElement('input');
+  upInput.type = 'file'; upInput.accept = 'image/*';
+  upInput.addEventListener('change', async () => {
+    const file = upInput.files && upInput.files[0];
+    if (!file) return;
+    upSpan.textContent = 'Téléversement…';
+    try {
+      const url = await withTimeout(uploadExigenceReferenceImage(file), 30000);
+      get('referencePhotoUrl').value = url;
+      upSpan.textContent = 'Photo téléversée ✓';
+    } catch (err) {
+      upSpan.textContent = 'Téléverser une photo de référence personnalisée';
+      setPropertyOverridesStatus(`Upload impossible : ${authErrorMessage(err)}`, 'error');
+    }
+  });
+  upWrap.append(upSpan, upInput);
+  form.append(upWrap);
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  const save = document.createElement('button');
+  save.type = 'submit'; save.className = 'btn primary'; save.textContent = 'Enregistrer';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn ghost'; cancel.textContent = 'Annuler';
+  cancel.onclick = () => form.remove();
+  actions.append(save, cancel);
+  form.append(actions);
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = get('text').value.trim();
+    const photo = get('referencePhotoUrl').value.trim();
+    const data = {
+      hidden: !!(override && override.hidden),
+      textOverride: text && text !== template.text ? text : null,
+      referencePhotoUrlOverride: photo || null,
+    };
+    try {
+      await withButtonLoading(save, () => withTimeout(savePropertyTemplateOverride(selectedPropertyId, template.id, data), 15000));
+      setPropertyOverridesStatus('Personnalisation enregistrée.', 'success');
+      form.remove();
+    } catch (err) {
+      setPropertyOverridesStatus(`Enregistrement impossible : ${authErrorMessage(err)}`, 'error');
+    }
+  });
+
+  return form;
+}
+
+async function savePropertyOverrideField(templateId, data) {
+  try {
+    await withTimeout(savePropertyTemplateOverride(selectedPropertyId, templateId, data), 15000);
+  } catch (error) {
+    setPropertyOverridesStatus(`Enregistrement impossible : ${authErrorMessage(error)}`, 'error');
+  }
+}
+
+async function clearPropertyOverride(templateId) {
+  try {
+    await withTimeout(clearPropertyTemplateOverride(selectedPropertyId, templateId), 15000);
+    setPropertyOverridesStatus('Personnalisation réinitialisée.', 'success');
+  } catch (error) {
+    setPropertyOverridesStatus(`Réinitialisation impossible : ${authErrorMessage(error)}`, 'error');
+  }
 }
 
 // ---- CRM : prospects ----
@@ -3460,9 +3654,12 @@ async function refreshBookingDetail() {
   const customExigences = selectedBooking.propertyId
     ? await loadExigencesForProperty(selectedBooking.propertyId)
     : [];
+  const overrides = selectedBooking.propertyId
+    ? await loadPropertyTemplateOverrides(selectedBooking.propertyId)
+    : [];
   const answers = await loadExigenceAnswers(selectedBooking.id);
   selectedBooking.exigenceAnswers = answers.reduce((acc, answer) => ({ ...acc, [answer.id]: answer }), {});
-  selectedBooking.exigences = computeChecklistItems(selectedBooking, latestProtocolTemplates, customExigences, selectedBooking.exigenceAnswers);
+  selectedBooking.exigences = computeChecklistItems(selectedBooking, latestProtocolTemplates, customExigences, selectedBooking.exigenceAnswers, overrides);
 }
 
 async function renderIncidents() {
