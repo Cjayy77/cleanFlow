@@ -1069,9 +1069,11 @@ function renderActiveBooking() {
       slotEl.className = 'photo-slot' + (record ? ' uploaded' : '');
       if (record) {
         const img = document.createElement('img');
-        img.src = record.downloadUrl || '';
         img.alt = slot.label;
         slotEl.appendChild(img);
+        resolvePhotoUrl(record, { bookingId: activeBooking.id, scope: 'bookings' }).then(url => {
+          img.src = url;
+        });
       } else {
         const span = document.createElement('span');
         span.textContent = slot.label;
