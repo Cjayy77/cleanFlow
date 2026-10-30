@@ -6,10 +6,9 @@
 // exactement comme avant : seul le transport du fichier change.
 import { auth } from './shared.js';
 
-// URL du Worker Cloudflare. À remplacer par le domaine définitif une fois
-// le Worker déployé (ex. https://zebramoon-worker.<compte>.workers.dev ou
-// un sous-domaine personnalisé comme api.zebramoon.fr).
-export const WORKER_BASE_URL = 'https://zebramoon-worker.cedricjulien77.workers.dev';
+// URL du Worker Cloudflare, déployé sur le compte où R2 est activé.
+// À remplacer par un sous-domaine personnalisé (ex. api.zebramoon.fr) si besoin.
+export const WORKER_BASE_URL = 'https://zebramoon-worker.cedricjulien77-70b.workers.dev';
 
 class WorkerError extends Error {
   constructor(message, status) {
