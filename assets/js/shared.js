@@ -18,6 +18,7 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 import { firebaseConfig } from '../../firebase-config.js';
 import qrcode from './vendor/qrcode.js';
+import { uploadPhotoToR2 } from './r2-upload.js';
 
 export const ROLE_CLIENT = 'client';
 export const ROLE_PRESTATAIRE = 'prestataire';
@@ -936,18 +937,18 @@ export async function loadIncidentDocs(bookingId) {
 
 // Une photo par emplacement : re-téléverser le même emplacement remplace la
 // précédente (utile quand l'admin rejette le dossier).
+// Stockage : Cloudflare R2 (voir r2-upload.js), pas Firebase Storage — le
+// plan Spark de ce projet n'a jamais eu Storage activé (nécessite Blaze).
+// objectKey remplace downloadUrl : les URLs R2 sont privées et signées à la
+// demande (resolvePhotoUrl dans r2-upload.js), pas permanentes.
 export async function uploadBookingImage({ bookingId, slot, file, uploadedBy }) {
   const normalizedSlot = slot.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
-  const storagePath = `bookings/${bookingId}/${normalizedSlot}`;
-  const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
-  const downloadUrl = await getDownloadURL(storageRef);
+  const objectKey = await uploadPhotoToR2({ bookingId, scope: 'bookings', file });
   const photoDoc = {
     bookingId,
     slot: normalizedSlot,
     uploadedBy,
-    storagePath,
-    downloadUrl,
+    objectKey,
     uploadedAt: serverTimestamp(),
     verified: false,
   };
@@ -1053,13 +1054,12 @@ export async function saveExigenceComment({ bookingId, exigenceId, propertyId, r
 // slotIndex distingue plusieurs photos exigées par la MÊME tâche (ex. le
 // siphon : une photo ouvert, une photo refermé, deux validations séparées) —
 // omis pour une tâche à photo unique, l'id reste identique à avant.
+// photoKey (objectKey R2) remplace photoUrl : stockage privé, voir
+// resolvePhotoUrl / r2-upload.js pour l'affichage.
 export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, slotIndex = null, file, answeredBy }) {
   const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex, slotIndex);
-  const storagePath = `exigenceAnswers/${id}`;
-  const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
-  const photoUrl = await getDownloadURL(storageRef);
-  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, slotIndex, answeredBy, photoUrl, storagePath, answeredAt: serverTimestamp() };
+  const photoKey = await uploadPhotoToR2({ bookingId, scope: 'bookings', file });
+  const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, slotIndex, answeredBy, photoKey, answeredAt: serverTimestamp() };
   await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
   return answerDoc;
 }

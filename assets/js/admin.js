@@ -47,6 +47,7 @@ import {
   savePropertyTemplateOverride,
   clearPropertyTemplateOverride,
 } from './shared.js';
+import { getPhotoDownloadUrl } from './r2-upload.js';
 import {
   collection,
   query,
@@ -3377,14 +3378,16 @@ function renderOpenIncidents(incidents) {
     description.textContent = incident.description;
     item.appendChild(title);
     item.appendChild(description);
-    (incident.photoRefs || []).forEach((url, index) => {
+    (incident.photoRefs || []).forEach((objectKey, index) => {
       const link = document.createElement('a');
-      link.href = url;
       link.target = '_blank';
       link.rel = 'noopener';
       link.className = 'task-meta';
       link.textContent = `Photo jointe ${index + 1}`;
       item.appendChild(link);
+      getPhotoDownloadUrl({ bookingId: incident.bookingId, scope: 'incidents', objectKey })
+        .then(url => { link.href = url; })
+        .catch(() => {});
     });
     const resolveBtn = document.createElement('button');
     resolveBtn.className = 'btn ghost';
@@ -3529,16 +3532,22 @@ function renderBookingDetail() {
       slotEl.className = 'photo-slot' + (photo ? ' uploaded' : '');
       if (photo) {
         const img = document.createElement('img');
-        img.src = photo.downloadUrl || '';
         img.alt = slot.label;
         slotEl.appendChild(img);
         const link = document.createElement('a');
-        link.href = photo.downloadUrl || '#';
         link.target = '_blank';
         link.rel = 'noopener';
         link.className = 'photo-caption';
         link.textContent = slot.label;
         slotEl.appendChild(link);
+        if (photo.downloadUrl) {
+          img.src = photo.downloadUrl;
+          link.href = photo.downloadUrl;
+        } else if (photo.objectKey) {
+          getPhotoDownloadUrl({ bookingId: selectedBooking.id, scope: 'bookings', objectKey: photo.objectKey })
+            .then(url => { img.src = url; link.href = url; })
+            .catch(() => {});
+        }
       } else {
         const span = document.createElement('span');
         span.textContent = `${slot.label}, manquante`;
@@ -3568,17 +3577,20 @@ function renderBookingDetail() {
 function renderExigenceAnswers() {
   let allAnswered = true;
 
-  const buildPhotoCell = (label, url) => {
+  const buildPhotoCell = (label, photoKey) => {
     const slotEl = document.createElement('div');
-    slotEl.className = 'photo-slot' + (url ? ' uploaded' : '');
-    if (url) {
+    slotEl.className = 'photo-slot' + (photoKey ? ' uploaded' : '');
+    if (photoKey) {
       const img = document.createElement('img');
-      img.src = url; img.alt = label;
+      img.alt = label;
       slotEl.appendChild(img);
       const link = document.createElement('a');
-      link.href = url; link.target = '_blank'; link.rel = 'noopener';
+      link.target = '_blank'; link.rel = 'noopener';
       link.className = 'photo-caption'; link.textContent = label;
       slotEl.appendChild(link);
+      getPhotoDownloadUrl({ bookingId: selectedBooking.id, scope: 'bookings', objectKey: photoKey })
+        .then(url => { img.src = url; link.href = url; })
+        .catch(() => {});
     } else {
       const span = document.createElement('span');
       span.textContent = `${label}, manquante`;
@@ -3624,10 +3636,10 @@ function renderExigenceAnswers() {
         if (exigence.photoSlots && exigence.photoSlots.length) {
           exigence.photoSlots.forEach((slotLabel, slotIndex) => {
             const slotAnswer = selectedBooking.exigenceAnswers[exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex, slotIndex)];
-            photoGrid.appendChild(buildPhotoCell(`${label} — ${slotLabel}`, slotAnswer && slotAnswer.photoUrl));
+            photoGrid.appendChild(buildPhotoCell(`${label} — ${slotLabel}`, slotAnswer && slotAnswer.photoKey));
           });
         } else if (exigence.requiresPhoto) {
-          photoGrid.appendChild(buildPhotoCell(label, answer && answer.photoUrl));
+          photoGrid.appendChild(buildPhotoCell(label, answer && answer.photoKey));
         }
       });
     });
@@ -3697,14 +3709,16 @@ async function renderIncidents() {
     description.className = 'task-meta';
     description.textContent = incident.description;
     item.appendChild(description);
-    (incident.photoRefs || []).forEach((url, index) => {
+    (incident.photoRefs || []).forEach((objectKey, index) => {
       const link = document.createElement('a');
-      link.href = url;
       link.target = '_blank';
       link.rel = 'noopener';
       link.className = 'task-meta';
       link.textContent = `Photo jointe ${index + 1}`;
       item.appendChild(link);
+      getPhotoDownloadUrl({ bookingId: incident.bookingId, scope: 'incidents', objectKey })
+        .then(url => { link.href = url; })
+        .catch(() => {});
     });
     incidentList.appendChild(item);
   });
