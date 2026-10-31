@@ -8,21 +8,20 @@
 <link rel="icon" href="/assets/moon-nav.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/tokens.css">
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory);
     min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:32px; line-height:1.6; }
   .card{ max-width:520px; text-align:center; }
-  .brand{ display:inline-flex; align-items:center; gap:10px; font-family:var(--font-display); font-size:21px; font-weight:600; letter-spacing:-0.005em; margin-bottom:40px; color:var(--ink); }
-  .brand img{ width:23px; height:28px; }
-  .brand .k{ color:var(--pink); }
+  .brand{ display:inline-flex; align-items:center; gap:10px; margin-bottom:40px; }
+  .brand img{ height:56px; width:auto; }
   .code{ font-family:var(--font-display); font-size:96px; font-weight:600; line-height:1; letter-spacing:-0.02em; color:var(--pink); }
-  h1{ font-family:var(--font-display); font-size:25px; font-weight:600; letter-spacing:-0.01em; margin:18px 0 10px; }
+  h1{ font-family:var(--font-secondary); font-size:27px; font-weight:600; letter-spacing:-0.005em; margin:18px 0 10px; }
   p{ color:var(--muted); font-size:16px; margin-bottom:32px; }
   .actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-  .btn{ text-decoration:none; font-weight:700; font-size:15px; letter-spacing:-0.01em; padding:12px 22px; border-radius:var(--radius); transition:transform .2s var(--ease), background .18s ease-out; display:inline-block; }
+  .btn{ text-decoration:none; font-family:var(--font-nav); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:0.07em; padding:13px 24px; border-radius:var(--radius); transition:transform .2s var(--ease), background .18s ease-out; display:inline-block; }
   .btn.primary{ background:var(--pink); color:var(--on-light); }
   .btn.primary:hover{ transform:translateY(-1px); background:var(--pink-deep); }
   .btn.primary:active{ transform:translateY(0) scale(.97); }
@@ -36,7 +35,7 @@
 </head>
 <body>
   <div class="card">
-    <div class="brand"><img src="/assets/moon-nav.png" alt="" aria-hidden="true"><div><span class="k">Zebra</span>moon</div></div>
+    <div class="brand"><img src="/assets/logo-wide-trim.png" alt="Zebramoon"></div>
     <div class="code">404</div>
     <h1>Cette page a fait le ménage</h1>
     <p>La page que vous cherchez n’existe pas ou a été déplacée. Vérifiez l’adresse, ou revenez à l’accueil.</p>

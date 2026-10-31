@@ -37,11 +37,14 @@
   --ok-bg: rgba(79,209,122,0.14);
   --ok-ink: #4FD17A;
 
-  /* Type: Playfair Display carries statements and headlines (the sharp,
-     high-contrast editorial serif, wordmark and display type), Manrope
-     carries body copy, UI and data. */
-  --font-display: 'Playfair Display', 'Plus Jakarta Sans', 'Manrope', system-ui, -apple-system, serif;
-  --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
+  /* Type: Bodoni Moda carries the biggest statements (hero headlines, the
+     haute-couture register), Cormorant Garamond carries secondary titles
+     (section headings), Montserrat carries navigation and buttons (tracked
+     uppercase), Inter carries body copy, UI and data. */
+  --font-display: 'Bodoni Moda', 'Cormorant Garamond', serif;
+  --font-secondary: 'Cormorant Garamond', 'Bodoni Moda', serif;
+  --font-nav: 'Montserrat', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 
   /* Geometry: soft enough to feel tactile, short enough to stay precise.
      Not a pill, not a right angle. */
