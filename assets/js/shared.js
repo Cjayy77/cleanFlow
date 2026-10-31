@@ -1364,6 +1364,53 @@ export function queueEmail({ to, subject, text }) {
   }).catch(() => {});
 }
 
+// Barre d'onglets de section, masquée au-delà de 760px (voir .section-tabs
+// dans ui.css) : sur mobile, les portails client/prestataire/welcomer
+// empilent plusieurs cartes pleine hauteur (biens, suivi, missions,
+// compta…) et il faut tout dérouler pour atteindre la dernière. Cette barre
+// ancre chaque onglet à l'id de sa carte, défile en douceur au clic, et
+// surligne l'onglet de la carte actuellement visible via IntersectionObserver.
+// Idempotent : un second appel sur le même mountEl ne duplique pas la barre
+// (utile car le code appelant peut repasser par son écran "connecté" après
+// une reconnexion).
+export function initSectionTabs(mountEl, sections) {
+  if (!mountEl || !sections || !sections.length) return;
+  if (mountEl.querySelector(':scope > .section-tabs')) return;
+  const present = sections.filter(s => document.getElementById(s.id));
+  if (present.length < 2) return;
+
+  const bar = document.createElement('div');
+  bar.className = 'section-tabs';
+  bar.setAttribute('role', 'tablist');
+  const links = present.map(({ id, label }) => {
+    const a = document.createElement('a');
+    a.href = `#${id}`;
+    a.textContent = label;
+    a.addEventListener('click', event => {
+      event.preventDefault();
+      const target = document.getElementById(id);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    bar.appendChild(a);
+    return a;
+  });
+  mountEl.insertBefore(bar, mountEl.firstChild);
+
+  const setActive = id => {
+    links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === `#${id}`));
+  };
+  setActive(present[0].id);
+
+  if (typeof IntersectionObserver === 'function') {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) setActive(entry.target.id);
+      });
+    }, { rootMargin: '-40% 0px -50% 0px', threshold: 0 });
+    present.forEach(({ id }) => observer.observe(document.getElementById(id)));
+  }
+}
+
 // Confirmation « deux clics » directement sur un bouton, sans window.confirm
 // (celui-ci reste muet si l'utilisateur a bloqué les dialogues du site). Le
 // premier clic arme le bouton (libellé rouge, 5 s) ; le second exécute l'action.

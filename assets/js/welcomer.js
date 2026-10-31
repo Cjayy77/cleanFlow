@@ -15,6 +15,7 @@ import {
   queueEmail,
   TEAM_EMAIL,
   welcomerTier,
+  initSectionTabs,
 } from './shared.js';
 import { uploadPhotoToR2 } from './r2-upload.js';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -83,6 +84,10 @@ function showApp() {
   appScreen.classList.remove('hidden');
   setAuthMessage('');
   userNameLabel.textContent = currentUser.name || currentUser.email;
+  initSectionTabs(appScreen, [
+    { id: 'scanCard', label: 'Scanner' },
+    { id: 'missionsCard', label: 'Missions' },
+  ]);
 }
 
 function renderTasks(bookings) {

@@ -38,6 +38,7 @@ import {
   TEAM_EMAIL,
   withTimeout,
   storageErrorMessage,
+  initSectionTabs,
 } from './shared.js';
 import {
   collection,
@@ -147,6 +148,12 @@ function showApp() {
   appScreen.classList.remove('hidden');
   setAuthMessage('');
   userNameLabel.textContent = currentUser.name || currentUser.email;
+  initSectionTabs(appScreen, [
+    { id: 'missionsCard', label: 'Missions' },
+    { id: 'incidentCard', label: 'Incident' },
+    { id: 'ratingsCard', label: 'Évaluations' },
+    { id: 'comptaCard', label: 'Compta' },
+  ]);
 }
 
 async function loadPhotosForBooking(bookingId) {
