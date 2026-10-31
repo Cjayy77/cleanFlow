@@ -15,22 +15,22 @@
 <meta property="og:url" content="https://clean-flow-dun.vercel.app/">
 <meta property="og:title" content="Zebramoon, ménage et contrôle qualité entre deux séjours">
 <meta property="og:description" content="ZebraMoon coordonne le ménage et le contrôle qualité de votre logement entre deux séjours, sans commission sur vos revenus.">
-<meta property="og:image" content="https://clean-flow-dun.vercel.app/assets/og.png">
+<meta property="og:image" content="https://clean-flow-dun.vercel.app/assets/images/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Plus de temps pour l'essentiel.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Zebramoon, ménage et contrôle qualité entre deux séjours">
 <meta name="twitter:description" content="ZebraMoon coordonne le ménage et le contrôle qualité de votre logement entre deux séjours, sans commission sur vos revenus.">
-<meta name="twitter:image" content="https://clean-flow-dun.vercel.app/assets/og.png">
-<link rel="icon" href="assets/moon-nav.png">
+<meta name="twitter:image" content="https://clean-flow-dun.vercel.app/assets/images/og.png">
+<link rel="icon" href="assets/images/moon-nav.png">
 <link rel="stylesheet" href="assets/fonts.css">
 <link rel="stylesheet" href="assets/tokens.css">
 <link rel="stylesheet" href="assets/booking.css">
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
-  html{ scroll-behavior:smooth; scroll-padding-top:100px; overflow-x:hidden; }
-  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; padding-top:88px; }
+  html{ scroll-behavior:smooth; scroll-padding-top:112px; overflow-x:hidden; }
+  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; padding-top:100px; }
   .wrap{ max-width: 1100px; margin:0 auto; padding: 0 24px; }
   h1{ font-family:var(--font-display); font-weight:400; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
   h2,h3,h4{ font-family:var(--font-secondary); font-weight:600; letter-spacing:-0.005em; line-height:1.15; color:var(--ink); }
@@ -41,11 +41,11 @@
   :focus-visible{ outline:2px solid var(--pink); outline-offset:2px; }
 
   /* NAV, one row, fixed, no scroll-hide, no inversion */
-  nav{ position:fixed; top:0; left:0; right:0; z-index:50; height:88px; background:var(--ivory); border-bottom:1px solid transparent; transition:border-color .2s ease-out; }
+  nav{ position:fixed; top:0; left:0; right:0; z-index:50; height:100px; background:var(--ivory); border-bottom:1px solid transparent; transition:border-color .2s ease-out; }
   nav.scrolled{ border-bottom-color:var(--line); }
   .nav-inner{ display:flex; align-items:center; justify-content:space-between; height:100%; gap:20px; max-width:1100px; margin:0 auto; padding:0 24px; }
   .brand{ display:flex; align-items:center; gap:8px; text-decoration:none; flex-shrink:0; }
-  .brand img{ height:64px; width:auto; }
+  .brand img{ height:80px; width:auto; }
   .nav-links{ display:flex; align-items:center; gap:28px; font-family:var(--font-nav); font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
   .nav-links a{ text-decoration:none; }
   .nav-links a:hover{ color:var(--ink); }
@@ -64,7 +64,8 @@
   .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
   @media (max-width:760px){
     .nav-toggle{ display:flex; }
-    .nav-mobile-panel{ position:absolute; top:88px; left:0; right:0; display:none; flex-direction:column; background:var(--ivory); border-bottom:1px solid var(--line); }
+    .brand img{ height:56px; }
+    .nav-mobile-panel{ position:absolute; top:100px; left:0; right:0; display:none; flex-direction:column; background:var(--ivory); border-bottom:1px solid var(--line); }
     .nav-mobile-panel.open{ display:flex; }
     .nav-links{ flex-direction:column; align-items:stretch; gap:0; padding:6px 24px 10px; }
     .nav-links a{ padding:12px 0; border-top:1px solid var(--line); }
@@ -150,7 +151,7 @@
   .footer-top{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:32px; padding-bottom:28px; border-bottom:1px solid rgba(245,245,247,0.14); }
   @media (max-width:720px){ .footer-top{ grid-template-columns:1fr 1fr; gap:24px 20px; } }
   .footer-brand b{ display:flex; align-items:center; gap:8px; }
-  .footer-brand b img{ height:58px; width:auto; }
+  .footer-brand b img{ height:64px; width:auto; }
   .footer-brand p{ margin-top:12px; font-size:13.5px; max-width:280px; line-height:1.6; }
   .footer-col h5{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:rgba(245,245,247,0.5); margin-bottom:12px; font-weight:700; }
   .footer-col a, .footer-col span{ display:block; color:rgba(245,245,247,0.75); text-decoration:none; margin-bottom:9px; }
@@ -176,8 +177,8 @@
   "name": "Zebramoon",
   "description": "Coordination du ménage, du linge, des consommables et du contrôle qualité d'un logement entre deux séjours, sans commission sur les revenus locatifs.",
   "url": "https://clean-flow-dun.vercel.app/",
-  "logo": "https://clean-flow-dun.vercel.app/assets/logo-square-trim.png",
-  "image": "https://clean-flow-dun.vercel.app/assets/og.png",
+  "logo": "https://clean-flow-dun.vercel.app/assets/images/zebra-wordmark.png",
+  "image": "https://clean-flow-dun.vercel.app/assets/images/og.png",
   "email": "w.wanecque@gmail.com",
   "telephone": "+33624207668",
   "address": { "@type": "PostalAddress", "addressLocality": "Paris", "addressCountry": "FR" },
@@ -191,7 +192,7 @@
 <nav>
   <div class="nav-inner">
     <a class="brand" href="/">
-      <img src="assets/logo-square-trim.png" alt="Zebramoon">
+      <img src="assets/images/zebra-wordmark.png" alt="Zebramoon">
     </a>
     <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="navPanel" aria-label="Ouvrir le menu">
       <span></span><span></span><span></span>
@@ -220,7 +221,7 @@
       </div>
     </div>
     <div class="hero-moon-wrap">
-      <img class="hero-moon-img" src="assets/moon-hero-photo.jpg" alt="" aria-hidden="true" fetchpriority="high">
+      <img class="hero-moon-img" src="assets/images/moon-hero-photo.jpg" alt="" aria-hidden="true" fetchpriority="high">
     </div>
   </div>
 </header>
@@ -242,7 +243,7 @@
 <section id="difference">
   <div class="wrap difference-grid">
     <div class="difference-photo">
-      <img src="assets/preparation.jpg" alt="Agent de ménage professionnel en intervention">
+      <img src="assets/images/preparation.jpg" alt="Agent de ménage professionnel en intervention">
     </div>
     <div>
       <h2>Des personnes qui prennent soin.</h2>
@@ -311,7 +312,7 @@
     <div class="footer-top">
       <div class="footer-brand">
         <b>
-          <img src="assets/logo-square-trim.png" alt="Zebramoon">
+          <img src="assets/images/zebra-wordmark.png" alt="Zebramoon">
         </b>
         <p>ZebraMoon coordonne le ménage, le linge, les consommables et le contrôle qualité de votre logement entre deux séjours.</p>
       </div>
