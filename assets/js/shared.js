@@ -286,26 +286,26 @@ export function openDevisDocument(booking, client) {
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis ${ref}, Zebramoon</title>
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
-  body{ font-family:'Manrope','Helvetica Neue',Arial,sans-serif; color:#1A160F; padding:40px 46px; font-size:14px; }
+  body{ font-family:'Italiana','Cormorant Garamond',Georgia,serif; color:#1A160F; padding:40px 46px; font-size:14px; }
   .top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px; }
   .brand{ display:flex; align-items:center; }
   .brand img{ height:58px; width:auto; border-radius:4px; }
-  .doc-meta{ text-align:right; font-size:13px; color:#555; }
-  .doc-meta h1{ font-size:22px; letter-spacing:2px; color:#1A160F; margin-bottom:6px; }
-  .parties{ display:flex; justify-content:space-between; gap:30px; margin-bottom:26px; }
-  .parties h3{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#E6007E; margin-bottom:6px; }
+  .doc-meta{ text-align:right; font-size:13px; color:#555; font-family:'Helvetica Neue',Arial,sans-serif; }
+  .doc-meta h1{ font-family:'Italiana','Cormorant Garamond',Georgia,serif; font-size:24px; letter-spacing:2px; color:#1A160F; margin-bottom:6px; }
+  .parties{ display:flex; justify-content:space-between; gap:30px; margin-bottom:26px; font-family:'Helvetica Neue',Arial,sans-serif; }
+  .parties h3{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#1A160F; margin-bottom:6px; }
   .parties div{ font-size:13px; line-height:1.5; color:#333; }
-  table{ width:100%; border-collapse:collapse; margin-bottom:20px; }
+  table{ width:100%; border-collapse:collapse; margin-bottom:20px; font-family:'Helvetica Neue',Arial,sans-serif; }
   th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#888; border-bottom:2px solid #1A160F; padding:8px 0; }
   th.amt, td.amt{ text-align:right; white-space:nowrap; }
   td{ padding:11px 0; border-bottom:1px solid #E4DBC7; }
-  .totals{ margin-left:auto; width:280px; }
+  .totals{ margin-left:auto; width:280px; font-family:'Helvetica Neue',Arial,sans-serif; }
   .totals .row{ display:flex; justify-content:space-between; padding:7px 0; font-size:14px; }
-  .totals .ttc{ border-top:2px solid #1A160F; margin-top:4px; padding-top:12px; font-size:18px; font-weight:800; color:#E6007E; }
-  .foot{ margin-top:38px; font-size:11px; color:#888; line-height:1.6; border-top:1px solid #E4DBC7; padding-top:16px; }
+  .totals .ttc{ border-top:2px solid #1A160F; margin-top:4px; padding-top:12px; font-size:18px; font-weight:800; color:#1A160F; }
+  .foot{ margin-top:38px; font-size:11px; color:#888; line-height:1.6; border-top:1px solid #E4DBC7; padding-top:16px; font-family:'Helvetica Neue',Arial,sans-serif; }
   @media print{ body{ padding:24px; } .noprint{ display:none; } }
   .noprint{ margin-top:26px; }
-  .noprint button{ background:#E6007E; color:#fff; border:none; border-radius:4px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; }
+  .noprint button{ background:#1A160F; color:#fff; border:none; border-radius:4px; padding:11px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:'Helvetica Neue',Arial,sans-serif; }
 </style></head><body>
   <div class="top">
     <div class="brand">
@@ -391,7 +391,7 @@ export function openLogementQr(target) {
   <title>QR logement · ${escapeHtml(ref6)}</title>
   <style>
     @page { margin: 20mm; }
-    body { font-family:'Manrope', system-ui, -apple-system, sans-serif; color:#1A160F; text-align:center; padding:32px 24px; }
+    body { font-family:'Helvetica Neue', Arial, sans-serif; color:#1A160F; text-align:center; padding:32px 24px; }
     .brand { display:inline-block; }
     .brand img { height:64px; width:auto; border-radius:4px; }
     .sub { color:#6E6656; margin-top:10px; font-size:14px; }
@@ -400,7 +400,7 @@ export function openLogementQr(target) {
     .ref { font-weight:700; font-size:18px; letter-spacing:0.04em; }
     .addr { color:#6E6656; margin-top:6px; font-size:14px; }
     .hint { max-width:340px; margin:22px auto 0; color:#1A160F; font-size:14px; line-height:1.5; }
-    .noprint button { margin-top:24px; padding:10px 16px; border:0; border-radius:4px; background:#E6007E; color:#fff; font-weight:700; cursor:pointer; }
+    .noprint button { margin-top:24px; padding:10px 16px; border:0; border-radius:4px; background:#1A160F; color:#fff; font-weight:700; cursor:pointer; }
     @media print { .noprint { display:none; } }
   </style></head>
   <body>
