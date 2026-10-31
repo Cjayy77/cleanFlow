@@ -6,9 +6,7 @@
 <meta name="robots" content="noindex">
 <title>Zebramoon, Welcomer</title>
 <link rel="icon" href="../assets/moon-nav.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/fonts.css">
 <link rel="stylesheet" href="../assets/tokens.css">
 <link rel="stylesheet" href="../assets/zebra.css">
 <link rel="stylesheet" href="../assets/photo.css">
@@ -34,7 +32,7 @@
 <div class="app-wrap">
   <div class="top-row">
     <div>
-      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;gap:8px;" aria-label="Retour à l’accueil Zebramoon"><img src="../assets/logo-wide-trim.png" alt="Zebramoon" class="brand-logo-img"></a></div>
+      <div class="brand"><a href="/" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;gap:8px;" aria-label="Retour à l’accueil Zebramoon"><img src="../assets/logo-square-trim.png" alt="Zebramoon" class="brand-logo-img"></a></div>
       <div class="role-tag">Interface Welcomer</div>
     </div>
     <button class="btn ghost hidden" id="signOutBtn">Se déconnecter</button>
@@ -79,7 +77,7 @@
       <p>Contrôlez la qualité sur place après le passage du prestataire et avant l’arrivée du voyageur. Checklist, photos, signature, la validation part automatiquement au propriétaire.</p>
     </div>
     <div id="workStatus" class="status-banner hidden" role="alert"></div>
-    <div class="card">
+    <div class="card" id="scanCard">
       <div class="eyebrow">Sur place</div>
       <h2>Scanner le logement</h2>
       <p>Scannez le QR affiché dans le logement pour ouvrir directement le bon contrôle. Vous pouvez aussi viser le QR avec l’appareil photo de votre téléphone.</p>
@@ -96,7 +94,7 @@
         <button class="btn ghost" id="manualGo" type="button">Ouvrir le contrôle</button>
       </details>
     </div>
-    <div class="card">
+    <div class="card" id="missionsCard">
       <div class="eyebrow">Mes validations</div>
       <h2>Missions à contrôler</h2>
       <div id="taskList"></div>

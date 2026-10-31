@@ -35,6 +35,7 @@ import {
   PHOTO_SLOTS,
   EXIGENCE_PHASES,
   ANOMALY_CATEGORIES,
+  initSectionTabs,
 } from './shared.js';
 import {
   collection,
@@ -150,6 +151,11 @@ function showApp() {
   authError.textContent = '';
   authError.classList.add('hidden');
   userNameLabel.textContent = currentUser.name || currentUser.email;
+  initSectionTabs(appScreen, [
+    { id: 'homeCard', label: 'Accueil' },
+    { id: 'propertiesCard', label: 'Logements' },
+    { id: 'historyCard', label: 'Suivi' },
+  ]);
 }
 
 function setAuthMessage(message, type = '') {
