@@ -6,7 +6,7 @@
 body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); min-height:100vh; }
 .app-wrap{ max-width: 1140px; margin:0 auto; padding: 30px 20px 70px 20px; }
 h1,h2,h3{ font-family:var(--font-secondary); font-weight:600; letter-spacing:-0.005em; margin:0 0 12px; }
-h1{ font-family:var(--font-display); font-weight:600; letter-spacing:-0.005em; font-size:32px; }
+h1{ font-family:var(--font-display); font-weight:400; letter-spacing:-0.005em; font-size:32px; }
 h2{ font-size:22px; }
 p{ color:var(--muted); line-height:1.6; }
 a{ color:var(--pink); }
@@ -22,9 +22,9 @@ a{ color:var(--pink); }
 .top-row .btn.ghost{ background:rgba(245,239,227,0.08); border:1px solid rgba(245,239,227,0.35); color:var(--ink); box-shadow:none; }
 .top-row .btn.ghost:hover:not(:disabled){ background:rgba(245,239,227,0.16); }
 .top-row .btn.ghost:active:not(:disabled){ background:rgba(245,239,227,0.05); }
-.brand{ font-family:var(--font-display); font-weight:600; font-size:24px; letter-spacing:-0.005em; color:var(--ink); }
+.brand{ font-family:var(--font-display); font-weight:400; font-size:24px; letter-spacing:-0.005em; color:var(--ink); }
 .brand .k{ color:var(--pink-soft); }
-.brand-logo-img{ height:52px; width:auto; display:block; }
+.brand-logo-img{ height:60px; width:auto; display:block; }
 .role-tag{ font-family:var(--font-nav); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.14em; color:rgba(245,239,227,0.6); margin-top:5px; }
 
 .eyebrow{ display:inline-block; font-family:var(--font-nav); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; color:var(--pink); line-height:1; margin-bottom:14px; }
@@ -138,7 +138,7 @@ textarea{ min-height:110px; resize:vertical; }
 
 .form-footer{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:14px; align-items:center; margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
 .price-label{ font-size:12px; color:var(--muted); }
-.price-value{ font-family:var(--font-display); font-size:24px; font-weight:600; color:var(--pink); }
+.price-value{ font-family:var(--font-secondary); font-size:24px; font-weight:600; color:var(--pink); }
 .service-option{ display:flex; align-items:center; gap:10px; margin-bottom:10px; font-weight:500; font-size:14px; }
 .service-option input{ width:16px; height:16px; }
 
@@ -153,7 +153,7 @@ textarea{ min-height:110px; resize:vertical; }
 .star-static{ font-size:18px; line-height:1; color:var(--line); }
 .star-static.filled{ color:var(--gold); }
 .rating-avg{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-.rating-avg-num{ font-family:var(--font-display); font-size:38px; font-weight:600; color:var(--pink); line-height:1; }
+.rating-avg-num{ font-family:var(--font-secondary); font-size:38px; font-weight:600; color:var(--pink); line-height:1; }
 .rating-avg-out{ font-size:15px; color:var(--muted); align-self:flex-end; }
 .rating-avg .stars-static{ margin-top:0; }
 
@@ -302,7 +302,7 @@ textarea{ min-height:110px; resize:vertical; }
 .stat{ flex:1 1 140px; padding:18px 24px; background:transparent; border-left:1px solid var(--line); }
 .stat:first-child{ border-left:none; padding-left:2px; }
 @media (max-width:720px){ .stat{ flex-basis:45%; } .stat:nth-child(odd){ border-left:none; padding-left:2px; } }
-.stat b{ display:block; font-family:var(--font-display); font-size:26px; font-weight:600; line-height:1.1; color:var(--ink); letter-spacing:-0.02em; }
+.stat b{ display:block; font-family:var(--font-secondary); font-size:26px; font-weight:600; line-height:1.1; color:var(--ink); letter-spacing:-0.02em; }
 .stat span{ font-size:12px; font-weight:500; color:var(--muted); display:block; margin-top:5px; }
 /* Delta mois-sur-mois (▲ vert / ▼ rouge) sur les indicateurs mensuels. */
 .stat-delta{ display:inline-block; margin-top:6px; font-size:12px; font-weight:700; }

@@ -37,12 +37,17 @@
   --ok-bg: rgba(79,209,122,0.14);
   --ok-ink: #4FD17A;
 
-  /* Type: Bodoni Moda carries the biggest statements (hero headlines, the
-     haute-couture register), Cormorant Garamond carries secondary titles
-     (section headings), Montserrat carries navigation and buttons (tracked
-     uppercase), Inter carries body copy, UI and data. */
-  --font-display: 'Bodoni Moda', 'Cormorant Garamond', serif;
-  --font-secondary: 'Cormorant Garamond', 'Bodoni Moda', serif;
+  /* Type, self-hosted (assets/fonts.css, no Google Fonts CDN at runtime):
+     Italiana is the single Art Nouveau-register display face, reserved for
+     one big statement per page (hero headline, a portal's page title).
+     Cormorant Garamond carries everything else serif: secondary titles,
+     prices, stats, numbers. Montserrat (tracked uppercase) carries
+     navigation and buttons. Inter carries body copy, UI and data.
+     Italiana ships one weight (400) only, so anything set in
+     --font-display must stay at font-weight:400; heavier numerals/titles
+     belong in --font-secondary, which has real 400-700 weights. */
+  --font-display: 'Italiana', 'Cormorant Garamond', serif;
+  --font-secondary: 'Cormorant Garamond', 'Italiana', serif;
   --font-nav: 'Montserrat', system-ui, -apple-system, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 
