@@ -1521,4 +1521,3 @@ export function authErrorMessage(error) {
       return error?.message || 'Une erreur est survenue.';
   }
 }
-}
