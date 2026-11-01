@@ -167,7 +167,7 @@ async function loadExigencesForBooking(booking) {
   const [customExigences, answers, incidents, overrides] = await Promise.all([
     booking.propertyId ? loadExigencesForProperty(booking.propertyId) : Promise.resolve([]),
     loadExigenceAnswers(booking.id),
-    loadIncidentDocs(booking.id),
+    loadIncidentDocs(booking.id).catch(() => []),
     booking.propertyId ? loadPropertyTemplateOverrides(booking.propertyId) : Promise.resolve([]),
   ]);
   activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
@@ -184,8 +184,8 @@ async function loadExigencesForBooking(booking) {
 }
 
 async function loadTimerAndCommentsForBooking(booking) {
-  activeTimer = await loadBookingTimer(booking.id);
-  activeComments = await loadBookingComments(booking.id);
+  activeTimer = await loadBookingTimer(booking.id).catch(() => null);
+  activeComments = await loadBookingComments(booking.id).catch(() => []);
 }
 
 function countUploadedPhotos() {
@@ -1187,9 +1187,15 @@ function loadAssignedBookings() {
     activeBooking = stillThere || assignedBookings[0] || null;
     selectedMissionId = activeBooking ? activeBooking.id : null;
     if (activeBooking) {
-      await loadPhotosForBooking(activeBooking.id);
-      await loadExigencesForBooking(activeBooking);
-      await loadTimerAndCommentsForBooking(activeBooking);
+      // Un chargement annexe qui échoue ne doit jamais laisser l'écran vide :
+      // on affiche la mission avec ce qui a pu être lu, et on le dit.
+      try {
+        await loadPhotosForBooking(activeBooking.id);
+        await loadExigencesForBooking(activeBooking);
+        await loadTimerAndCommentsForBooking(activeBooking);
+      } catch (e) {
+        setWorkStatus(`Une partie de la mission n’a pas pu être chargée : ${authErrorMessage(e)}`);
+      }
     } else {
       activePhotoRecords = {};
       activeExigences = [];

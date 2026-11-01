@@ -866,6 +866,20 @@ async function finalizeBooking() {
     let property;
     if (!propertyId) {
       const np = draft.newProperty || {};
+      // Une réservation qui échoue après la création du logement est relancée
+      // avec le même brouillon : sans ce garde-fou, chaque nouvel essai créait
+      // un doublon du logement. On réutilise celui déjà créé (id mémorisé dans
+      // le brouillon), ou à défaut un logement du compte à la même adresse.
+      const norm = s => String(s || '').trim().toLowerCase();
+      const existing = userProperties.find(p => p.id === draft.createdPropertyId)
+        || userProperties.find(p => norm(p.street) === norm(np.street) && norm(p.city) === norm(np.city) && norm(p.postalCode) === norm(np.postalCode));
+      if (existing) {
+        propertyId = existing.id;
+        property = existing;
+      }
+    }
+    if (!propertyId) {
+      const np = draft.newProperty || {};
       const created = await withTimeout(addDoc(collection(db, 'properties'), {
         ownerId: currentUser.uid,
         street: np.street || '',
@@ -882,8 +896,10 @@ async function finalizeBooking() {
         createdAt: serverTimestamp(),
       }), 15000);
       propertyId = created.id;
+      draft.createdPropertyId = propertyId;
+      saveDraft();
       property = { id: propertyId, street: np.street, city: np.city, surface: np.surface, zone: np.zone };
-    } else {
+    } else if (!property) {
       property = userProperties.find(p => p.id === propertyId);
       if (!property) throw new Error('Logement introuvable.');
     }
@@ -934,6 +950,7 @@ async function finalizeBooking() {
       }
       tx.set(bookingRef, {
         clientId: currentUser.uid,
+        clientEmail: currentUser.email || '',
         propertyId,
         propertyAddress: `${property.street}, ${property.city}`,
         keyAccess: property.keyAccess || '',
