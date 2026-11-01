@@ -29,8 +29,8 @@
 <link rel="stylesheet" href="assets/booking.css">
 <style>
   *{ box-sizing:border-box; margin:0; padding:0; }
-  html{ scroll-behavior:smooth; scroll-padding-top:112px; overflow-x:hidden; }
-  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; padding-top:100px; }
+  html{ scroll-behavior:smooth; scroll-padding-top:96px; overflow-x:hidden; }
+  body{ font-family:var(--font-body); color:var(--ink); background:var(--ivory); font-size:16px; line-height:1.6; overflow-x:hidden; }
   .wrap{ max-width: 1100px; margin:0 auto; padding: 0 24px; }
   h1{ font-family:var(--font-display); font-weight:400; letter-spacing:-0.01em; line-height:1.1; color:var(--ink); }
   h2,h3,h4{ font-family:var(--font-secondary); font-weight:600; letter-spacing:-0.005em; line-height:1.15; color:var(--ink); }
@@ -40,58 +40,98 @@
 
   :focus-visible{ outline:2px solid var(--pink); outline-offset:2px; }
 
-  /* NAV, one row, fixed, no scroll-hide, no inversion */
-  nav{ position:fixed; top:0; left:0; right:0; z-index:50; height:100px; background:var(--ivory); border-bottom:1px solid transparent; transition:border-color .2s ease-out; }
-  nav.scrolled{ border-bottom-color:var(--line); }
-  .nav-inner{ display:flex; align-items:center; justify-content:space-between; height:100%; gap:20px; max-width:1100px; margin:0 auto; padding:0 24px; }
+  /* NAV : barre flottante qui s'adapte au défilement. En haut de page elle
+     est transparente et le logo est grand ; dès qu'on défile elle devient
+     une pilule vitrée plus compacte, se masque quand on descend et revient
+     quand on remonte. */
+  nav{ position:fixed; top:0; left:0; right:0; z-index:50; padding:14px 16px 0; transition:transform .5s var(--ease); pointer-events:none; }
+  nav.hide{ transform:translateY(-130%); }
+  .nav-inner{ pointer-events:auto; position:relative; display:flex; align-items:center; justify-content:space-between; gap:20px; max-width:1100px; margin:0 auto; height:84px; padding:0 8px; border:1px solid transparent; border-radius:999px; background:transparent;
+    transition:height .4s var(--ease), padding .4s var(--ease), background .4s ease, border-color .4s ease, box-shadow .4s ease, backdrop-filter .4s ease; }
+  nav.scrolled .nav-inner{ height:62px; padding:0 14px 0 20px; background:rgba(10,10,9,0.82); -webkit-backdrop-filter:blur(22px) saturate(1.3); backdrop-filter:blur(22px) saturate(1.3); border-color:var(--line); box-shadow:0 12px 44px rgba(0,0,0,.5); }
   .brand{ display:flex; align-items:center; gap:8px; text-decoration:none; flex-shrink:0; }
-  .brand img{ height:80px; width:auto; }
-  .nav-links{ display:flex; align-items:center; gap:28px; font-family:var(--font-nav); font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); }
-  .nav-links a{ text-decoration:none; }
+  .brand img{ height:60px; width:auto; transition:height .4s var(--ease), opacity .3s ease; }
+  .brand:hover img{ opacity:.85; }
+  nav.scrolled .brand img{ height:42px; }
+  .nav-links{ display:flex; align-items:center; gap:30px; font-family:var(--font-nav); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+  .nav-links a{ position:relative; text-decoration:none; padding:6px 0; transition:color .25s ease; }
+  .nav-links a::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--ink); transform:scaleX(0); transform-origin:left; transition:transform .35s var(--ease); }
   .nav-links a:hover{ color:var(--ink); }
-  .nav-actions{ display:flex; align-items:center; gap:16px; flex-shrink:0; }
-  /* On desktop the wrapper itself is invisible to layout, so nav-links and
-     nav-actions stay direct flex children of .nav-inner exactly as before;
-     the mobile media query below turns it into a real stacked panel. */
+  .nav-links a:hover::after{ transform:scaleX(1); }
+  .nav-actions{ display:flex; align-items:center; gap:18px; flex-shrink:0; }
+  /* Sur ordinateur le conteneur est invisible pour la mise en page ; la
+     media query mobile en fait un vrai panneau. */
   .nav-mobile-panel{ display:contents; }
-  .nav-login{ font-family:var(--font-nav); font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink); text-decoration:none; }
-  .nav-cta{ background:var(--pink); color:var(--on-light); font-family:var(--font-nav); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:0.08em; padding:12px 20px; text-decoration:none; border-radius:var(--radius); transition:background .15s ease-out; }
-  .nav-cta:hover{ background:var(--pink-deep); }
-  .nav-toggle{ display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:34px; height:34px; padding:0; border:none; background:none; cursor:pointer; flex-shrink:0; }
-  .nav-toggle span{ display:block; width:20px; height:2px; background:var(--ink); border-radius:2px; transition:transform .2s ease-out, opacity .2s ease-out; }
+  .nav-login{ font-family:var(--font-nav); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink); text-decoration:none; opacity:.9; transition:opacity .2s ease; }
+  .nav-login:hover{ opacity:1; }
+  .nav-cta{ background:var(--pink); color:var(--on-light); font-family:var(--font-nav); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.1em; padding:12px 22px; text-decoration:none; border-radius:999px; transition:background .2s ease, transform .3s var(--ease), box-shadow .3s ease; }
+  .nav-cta:hover{ background:var(--pink-deep); transform:translateY(-1px); box-shadow:0 8px 24px rgba(242,237,225,.18); }
+  .nav-toggle{ display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:40px; height:40px; padding:0; border:none; background:none; cursor:pointer; flex-shrink:0; }
+  .nav-toggle span{ display:block; width:20px; height:2px; background:var(--ink); border-radius:2px; transition:transform .3s var(--ease), opacity .2s ease; }
   .nav-toggle[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
   .nav-toggle[aria-expanded="true"] span:nth-child(2){ opacity:0; }
   .nav-toggle[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
   @media (max-width:760px){
+    nav{ padding:10px 10px 0; }
+    .nav-inner{ height:68px; padding:0 4px 0 6px; }
+    nav.scrolled .nav-inner{ height:56px; padding:0 6px 0 14px; }
     .nav-toggle{ display:flex; }
-    .brand img{ height:56px; }
-    .nav-mobile-panel{ position:absolute; top:100px; left:0; right:0; display:none; flex-direction:column; background:var(--ivory); border-bottom:1px solid var(--line); }
-    .nav-mobile-panel.open{ display:flex; }
-    .nav-links{ flex-direction:column; align-items:stretch; gap:0; padding:6px 24px 10px; }
-    .nav-links a{ padding:12px 0; border-top:1px solid var(--line); }
-    .nav-actions{ flex-direction:column; align-items:stretch; gap:10px; padding:10px 24px 18px; border-top:1px solid var(--line); }
+    .brand img{ height:48px; }
+    nav.scrolled .brand img{ height:36px; }
+    .nav-mobile-panel{ position:absolute; top:calc(100% + 10px); left:0; right:0; display:flex; flex-direction:column; background:rgba(12,12,10,.9); -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); border:1px solid var(--line); border-radius:22px; box-shadow:0 20px 50px rgba(0,0,0,.55); opacity:0; transform:translateY(-8px) scale(.98); pointer-events:none; visibility:hidden; transition:opacity .3s ease, transform .35s var(--ease), visibility 0s linear .35s; }
+    .nav-mobile-panel.open{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .3s ease, transform .35s var(--ease); }
+    .nav-links{ flex-direction:column; align-items:stretch; gap:0; padding:8px 22px 6px; }
+    .nav-links a{ padding:14px 0; border-top:1px solid var(--line); }
+    .nav-links a:first-child{ border-top:none; }
+    .nav-links a::after{ display:none; }
+    .nav-actions{ flex-direction:column; align-items:stretch; gap:10px; padding:10px 22px 20px; border-top:1px solid var(--line); }
+    .nav-login{ text-align:center; padding:8px 0; }
     .nav-cta{ text-align:center; }
   }
 
   /* Buttons */
   .btn-a{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-nav); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:0.07em; padding:15px 28px; text-decoration:none; border:none; border-radius:var(--radius); cursor:pointer; transition:background .15s ease-out; }
   .btn-a.pink{ background:var(--pink); color:var(--on-light); }
-  .btn-a.pink:hover{ background:var(--pink-deep); }
+  .btn-a{ transition:background .2s ease, transform .3s var(--ease), box-shadow .3s ease; }
+  .btn-a.pink:hover{ background:var(--pink-deep); transform:translateY(-2px); box-shadow:0 12px 30px rgba(242,237,225,.16); }
   .btn-outline{ display:inline-flex; align-items:center; gap:8px; font-family:var(--font-nav); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:0.07em; padding:15px 2px; text-decoration:none; background:none; color:var(--muted); border:none; }
   .btn-outline:hover{ color:var(--pink); }
 
   /* HERO: serif headline + one line + the moon, desktop only (no stacking
      it below on narrow screens, where it would have to shrink/crop to fit). */
-  .hero{ padding:72px 0 48px; overflow:hidden; }
+  .hero{ padding:150px 0 48px; overflow:hidden; position:relative; }
   .hero-grid{ display:grid; grid-template-columns:1fr 0.85fr; gap:40px; align-items:center; }
   .hero-copy{ max-width:560px; }
   .hero h1{ font-size:clamp(38px,5vw,62px); font-weight:500; margin-bottom:18px; }
   .hero p{ font-size:17px; line-height:1.6; color:var(--muted); max-width:420px; margin-bottom:26px; }
   .btn-row{ display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
   .hero-moon-wrap{ display:flex; align-items:center; justify-content:center; }
-  .hero-moon-img{ width:100%; max-width:460px; filter:drop-shadow(0 30px 70px rgba(0,0,0,.7)); }
+  .hero-moon-img{ width:100%; max-width:460px; -webkit-mask-image:radial-gradient(closest-side, #000 72%, transparent 100%); mask-image:radial-gradient(closest-side, #000 72%, transparent 100%); animation:moonFloat 11s ease-in-out infinite; will-change:transform; }
+  .hero-moon-wrap{ position:relative; }
+  .hero-moon-wrap::before{ content:''; position:absolute; inset:8% 8%; border-radius:50%; background:radial-gradient(circle, rgba(242,237,225,.14), transparent 68%); filter:blur(28px); animation:moonGlow 7s ease-in-out infinite; pointer-events:none; }
+  @keyframes moonFloat{ 0%,100%{ transform:translateY(0) rotate(0deg); } 50%{ transform:translateY(-14px) rotate(1.5deg); } }
+  @keyframes moonGlow{ 0%,100%{ opacity:.55; transform:scale(1); } 50%{ opacity:1; transform:scale(1.06); } }
+  @keyframes rise{ from{ opacity:0; transform:translateY(22px); } to{ opacity:1; transform:none; } }
+  .hero-copy > *{ animation:rise .95s var(--ease) both; }
+  .hero-copy > :nth-child(1){ animation-delay:.08s; }
+  .hero-copy > :nth-child(2){ animation-delay:.22s; }
+  .hero-copy > :nth-child(3){ animation-delay:.36s; }
+  .hero-moon-wrap{ animation:rise 1.2s var(--ease) .2s both; }
+
+  /* Apparition au défilement : les blocs glissent et s'estompent à l'entrée
+     dans l'écran (classes posées par le script en bas de page). */
+  .reveal{ opacity:0; transform:translateY(28px); transition:opacity .9s var(--ease), transform .9s var(--ease); transition-delay:var(--d,0s); }
+  .reveal.in{ opacity:1; transform:none; }
+  .difference-photo img{ transition:transform 1.4s var(--ease); }
+  .difference-photo:hover img{ transform:scale(1.045); }
+  .record{ transition:transform .5s var(--ease), border-color .4s ease; }
+  .record:hover{ transform:translateY(-4px); border-color:rgba(245,245,247,.3); }
+  .faq-list details{ transition:background .3s ease; }
+  .faq-list details[open]{ background:rgba(242,237,225,.025); }
+  .footer-col a{ transition:color .2s ease, transform .3s var(--ease); }
+  .footer-col a:hover{ transform:translateX(4px); }
   @media (max-width:820px){
-    .hero{ padding:40px 0 28px; }
+    .hero{ padding:112px 0 28px; }
     .hero-grid{ grid-template-columns:1fr; }
     .hero-moon-wrap{ display:none; }
   }
@@ -166,6 +206,7 @@
   }
 
   @media (prefers-reduced-motion: reduce){
+    .reveal{ opacity:1; transform:none; }
     *, *::before, *::after{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
     html{ scroll-behavior:auto; }
   }
@@ -359,11 +400,34 @@
       });
     });
     var nav = document.querySelector('nav');
-    var onScroll = function () {
-      nav.classList.toggle('scrolled', window.scrollY > 4);
+    var lastY = window.scrollY;
+    var ticking = false;
+    var update = function () {
+      var y = window.scrollY;
+      nav.classList.toggle('scrolled', y > 24);
+      var menuOpen = panel.classList.contains('open');
+      if (y > 220 && y > lastY + 6 && !menuOpen) nav.classList.add('hide');
+      else if (y < lastY - 6 || y <= 220) nav.classList.remove('hide');
+      lastY = y;
+      ticking = false;
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    window.addEventListener('scroll', function () {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    update();
+
+    // Apparition au défilement.
+    var targets = document.querySelectorAll('.sec-head, .booking-panel, .difference-photo, .difference-grid > div:last-child, .verify-grid > *, .faq-list details, .footer-top > *');
+    if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+      }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+      targets.forEach(function (el, i) {
+        el.classList.add('reveal');
+        el.style.setProperty('--d', ((i % 4) * 0.08) + 's');
+        io.observe(el);
+      });
+    }
   })();
 </script>
 
