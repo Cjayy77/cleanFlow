@@ -609,7 +609,7 @@ function catalogItemForm(type, existing) {
     if (Number.isFinite(v)) get('priceTTC').value = Math.round(v * (1 + vat));
   });
 
-  // Upload d'image (remplit le champ URL). Nécessite Firebase Storage (Blaze).
+  // Upload d'image (remplit le champ URL) : réduite dans le navigateur puis stockée en data URI.
   const upWrap = document.createElement('label');
   upWrap.className = 'form-row';
   const upSpan = document.createElement('span');
