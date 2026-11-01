@@ -15,7 +15,6 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 import { firebaseConfig } from '../../firebase-config.js';
 import qrcode from './vendor/qrcode.js';
 import { uploadPhotoToR2 } from './r2-upload.js';
@@ -901,11 +900,6 @@ if (configMissing) {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
-// Sans ces limites, le SDK réessaie ~2 min avant d'abandonner (ex. bucket
-// Storage non activé) : l'échec est ramené à ~12 s avec un vrai code d'erreur.
-storage.maxUploadRetryTime = 12000;
-storage.maxOperationRetryTime = 12000;
 
 export async function loadUserDoc(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
@@ -962,22 +956,36 @@ export async function uploadBookingImage({ bookingId, slot, file, uploadedBy }) 
   return photoDoc;
 }
 
-// Upload d'une image d'article de catalogue (admin) → renvoie l'URL publique.
-export async function uploadCatalogImage(file) {
-  const safe = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storageRef = ref(storage, `catalog/${Date.now()}-${safe}`);
-  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
-  return getDownloadURL(storageRef);
+// Images de référence rédigées par l'admin (articles de catalogue, photos
+// d'exigence). Plus de Firebase Storage (plan Blaze) : l'image est réduite
+// dans le navigateur (côté long 900 px, JPEG) puis stockée directement dans
+// le document Firestore comme data URI, qui s'affiche telle quelle dans un
+// <img src>. Quelques dizaines de Ko par image, très loin de la limite de
+// 1 Mo d'un document.
+async function imageFileToDataUri(file, maxSide = 900, quality = 0.82) {
+  if (!file || !String(file.type || '').startsWith('image/')) {
+    const err = new Error('Le fichier doit être une image.');
+    err.code = 'app/not-an-image';
+    throw err;
+  }
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  if (bitmap.close) bitmap.close();
+  const uri = canvas.toDataURL('image/jpeg', quality);
+  if (uri.length > 400000) {
+    const err = new Error('Image trop lourde même après réduction. Choisissez une image plus simple.');
+    err.code = 'app/image-too-large';
+    throw err;
+  }
+  return uri;
 }
 
-// Photo de référence d'une exigence (rédaction admin) → renvoie l'URL,
-// même logique que uploadCatalogImage.
-export async function uploadExigenceReferenceImage(file) {
-  const safe = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storageRef = ref(storage, `exigences/${Date.now()}-${safe}`);
-  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
-  return getDownloadURL(storageRef);
-}
+export function uploadCatalogImage(file) { return imageFileToDataUri(file); }
+export function uploadExigenceReferenceImage(file) { return imageFileToDataUri(file); }
 
 export async function loadExigencesForProperty(propertyId) {
   const snap = await getDocs(query(collection(db, 'exigences'), where('propertyId', '==', propertyId)));
@@ -1464,19 +1472,17 @@ export function withTimeout(promise, ms) {
 }
 
 export function storageErrorMessage(error) {
-  switch (error?.code) {
-    case 'storage/unauthorized':
-      return 'Envoi refusé par les règles de sécurité. Vérifiez que les règles Storage sont publiées dans la console Firebase.';
-    case 'storage/retry-limit-exceeded':
-    case 'app/timeout':
-      return 'Le stockage de photos ne répond pas. Il n’est probablement pas activé sur le projet Firebase (Storage, plan Blaze). Voir SETUP.md, étape 1.';
-    case 'storage/quota-exceeded':
-      return 'Quota de stockage dépassé.';
-    case 'storage/canceled':
-      return 'Envoi annulé.';
-    default:
-      return authErrorMessage(error);
+  // Photos de mission : Worker Cloudflare + R2 (r2-upload.js). Les erreurs du
+  // Worker portent un statut HTTP et son message ; on ne les maquille pas.
+  if (error && typeof error.status === 'number') {
+    if (error.status === 401) return 'Session expirée ou non reconnue par le serveur de photos. Reconnectez-vous puis réessayez.';
+    if (error.status === 403) return `Envoi refusé par le serveur de photos : ${error.message}`;
+    if (error.status >= 500) return `Le serveur de photos est en erreur (${error.status}). Réessayez dans un instant ; si cela persiste, prévenez l’équipe technique.`;
+    return `Envoi de la photo impossible : ${error.message}`;
   }
+  if (error?.code === 'app/timeout') return 'Le serveur de photos ne répond pas. Vérifiez votre connexion et réessayez.';
+  if (error instanceof TypeError) return 'Impossible de joindre le serveur de photos. Vérifiez votre connexion et réessayez.';
+  return authErrorMessage(error);
 }
 
 export function authErrorMessage(error) {
@@ -1493,14 +1499,20 @@ export function authErrorMessage(error) {
       return 'Adresse email invalide.';
     case 'auth/too-many-requests':
       return 'Trop de tentatives. Réessayez dans quelques minutes.';
+    case 'auth/operation-not-allowed':
+      return 'Ce mode de connexion n’est pas activé sur le projet Firebase (Authentication, Sign-in method).';
+    case 'auth/unauthorized-domain':
+      return 'Ce domaine n’est pas autorisé pour la connexion (Firebase, Authentication, Authorized domains).';
     case 'auth/network-request-failed':
     case 'unavailable':
       return 'Problème de connexion. Vérifiez votre réseau et réessayez.';
     case 'app/timeout':
       return 'La base de données ne répond pas. Vérifiez votre connexion et réessayez.';
     case 'permission-denied':
-      return 'Accès refusé par la base de données. Les règles Firestore ne sont probablement pas publiées (voir SETUP.md, étape 3).';
+      // Deux causes possibles très différentes : ne pas affirmer l'une des deux.
+      return 'Action refusée par les règles de sécurité Firestore. Soit vos droits ne couvrent pas cette action (anomalie à signaler à l’équipe technique, avec l’heure et ce que vous faisiez), soit les règles du projet ne sont pas à jour (SETUP.md, étape 3).';
     default:
       return error?.message || 'Une erreur est survenue.';
   }
+}
 }
