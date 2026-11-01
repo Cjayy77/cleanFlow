@@ -1051,10 +1051,10 @@ function renderActiveBooking() {
     activeBookingContainer.appendChild(keyBox);
   }
 
-  if (activeBooking.status === 'rejected' && activeBooking.adminNote) {
+  if (activeBooking.status === 'rejected' && (activeBooking.adminNote || activeBooking.welcomerNote)) {
     const note = document.createElement('div');
     note.className = 'status-banner';
-    note.textContent = `Dossier renvoyé par Zebramoon : ${activeBooking.adminNote}`;
+    note.textContent = `Dossier renvoyé par Zebramoon : ${activeBooking.adminNote || activeBooking.welcomerNote}`;
     activeBookingContainer.appendChild(note);
   }
 

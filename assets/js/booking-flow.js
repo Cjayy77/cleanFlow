@@ -846,6 +846,11 @@ async function finalizeBooking() {
   submitting = true; render();
   try {
     const userReady = await waitForUserDoc(currentUser.uid);
+    if (userReady && userReady.role !== 'client') {
+      const err = new Error('Ce compte n’est pas un compte client : la réservation en ligne est réservée aux clients.');
+      err.code = 'app/not-a-client';
+      throw err;
+    }
     if (!userReady) {
       const err = new Error('Votre compte vient d’être créé, sa mise en place prend encore quelques secondes. Réessayez dans un instant.');
       err.code = 'app/user-not-ready';
@@ -871,8 +876,15 @@ async function finalizeBooking() {
       // un doublon du logement. On réutilise celui déjà créé (id mémorisé dans
       // le brouillon), ou à défaut un logement du compte à la même adresse.
       const norm = s => String(s || '').trim().toLowerCase();
-      const existing = userProperties.find(p => p.id === draft.createdPropertyId)
-        || userProperties.find(p => norm(p.street) === norm(np.street) && norm(p.city) === norm(np.city) && norm(p.postalCode) === norm(np.postalCode));
+      // Lecture directe : le premier instantané de l'abonnement n'est pas
+      // toujours arrivé quand un client existant vient de se connecter.
+      let known = userProperties;
+      try {
+        const fresh = await getDocs(query(collection(db, 'properties'), where('ownerId', '==', currentUser.uid)));
+        known = fresh.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch { /* on garde la liste en mémoire */ }
+      const existing = known.find(p => p.id === draft.createdPropertyId)
+        || known.find(p => norm(p.street) === norm(np.street) && norm(p.city) === norm(np.city) && norm(p.postalCode) === norm(np.postalCode));
       if (existing) {
         propertyId = existing.id;
         property = existing;

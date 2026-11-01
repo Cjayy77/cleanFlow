@@ -2801,17 +2801,26 @@ function openReschedule(booking, row, triggerBtn) {
     if (!newDate) { setAdminStatus('Choisissez une date.', 'error'); return; }
     if (newDate === booking.scheduledDate) { box.remove(); return; }
     try {
-      await withButtonLoading(save, () =>
-        withTimeout(updateDoc(doc(db, 'bookings', booking.id), { scheduledDate: newDate }), 15000));
-      // Déplace le verrou de créneau vers la nouvelle date : best-effort
-      // (si la nouvelle date est déjà verrouillée pour un autre logement,
-      // ça n'empêche pas la reprogrammation, ça laisse juste l'ancien
-      // créneau bloqué jusqu'à intervention manuelle).
-      deleteDoc(doc(db, 'bookingSlots', `${booking.propertyId}_${booking.scheduledDate}`)).catch(() => {});
-      setDoc(doc(db, 'bookingSlots', `${booking.propertyId}_${newDate}`), {
-        propertyId: booking.propertyId, scheduledDate: newDate, bookingId: booking.id,
-        clientId: booking.clientId, createdAt: serverTimestamp(),
-      }).catch(() => {});
+      // Réservation + verrou de créneau déplacés dans UN seul lot : si la
+      // nouvelle date est déjà prise pour ce logement, on refuse avant
+      // d'écrire quoi que ce soit (sinon deux réservations se retrouvaient
+      // sur la même date, le verrou n'étant écrit qu'en best-effort).
+      const newSlotRef = doc(db, 'bookingSlots', `${booking.propertyId}_${newDate}`);
+      const existingSlot = await withTimeout(getDoc(newSlotRef), 15000);
+      if (existingSlot.exists()) {
+        setAdminStatus('Cette date est déjà réservée pour ce logement. Choisissez-en une autre.', 'error');
+        return;
+      }
+      await withButtonLoading(save, () => {
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'bookings', booking.id), { scheduledDate: newDate });
+        batch.delete(doc(db, 'bookingSlots', `${booking.propertyId}_${booking.scheduledDate}`));
+        batch.set(newSlotRef, {
+          propertyId: booking.propertyId, scheduledDate: newDate, bookingId: booking.id,
+          clientId: booking.clientId, createdAt: serverTimestamp(),
+        });
+        return withTimeout(batch.commit(), 15000);
+      });
       try {
         const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
         if (clientSnap.exists() && clientSnap.data().email) {
@@ -3200,7 +3209,7 @@ function renderKitsToAssign() {
   if (!kitsToAssign) return;
   kitsToAssign.innerHTML = '';
   const needing = latestBookings
-    .filter(booking => booking.linenRequested === true && !booking.livreurId && booking.status !== 'cancelled')
+    .filter(booking => booking.linenRequested === true && !booking.livreurId && booking.status !== 'cancelled' && booking.status !== 'verified')
     .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   if (needing.length === 0) {
     kitsToAssign.innerHTML = '<div class="empty-state">Aucune livraison de kits en attente d’assignation.</div>';
@@ -3810,9 +3819,18 @@ async function resolveBooking(status) {
       });
       await withTimeout(batch.commit(), 15000);
     }
-    if (status === 'verified' && selectedBooking.clientEmail) {
+    // Réservations antérieures à la copie de l'email sur la réservation :
+    // l'admin peut relire la fiche du client.
+    let verdictClientEmail = selectedBooking.clientEmail;
+    if (status === 'verified' && !verdictClientEmail && selectedBooking.clientId) {
+      try {
+        const cs = await getDoc(doc(db, 'users', selectedBooking.clientId));
+        verdictClientEmail = cs.exists() ? cs.data().email : '';
+      } catch (e) { /* pas d'email, pas de notification */ }
+    }
+    if (status === 'verified' && verdictClientEmail) {
       queueEmail({
-        to: selectedBooking.clientEmail,
+        to: verdictClientEmail,
         subject: `Zebramoon, votre ménage du ${formatShortDate(selectedBooking.scheduledDate)} est confirmé ✓`,
         text: `Bonne nouvelle : le ménage de ${selectedBooking.propertyAddress || 'votre bien'} a été réalisé, son dossier photo a été contrôlé et validé par l’équipe Zebramoon. Retrouvez le détail dans votre espace client.`,
       });
@@ -3850,6 +3868,9 @@ onAuthStateChanged(auth, async user => {
     if (catalogUnsub) catalogUnsub();
     if (propertiesUnsub) propertiesUnsub();
     if (exigencesUnsub) exigencesUnsub();
+    if (suggestionsUnsub) suggestionsUnsub();
+    if (protocolsUnsub) protocolsUnsub();
+    if (propertyOverridesUnsub) propertyOverridesUnsub();
     if (prospectsUnsub) prospectsUnsub();
     if (incidentsUnsub) incidentsUnsub();
     if (messagesUnsub) messagesUnsub();

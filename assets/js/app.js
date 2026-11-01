@@ -780,7 +780,14 @@ onAuthStateChanged(auth, async user => {
     return;
   }
   try {
-    const docData = await loadUserDoc(user.uid);
+    // À l'inscription, onAuthStateChanged part dès que le compte Auth existe,
+    // avant que registerClient() ait écrit users/{uid} : sans attente, on
+    // déconnectait le nouveau client avant la fin de son inscription.
+    let docData = await loadUserDoc(user.uid);
+    for (let i = 0; !docData && i < 6; i += 1) {
+      await new Promise(resolve => setTimeout(resolve, 350));
+      docData = await loadUserDoc(user.uid).catch(() => null);
+    }
     if (!docData) {
       authNotice = { mode: 'register', message: 'Compte introuvable. Veuillez créer un compte client.' };
       await signOut(auth);
