@@ -1375,7 +1375,11 @@ export function queueEmail({ to, subject, text, bookingId }) {
     message: { subject, text },
     ...(bookingId ? { bookingId } : {}),
     createdAt: serverTimestamp(),
-  }).catch(() => {});
+  }).catch(err => {
+    // Jamais bloquant pour l'utilisateur, mais visible dans la console : un
+    // refus de règles ou un souci réseau ne doit pas être totalement muet.
+    console.warn('[mail] e-mail non mis en file', to, err && (err.code || err.message));
+  });
 }
 
 // Barre d'onglets de section, masquée au-delà de 760px (voir .section-tabs
