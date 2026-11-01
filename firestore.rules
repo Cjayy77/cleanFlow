@@ -284,7 +284,14 @@ service cloud.firestore {
     // Voir finalizeBooking() (booking-flow.js) : le créneau et la réservation
     // sont créés dans la même transaction.
     match /bookingSlots/{slotId} {
-      allow read: if isAdmin();
+      // tx.get(slotRef) dans finalizeBooking() est une lecture : sans ce droit,
+      // chaque réservation d'un client échouait en permission-denied avant
+      // même d'écrire. Le créneau d'un logement n'est lisible que par son
+      // propriétaire (l'id est <propertyId>_<date>, donc le test porte sur le
+      // préfixe et fonctionne aussi quand le document n'existe pas encore).
+      allow read: if isAdmin()
+        || (isClient()
+          && get(/databases/$(database)/documents/properties/$(slotId.split('_')[0])).data.ownerId == request.auth.uid);
       allow create: if (
         isAdmin()
         || (isClient()
