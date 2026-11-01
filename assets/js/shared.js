@@ -243,7 +243,8 @@ function bookingLineItems(b) {
   const travel = Number(b.travelFee) || 0;
   const commission = Number(b.commission) || 0;
   const extrasHT = Number(b.extrasHT) || 0;
-  const kits = Math.max(0, price - prestation - amenities - extrasHT - travel - commission);
+  const welcomerFee = Number(b.welcomerFee) || 0;
+  const kits = Math.max(0, price - prestation - amenities - extrasHT - travel - commission - welcomerFee);
   const rooms = Number(b.bedrooms != null ? b.bedrooms : b.kitCount) || 0;
   const rate = b.hours ? Math.round(prestation / b.hours) : (b.serviceType === 'deep' ? 50 : 30);
   const items = [
@@ -254,6 +255,7 @@ function bookingLineItems(b) {
   (b.extras || []).forEach(e => items.push({ label: `${e.name || 'Supplément'}${e.qty > 1 ? ` × ${e.qty}` : ''}`, amount: (Number(e.priceHT) || 0) * (Number(e.qty) || 0) }));
   if (commission) items.push({ label: 'Commission Zebramoon', amount: commission });
   if (travel) items.push({ label: 'Frais de déplacement', amount: travel });
+  if (welcomerFee) items.push({ label: 'Contrôle qualité sur place (Welcomer)', amount: welcomerFee });
   return { items, totalHT: price };
 }
 
@@ -1365,10 +1367,13 @@ export function resetPassword(email) {
 // le cron du Worker Cloudflare (processMailOutbox) envoie via Resend. Un
 // échec d'écriture (règles, réseau) est avalé : l'action métier n'échoue
 // jamais à cause d'un e-mail.
-export function queueEmail({ to, subject, text }) {
+// `bookingId` (facultatif) rattache le mail à une réservation : c'est ce qui
+// autorise un Welcomer à écrire au client de SA mission (voir firestore.rules).
+export function queueEmail({ to, subject, text, bookingId }) {
   return addDoc(collection(db, 'mail'), {
     to,
     message: { subject, text },
+    ...(bookingId ? { bookingId } : {}),
     createdAt: serverTimestamp(),
   }).catch(() => {});
 }

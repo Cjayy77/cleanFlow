@@ -359,6 +359,7 @@ function buildValidationForm(booking) {
         // welcomer n'a pas le droit de lire la fiche utilisateur du client.
         if (booking.clientEmail) {
           queueEmail({
+            bookingId: booking.id,
             to: booking.clientEmail,
             subject: `Zebramoon, votre ménage du ${formatShortDate(booking.scheduledDate)} est confirmé ✓`,
             text: `Bonne nouvelle : le ménage de ${booking.propertyAddress || 'votre bien'} a été réalisé et contrôlé sur place par l'équipe Zebramoon. Retrouvez le détail dans votre espace client.`,

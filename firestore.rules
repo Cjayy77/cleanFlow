@@ -253,6 +253,7 @@ service cloud.firestore {
         // checklist, les photos, la signature et l'horodatage.
         || (isWelcomer()
           && resource.data.get('welcomerId', '') == request.auth.uid
+          && resource.data.status in ['submitted', 'verified', 'rejected']
           && request.resource.data.status in ['verified', 'rejected']
           && request.resource.data.welcomerLevel is int
           && request.resource.data.welcomerLevel >= 1
@@ -433,7 +434,16 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.message.subject is string
         && request.resource.data.message.text is string
-        && (isAdmin() || request.resource.data.to == teamInbox());
+        && (
+          isAdmin()
+          || request.resource.data.to == teamInbox()
+          // Le Welcomer notifie le client de SA mission validée (adresse
+          // recopiée sur la réservation à sa création).
+          || (isWelcomer()
+            && request.resource.data.bookingId is string
+            && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.get('welcomerId', '') == request.auth.uid
+            && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.get('clientEmail', '') == request.resource.data.to)
+        );
     }
 
     // Messages client → équipe, rattachés à une réservation. Le client écrit,
