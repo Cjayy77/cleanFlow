@@ -1,5 +1,5 @@
 // Zebramoon, couche de données Firebase partagée par les quatre interfaces.
-// Firestore = données, Firebase Auth = connexion, Firebase Storage = photos.
+// Firestore = données, Firebase Auth = connexion, Cloudflare R2 = photos (r2-upload.js).
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
@@ -422,8 +422,8 @@ export function openLogementQr(target) {
 // ⇩⇩ ADRESSE DE L'ÉQUIPE, SOURCE UNIQUE POUR TOUT LE SITE ⇩⇩
 // Utilisée par les 4 portails + le devis public (tous importent TEAM_EMAIL).
 // Pour basculer sur la boîte OVH : changez CETTE ligne (une seule), puis
-// alignez teamInbox() dans firestore.rules (+ republier les règles) et le
-// FROM/SMTP de l'extension « Trigger Email ». Détails : SETUP.md.
+// alignez teamInbox() dans firestore.rules (+ republier les règles) et
+// l'expéditeur Resend du Worker.
 export const TEAM_EMAIL = 'w.wanecque@gmail.com';
 
 // Liste générique, utilisée uniquement pour les logements SANS exigences
@@ -1361,9 +1361,10 @@ export function resetPassword(email) {
   return sendPasswordResetEmail(auth, email);
 }
 
-// File d'envoi d'e-mails : dépose un document dans la collection `mail`,
-// que l'extension Firebase « Trigger Email » transforme en vrai e-mail
-// (voir SETUP.md). Sans l'extension, les documents s'accumulent sans effet, // l'action métier n'échoue jamais à cause d'un e-mail.
+// File d'envoi d'e-mails : dépose un document dans la collection `mail`, que
+// le cron du Worker Cloudflare (processMailOutbox) envoie via Resend. Un
+// échec d'écriture (règles, réseau) est avalé : l'action métier n'échoue
+// jamais à cause d'un e-mail.
 export function queueEmail({ to, subject, text }) {
   return addDoc(collection(db, 'mail'), {
     to,
