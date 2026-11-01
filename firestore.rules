@@ -190,7 +190,7 @@ service cloud.firestore {
         // Liste blanche des champs : empêche le client d'injecter des champs
         // réservés à l'admin (adjustment, rating, verifiedBy, adminNote…) qui
         // fausseraient la vérification ou la compta.
-        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'keyAccess', 'prestataireId', 'livreurId', 'welcomerId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'welcomerService', 'welcomerFee', 'price', 'scheduledDate', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'keyAccess', 'prestataireId', 'livreurId', 'welcomerId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'wcCount', 'hasSofaBed', 'hasTerrace', 'hasClim', 'keyBoxCount', 'smokeDetectorCount', 'clientEmail', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'welcomerService', 'welcomerFee', 'price', 'scheduledDate', 'status', 'createdAt'])
         && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;
 
       allow update: if isSignedIn() && (
@@ -397,7 +397,11 @@ service cloud.firestore {
     // personnel pour le prestataire, pas une preuve horodatée opposable, donc
     // la précision serveur n'est pas nécessaire ici.
     match /bookingTimers/{bookingId} {
-      allow read: if isAdmin() || (isPrestataire() && resource.data.prestataireId == request.auth.uid);
+      // resource == null : lecture d'un minuteur pas encore créé (première
+      // ouverture d'une mission), qui doit renvoyer "inexistant", pas un refus.
+      allow read: if isAdmin()
+        || (isPrestataire() && (resource == null || resource.data.prestataireId == request.auth.uid))
+        || (isClient() && get(/databases/$(database)/documents/bookings/$(bookingId)).data.clientId == request.auth.uid);
       allow create, update: if isPrestataire()
         && request.resource.data.prestataireId == request.auth.uid
         && get(/databases/$(database)/documents/bookings/$(bookingId)).data.prestataireId == request.auth.uid;
@@ -451,7 +455,7 @@ service cloud.firestore {
     match /incidents/{incidentId} {
       allow read: if isSignedIn() && (
         isAdmin()
-        || (isPrestataire() && resource.data.reportedBy == request.auth.uid)
+        || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
         || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
       );
       allow create: if isPrestataire()

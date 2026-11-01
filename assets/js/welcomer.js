@@ -355,16 +355,15 @@ function buildValidationForm(booking) {
         text: `Réf ${booking.id.slice(0, 6).toUpperCase()} · niveau ${level} · ${photoObjectKeys.length} photo(s).${payload.welcomerNote ? ' Note : ' + payload.welcomerNote : ''}`,
       });
       if (level === 1 && booking.clientId) {
-        try {
-          const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
-          if (clientSnap.exists() && clientSnap.data().email) {
-            queueEmail({
-              to: clientSnap.data().email,
-              subject: `Zebramoon, votre ménage du ${formatShortDate(booking.scheduledDate)} est confirmé ✓`,
-              text: `Bonne nouvelle : le ménage de ${booking.propertyAddress || 'votre bien'} a été réalisé et contrôlé sur place par l'équipe Zebramoon. Retrouvez le détail dans votre espace client.`,
-            });
-          }
-        } catch (e) { /* la notification ne doit jamais bloquer la validation */ }
+        // L'email du client est recopié sur la réservation à sa création : un
+        // welcomer n'a pas le droit de lire la fiche utilisateur du client.
+        if (booking.clientEmail) {
+          queueEmail({
+            to: booking.clientEmail,
+            subject: `Zebramoon, votre ménage du ${formatShortDate(booking.scheduledDate)} est confirmé ✓`,
+            text: `Bonne nouvelle : le ménage de ${booking.propertyAddress || 'votre bien'} a été réalisé et contrôlé sur place par l'équipe Zebramoon. Retrouvez le détail dans votre espace client.`,
+          });
+        }
       }
       setWorkStatus(level === 1 ? 'Logement validé, le propriétaire est notifié.' : 'Contrôle enregistré, mission renvoyée.', 'success');
     } catch (e) {

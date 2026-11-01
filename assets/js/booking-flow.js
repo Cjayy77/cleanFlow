@@ -950,6 +950,7 @@ async function finalizeBooking() {
       }
       tx.set(bookingRef, {
         clientId: currentUser.uid,
+        clientEmail: currentUser.email || '',
         propertyId,
         propertyAddress: `${property.street}, ${property.city}`,
         keyAccess: property.keyAccess || '',
