@@ -725,3 +725,10 @@ details.as-view .collapse-body{ margin-top:0; }
 .admin-section.view-primary > .card:only-child > .eyebrow:first-child,
 .admin-section.view-primary > .card:only-child > .eyebrow:first-child + h2{ display:none; }
 #incidentCard .collapse-body > p:first-child{ display:none; }
+
+/* Liens vers les autres espaces, sous la carte de connexion */
+.portal-links{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px 4px; max-width:460px; margin:18px auto 0; font-size:13px; }
+.portal-links span{ width:100%; text-align:center; margin-bottom:6px; font-family:var(--font-nav); font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.portal-links a{ padding:7px 14px; border-radius:999px; border:1px solid var(--line); color:var(--muted); text-decoration:none; transition:color .15s ease-out, border-color .15s ease-out; }
+.portal-links a:hover{ color:var(--ink); border-color:var(--line-strong); }
+#authScreen.hidden ~ .portal-links, .shell-on .portal-links{ display:none; }
