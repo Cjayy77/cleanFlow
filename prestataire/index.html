@@ -73,7 +73,7 @@
   </div>
 
   <div id="appScreen" class="hidden">
-    <div class="card">
+    <div class="card intro-card">
       <div class="eyebrow">Bonjour</div>
       <h1 id="userNameLabel">Prestataire</h1>
       <p>Réalisez les missions que l’équipe Zebramoon vous assigne, puis soumettez le jeu de photos exigé. L’équipe contrôle chaque dossier avant confirmation au client.</p>
@@ -81,11 +81,19 @@
 
     <div id="workStatus" class="status-banner hidden" role="alert"></div>
 
-    <div class="card" id="missionsCard">
+    <div class="card view-bare" id="missionsCard">
       <div class="eyebrow">Mes missions</div>
       <h2>Missions assignées</h2>
-      <div id="assignedList"></div>
-      <div id="activeBooking"></div>
+      <div class="md" id="missionsMd">
+        <div class="md-list">
+          <div class="md-list-head">Mes missions <span id="missionsCount"></span></div>
+          <div id="assignedList"></div>
+        </div>
+        <div class="md-detail">
+          <button type="button" class="md-back" id="missionsBack">‹ Toutes les missions</button>
+          <div id="activeBooking"></div>
+        </div>
+      </div>
     </div>
 
     <div class="card hidden" id="teamCard">

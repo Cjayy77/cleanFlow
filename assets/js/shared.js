@@ -1544,42 +1544,173 @@ export function queueEmail({ to, subject, text, bookingId }) {
 // Idempotent : un second appel sur le même mountEl ne duplique pas la barre
 // (utile car le code appelant peut repasser par son écran "connecté" après
 // une reconnexion).
-export function initSectionTabs(mountEl, sections) {
-  if (!mountEl || !sections || !sections.length) return;
-  if (mountEl.querySelector(':scope > .section-tabs')) return;
-  const present = sections.filter(s => document.getElementById(s.id));
-  if (present.length < 2) return;
+// ---------------------------------------------------------------- shell ----
+// Coquille d'application commune aux espaces connectés : une vue à la fois,
+// barre latérale sur ordinateur, barre d'onglets en bas sur téléphone.
+// Chaque vue a son ancre (#missions, #compta…) : le bouton retour du
+// navigateur revient à la vue précédente comme entre deux pages.
+const SHELL_ICONS = {
+  missions: '<rect x="6" y="4" width="12" height="17" rx="2.5"/><path d="M9.5 4h5v3h-5z"/><path d="M9 12h6M9 16h4"/>',
+  team: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.9-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2c2.4.2 4.3 1.8 4.9 4.8"/>',
+  incident: '<path d="M12 4.5 20.5 19h-17z"/><path d="M12 10v4M12 16.4v.2"/>',
+  star: '<path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/>',
+  wallet: '<rect x="3.5" y="6" width="17" height="13" rx="3"/><path d="M3.5 10h17M15.5 14.5h2"/>',
+  home: '<path d="M4 11 12 4.5l8 6.5"/><path d="M6.5 9.5V19h11V9.5"/>',
+  building: '<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 8h2M13 8h2M9 12h2M13 12h2M10.5 20.5v-4h3v4"/>',
+  clock: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
+  scan: '<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/>',
+  calendar: '<rect x="4" y="5.5" width="16" height="14.5" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>',
+  check: '<circle cx="12" cy="12" r="8"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>',
+  chat: '<path d="M5 6.5h14v10h-8.5L6.5 19.5v-3H5z"/>',
+  grid: '<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/>',
+  box: '<path d="M4 8 12 4l8 4v8l-8 4-8-4z"/><path d="m4 8 8 4 8-4M12 12v8"/>',
+  list: '<path d="m4 7 1.5 1.5L8 6M4 13l1.5 1.5L8 12M4 19l1.5 1.5L8 18"/><path d="M11 7h9M11 13h9M11 19h9"/>',
+  bulb: '<path d="M9.5 17h5M10.5 20h3"/><path d="M12 3.5a5.5 5.5 0 0 0-3.2 10c.7.5 1.2 1.3 1.2 2.1V17h4v-1.4c0-.8.5-1.6 1.2-2.1A5.5 5.5 0 0 0 12 3.5z"/>',
+  tag: '<path d="M4 4h7l9 9-7 7-9-9z"/><circle cx="8.5" cy="8.5" r="1.3"/>',
+  more: '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/>',
+  dot: '<circle cx="12" cy="12" r="3"/>',
+};
+export function shellIcon(name) {
+  return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SHELL_ICONS[name] || SHELL_ICONS.dot}</svg>`;
+}
 
-  const bar = document.createElement('div');
-  bar.className = 'section-tabs';
-  bar.setAttribute('role', 'tablist');
-  const links = present.map(({ id, label }) => {
+function slugify(text) {
+  return String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+let shellState = null;
+const MOBILE_BAR_MAX = 5;
+
+// views : [{ key, label, icon, title, subtitle, els: [Element], badge, heading }]
+// screen : l'élément #appScreen ; la navigation n'apparaît que lorsqu'il est visible.
+export function mountAppShell({ views, screen, defaultKey, onShow }) {
+  views = (views || []).map(v => ({ ...v, els: (v.els || []).filter(Boolean) })).filter(v => v.els.length);
+  if (shellState) shellState.destroy();
+  if (views.length < 2) return { go() {}, current: () => (views[0] ? views[0].key : '') };
+
+  const nav = document.createElement('nav');
+  nav.className = 'shell-nav';
+  nav.setAttribute('aria-label', 'Navigation principale');
+  const list = document.createElement('div');
+  list.className = 'shell-nav-list';
+  nav.appendChild(list);
+  const sheet = document.createElement('div');
+  sheet.className = 'shell-sheet';
+  const overflow = views.length > MOBILE_BAR_MAX;
+
+  const makeLink = (v, extraClass) => {
     const a = document.createElement('a');
-    a.href = `#${id}`;
-    a.textContent = label;
-    a.addEventListener('click', event => {
-      event.preventDefault();
-      const target = document.getElementById(id);
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    bar.appendChild(a);
+    a.href = `#${v.key}`;
+    a.className = `shell-item${extraClass ? ` ${extraClass}` : ''}`;
+    a.innerHTML = `<span class="shell-ico">${shellIcon(v.icon)}</span><span class="shell-label"></span>`;
+    a.querySelector('.shell-label').textContent = v.label;
+    a.addEventListener('click', event => { event.preventDefault(); go(v.key); });
     return a;
-  });
-  mountEl.insertBefore(bar, mountEl.firstChild);
-
-  const setActive = id => {
-    links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === `#${id}`));
   };
-  setActive(present[0].id);
 
-  if (typeof IntersectionObserver === 'function') {
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) setActive(entry.target.id);
-      });
-    }, { rootMargin: '-40% 0px -50% 0px', threshold: 0 });
-    present.forEach(({ id }) => observer.observe(document.getElementById(id)));
+  views.forEach((v, i) => {
+    v.els.forEach((el, j) => {
+      el.classList.add('shell-view');
+      if (j === 0 && v.heading !== false) el.classList.add('view-primary');
+      if (el.tagName === 'DETAILS') { el.open = true; el.classList.add('as-view'); }
+    });
+    const head = document.createElement('header');
+    head.className = 'view-head shell-view';
+    const h = document.createElement('h1');
+    h.textContent = v.title || v.label;
+    head.appendChild(h);
+    if (v.subtitle) {
+      const sub = document.createElement('p');
+      sub.textContent = v.subtitle;
+      head.appendChild(sub);
+    }
+    v.els[0].before(head);
+    v.head = head;
+    const inBar = !overflow || i < MOBILE_BAR_MAX - 1;
+    v.link = makeLink(v, inBar ? '' : 'desk-only');
+    if (v.badge) v.link.querySelector('.shell-ico').appendChild(v.badge);
+    list.appendChild(v.link);
+    if (!inBar) {
+      v.sheetLink = makeLink(v, '');
+      sheet.appendChild(v.sheetLink);
+    }
+  });
+
+  let moreBtn = null;
+  if (overflow) {
+    moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'shell-item mobile-only';
+    moreBtn.innerHTML = `<span class="shell-ico">${shellIcon('more')}</span><span class="shell-label">Plus</span>`;
+    moreBtn.addEventListener('click', () => nav.classList.toggle('more-open'));
+    list.appendChild(moreBtn);
+    nav.appendChild(sheet);
   }
+  document.body.appendChild(nav);
+
+  let current = '';
+  function go(key, { push = true } = {}) {
+    const v = views.find(x => x.key === key) || views.find(x => x.key === defaultKey) || views[0];
+    views.forEach(x => {
+      const on = x === v;
+      x.els.forEach(el => el.classList.toggle('view-off', !on));
+      x.head.classList.toggle('view-off', !on);
+      [x.link, x.sheetLink].forEach(l => {
+        if (!l) return;
+        l.classList.toggle('active', on);
+        if (on) l.setAttribute('aria-current', 'page'); else l.removeAttribute('aria-current');
+      });
+    });
+    if (moreBtn) moreBtn.classList.toggle('active', !!v.sheetLink);
+    nav.classList.remove('more-open');
+    if (push && location.hash !== `#${v.key}`) history.pushState(null, '', `#${v.key}`);
+    if (current && current !== v.key) window.scrollTo(0, 0);
+    current = v.key;
+    if (typeof onShow === 'function') onShow(v.key);
+  }
+  const onPop = () => go(location.hash.slice(1), { push: false });
+  window.addEventListener('popstate', onPop);
+
+  const syncVisible = () => document.body.classList.toggle('shell-on', !!screen && !screen.classList.contains('hidden'));
+  const observer = new MutationObserver(syncVisible);
+  if (screen) observer.observe(screen, { attributes: true, attributeFilter: ['class'] });
+  syncVisible();
+
+  go(location.hash.slice(1) || defaultKey, { push: false });
+
+  shellState = {
+    destroy() {
+      window.removeEventListener('popstate', onPop);
+      observer.disconnect();
+      nav.remove();
+      views.forEach(v => {
+        v.head.remove();
+        v.els.forEach(el => el.classList.remove('shell-view', 'view-off', 'view-primary'));
+      });
+      document.body.classList.remove('shell-on');
+      shellState = null;
+    },
+  };
+  return { go, current: () => current };
+}
+
+// Raccourci pour les espaces à sections simples (une ou plusieurs cartes par vue).
+export function initSectionTabs(mountEl, sections, options = {}) {
+  return mountAppShell({
+    screen: mountEl,
+    defaultKey: options.defaultKey,
+    onShow: options.onShow,
+    views: (sections || []).map(s => ({
+      key: s.key || slugify(s.label),
+      label: s.label,
+      icon: s.icon,
+      title: s.title,
+      subtitle: s.subtitle,
+      heading: s.heading,
+      els: (s.ids || [s.id]).map(id => document.getElementById(id)),
+    })),
+  });
 }
 
 // Confirmation « deux clics » directement sur un bouton, sans window.confirm
