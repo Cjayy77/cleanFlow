@@ -12,7 +12,9 @@ import {
   resetPassword,
   requestTeamAccess,
   segmentedControl,
+  storageErrorMessage,
 } from './shared.js';
+import { uploadPhotoToR2, getPhotoDownloadUrl } from './r2-upload.js';
 import {
   collection,
   query,
@@ -20,6 +22,7 @@ import {
   onSnapshot,
   updateDoc,
   doc,
+  serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
   onAuthStateChanged,
@@ -143,18 +146,62 @@ function renderTasks(bookings) {
       keyBox.append(kh, kt);
       card.appendChild(keyBox);
     }
+    if (booking.linenDone) {
+      const proof = document.createElement('div');
+      proof.className = 'delivery-proof';
+      const when = booking.deliveredAt && booking.deliveredAt.toDate ? booking.deliveredAt.toDate() : null;
+      const cap = document.createElement('div');
+      cap.className = 'task-meta';
+      cap.textContent = when ? `Livré le ${when.toLocaleDateString('fr-FR')} à ${when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Livraison confirmée';
+      proof.appendChild(cap);
+      if (booking.deliveryPhotoKey) {
+        const img = document.createElement('img');
+        img.alt = 'Preuve de livraison';
+        proof.appendChild(img);
+        getPhotoDownloadUrl({ bookingId: booking.id, scope: 'deliveries', objectKey: booking.deliveryPhotoKey })
+          .then(url => { img.src = url; }).catch(() => { img.remove(); });
+      }
+      card.appendChild(proof);
+    }
     const toggleBtn = document.createElement('button');
     toggleBtn.className = booking.linenDone ? 'btn ghost' : 'btn primary';
     toggleBtn.type = 'button';
-    toggleBtn.textContent = booking.linenDone ? 'Annuler (livraison non faite)' : 'Marquer comme livré';
-    toggleBtn.onclick = async () => {
+    toggleBtn.textContent = booking.linenDone ? 'Annuler (livraison non faite)' : 'Marquer comme livré (photo)';
+    const send = async file => {
       try {
-        await withButtonLoading(toggleBtn, () =>
-          withTimeout(updateDoc(doc(db, 'bookings', booking.id), { linenDone: !booking.linenDone }), 15000));
-        setWorkStatus(booking.linenDone ? 'Livraison remise à faire.' : 'Livraison confirmée.', 'success');
+        await withButtonLoading(toggleBtn, async () => {
+          const objectKey = await uploadPhotoToR2({
+            bookingId: booking.id, scope: 'deliveries', file,
+            onProgress: pct => { toggleBtn.textContent = `Envoi de la photo ${pct} %`; },
+          });
+          await withTimeout(updateDoc(doc(db, 'bookings', booking.id), {
+            linenDone: true, deliveredAt: serverTimestamp(), deliveryPhotoKey: objectKey,
+          }), 15000);
+        });
+        setWorkStatus('Livraison confirmée, photo enregistrée.', 'success');
       } catch (e) {
-        setWorkStatus(`Impossible de mettre à jour la livraison : ${authErrorMessage(e)}`);
+        toggleBtn.textContent = 'Réessayer l’envoi de la photo';
+        toggleBtn.onclick = () => send(file);
+        setWorkStatus(`Livraison non enregistrée : ${storageErrorMessage(e)}`);
       }
+    };
+    toggleBtn.onclick = async () => {
+      if (booking.linenDone) {
+        try {
+          await withButtonLoading(toggleBtn, () =>
+            withTimeout(updateDoc(doc(db, 'bookings', booking.id), { linenDone: false, deliveredAt: null, deliveryPhotoKey: null }), 15000));
+          setWorkStatus('Livraison remise à faire.', 'success');
+        } catch (e) {
+          setWorkStatus(`Impossible de mettre à jour la livraison : ${authErrorMessage(e)}`);
+        }
+        return;
+      }
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.setAttribute('capture', 'environment');
+      input.onchange = () => { if (input.files[0]) send(input.files[0]); };
+      input.click();
     };
     card.appendChild(toggleBtn);
     taskList.appendChild(card);

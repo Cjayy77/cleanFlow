@@ -732,3 +732,7 @@ details.as-view .collapse-body{ margin-top:0; }
 .portal-links a{ padding:7px 14px; border-radius:999px; border:1px solid var(--line); color:var(--muted); text-decoration:none; transition:color .15s ease-out, border-color .15s ease-out; }
 .portal-links a:hover{ color:var(--ink); border-color:var(--line-strong); }
 #authScreen.hidden ~ .portal-links, .shell-on .portal-links{ display:none; }
+
+/* Preuve de livraison */
+.delivery-proof{ margin-top:14px; }
+.delivery-proof img, .delivery-photo{ display:block; width:100%; max-width:320px; margin-top:10px; border-radius:14px; border:1px solid var(--line); background:var(--surface-2); min-height:80px; object-fit:cover; }

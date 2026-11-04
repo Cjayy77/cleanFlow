@@ -3898,6 +3898,35 @@ function renderBookingProperty(booking) {
     consent.textContent = 'Aucune autorisation d’accès enregistrée pour cette réservation.';
   }
   host.appendChild(consent);
+  appendDeliveryProof(host, booking);
+}
+
+// Preuve de livraison du livreur : heure et photo déposées sur place.
+function appendDeliveryProof(host, booking) {
+  if (!booking.linenRequested) return;
+  const head = document.createElement('div');
+  head.className = 'eyebrow';
+  head.style.marginTop = '22px';
+  head.textContent = 'Livraison';
+  host.appendChild(head);
+  const line = document.createElement('div');
+  line.className = 'task-meta';
+  if (!booking.linenDone) {
+    line.textContent = booking.livreurId ? 'Livraison assignée, pas encore confirmée par le livreur.' : 'Aucun livreur assigné.';
+    host.appendChild(line);
+    return;
+  }
+  const when = booking.deliveredAt && booking.deliveredAt.toDate ? booking.deliveredAt.toDate() : null;
+  line.textContent = when ? `Livré le ${when.toLocaleDateString('fr-FR')} à ${when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Livraison confirmée (sans horodatage).';
+  host.appendChild(line);
+  if (booking.deliveryPhotoKey) {
+    const img = document.createElement('img');
+    img.alt = 'Preuve de livraison';
+    img.className = 'delivery-photo';
+    host.appendChild(img);
+    getPhotoDownloadUrl({ bookingId: booking.id, scope: 'deliveries', objectKey: booking.deliveryPhotoKey })
+      .then(url => { img.src = url; }).catch(() => { img.remove(); });
+  }
 }
 
 function renderBookingDetail() {
