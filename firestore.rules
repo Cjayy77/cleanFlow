@@ -46,6 +46,24 @@ service cloud.firestore {
       return hasRole('admin');
     }
 
+    // Membre d'une équipe de prestataire : compte propre sur son appareil,
+    // rattaché au chef d'opération (users/{chef}) par teamId = uid du chef.
+    function isMembre() {
+      return hasRole('membre');
+    }
+
+    // L'équipe pour laquelle on travaille : le chef d'opération est sa
+    // propre équipe, un membre pointe vers son chef. Une mission est confiée
+    // à l'équipe via bookings.prestataireId (= uid du chef).
+    function workTeamId() {
+      return isMembre() ? userData().teamId : request.auth.uid;
+    }
+
+    function worksOnBooking(bookingId) {
+      return (isPrestataire() || isMembre())
+        && get(/databases/$(database)/documents/bookings/$(bookingId)).data.prestataireId == workTeamId();
+    }
+
     // Configuration tarifaire COMPLÈTE (grille horaire, kits, déplacement,
     // MAIS AUSSI commission, bornes de commission, abonnement, crédit d'impôt,
     // texte de devis, villes desservies). Un client connecté en a besoin pour
@@ -91,8 +109,11 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin();
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin()
+        || (isPrestataire() && resource.data.get('teamId', '') == request.auth.uid));
+      // Le chef liste les membres de SON équipe (requête filtrée sur teamId).
+      allow list: if isAdmin()
+        || (isPrestataire() && resource.data.get('teamId', '') == request.auth.uid);
       // Auto-inscription : les clients naissent approuvés ; les rôles
       // prestataire/livreur/admin naissent en 'pending' et n'ont aucun
       // droit tant qu'un admin ne les a pas approuvés dans /admin/.
@@ -105,6 +126,12 @@ service cloud.firestore {
             && request.resource.data.accountStatus == 'approved')
           || (request.resource.data.role in ['prestataire', 'livreur', 'welcomer', 'admin']
             && request.resource.data.accountStatus == 'pending')
+          // Membre d'équipe : naît en attente et doit viser un chef existant ;
+          // c'est ce chef (ou un admin) qui l'approuve.
+          || (request.resource.data.role == 'membre'
+            && request.resource.data.accountStatus == 'pending'
+            && request.resource.data.teamId is string
+            && get(/databases/$(database)/documents/users/$(request.resource.data.teamId)).data.role == 'prestataire')
         );
       allow update: if isSignedIn() && (
         // Soi-même : profil modifiable, mais ni uid, ni rôle, ni statut.
@@ -116,6 +143,12 @@ service cloud.firestore {
         // membre approuvé de l'activité (plus de connexion, plus de missions) ;
         // 'approved' le réactive.
         || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accountStatus'])
+          && request.resource.data.accountStatus in ['approved', 'rejected', 'suspended'])
+        // Chef d'opération : accepte, refuse ou suspend les membres de SON équipe.
+        || (isPrestataire()
+          && resource.data.role == 'membre'
+          && resource.data.get('teamId', '') == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accountStatus'])
           && request.resource.data.accountStatus in ['approved', 'rejected', 'suspended'])
       );
@@ -142,6 +175,7 @@ service cloud.firestore {
         isAdmin()
         || (isClient() && resource.data.clientId == request.auth.uid)
         || (isPrestataire() && resource.data.prestataireId == request.auth.uid)
+        || (isMembre() && resource.data.prestataireId == userData().teamId)
         || (isLivreur() && resource.data.get('livreurId', '') == request.auth.uid)
         || (isWelcomer() && resource.data.get('welcomerId', '') == request.auth.uid)
       );
@@ -338,7 +372,7 @@ service cloud.firestore {
     // anonyme : ce n'est pas un contenu marketing.
     match /exigences/{exigenceId} {
       allow read: if isSignedIn() && (
-        isAdmin() || isPrestataire()
+        isAdmin() || isPrestataire() || isMembre()
         || (isClient() && get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.ownerId == request.auth.uid)
       );
       allow write: if isAdmin();
@@ -355,7 +389,7 @@ service cloud.firestore {
     // le client (pour son rapport), écrite seulement par l'équipe.
     match /propertyTemplateOverrides/{overrideId} {
       allow read: if isSignedIn() && (
-        isAdmin() || isPrestataire()
+        isAdmin() || isPrestataire() || isMembre()
         || (isClient() && get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.ownerId == request.auth.uid)
       );
       allow write: if isAdmin();
@@ -378,7 +412,7 @@ service cloud.firestore {
     // là), le contenu standard du cahier des charges vit ici. Lu par le
     // prestataire pour construire sa mission, écrit seulement par l'équipe.
     match /protocolTemplates/{templateId} {
-      allow read: if isSignedIn() && (isAdmin() || isPrestataire() || isClient());
+      allow read: if isSignedIn() && (isAdmin() || isPrestataire() || isMembre() || isClient());
       allow write: if isAdmin();
     }
 
@@ -391,12 +425,12 @@ service cloud.firestore {
     match /exigenceAnswers/{answerId} {
       allow read: if isSignedIn() && (
         isAdmin()
-        || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
+        || worksOnBooking(resource.data.bookingId)
         || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
       );
-      allow create, update: if isPrestataire()
+      allow create, update: if (isPrestataire() || isMembre())
         && request.resource.data.answeredBy == request.auth.uid
-        && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
+        && worksOnBooking(request.resource.data.bookingId);
     }
 
     // Chronomètre de mission : un document par réservation (id = bookingId),
@@ -404,6 +438,31 @@ service cloud.firestore {
     // sont des horodatages CLIENT (pas serverTimestamp()) : c'est un repère
     // personnel pour le prestataire, pas une preuve horodatée opposable, donc
     // la précision serveur n'est pas nécessaire ici.
+    // Tâches d'une mission, créées par le chef d'opération pour répartir le
+    // travail : une tâche = un bloc de la checklist (phase + pièce) confié à
+    // un membre (assignedTo = uid du membre, ou du chef lui-même). Le membre
+    // ne peut modifier que l'avancement de SES tâches.
+    match /missionTasks/{taskId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || (isPrestataire() && resource.data.teamId == request.auth.uid)
+        || (isMembre() && resource.data.teamId == userData().teamId)
+      );
+      allow create: if isPrestataire()
+        && request.resource.data.teamId == request.auth.uid
+        && request.resource.data.bookingId is string
+        && request.resource.data.phase is string
+        && request.resource.data.assignedTo is string
+        && get(/databases/$(database)/documents/bookings/$(request.resource.data.bookingId)).data.prestataireId == request.auth.uid;
+      allow update: if (isPrestataire() && resource.data.teamId == request.auth.uid
+          && request.resource.data.teamId == resource.data.teamId
+          && request.resource.data.bookingId == resource.data.bookingId)
+        || (isMembre() && resource.data.assignedTo == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'note', 'updatedAt'])
+          && request.resource.data.status in ['todo', 'doing', 'done']);
+      allow delete: if isPrestataire() && resource.data.teamId == request.auth.uid;
+    }
+
     match /bookingTimers/{bookingId} {
       // resource == null : lecture d'un minuteur pas encore créé (première
       // ouverture d'une mission), qui doit renvoyer "inexistant", pas un refus.
@@ -472,11 +531,12 @@ service cloud.firestore {
     match /incidents/{incidentId} {
       allow read: if isSignedIn() && (
         isAdmin()
-        || (isPrestataire() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.prestataireId == request.auth.uid)
+        || worksOnBooking(resource.data.bookingId)
         || (isClient() && get(/databases/$(database)/documents/bookings/$(resource.data.bookingId)).data.clientId == request.auth.uid)
       );
-      allow create: if isPrestataire()
+      allow create: if (isPrestataire() || isMembre())
         && request.resource.data.reportedBy == request.auth.uid
+        && worksOnBooking(request.resource.data.bookingId)
         && request.resource.data.type in [
           'broken_object', 'lost_object', 'other',
           'linge_manquant', 'equipement_defectueux', 'telecommande_absente',

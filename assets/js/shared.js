@@ -13,6 +13,8 @@ import {
   where,
   getDocs,
   deleteDoc,
+  updateDoc,
+  onSnapshot,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { firebaseConfig } from '../../firebase-config.js';
@@ -23,6 +25,7 @@ export const ROLE_CLIENT = 'client';
 export const ROLE_PRESTATAIRE = 'prestataire';
 export const ROLE_LIVREUR = 'livreur';
 export const ROLE_WELCOMER = 'welcomer';
+export const ROLE_MEMBRE = 'membre';
 export const ROLE_ADMIN = 'admin';
 
 // Formules Welcomer (contrôle qualité sur place). Facturables ; l'admin peut
@@ -1063,6 +1066,69 @@ export async function loadExigencesForProperty(propertyId) {
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
+// ----------------------------------------------------- équipe de prestataire
+// Le chef d'opération (rôle 'prestataire') reçoit la mission de Zebramoon
+// (bookings.prestataireId = son uid) et la répartit entre les membres de son
+// équipe (rôle 'membre', users.teamId = uid du chef). Une tâche = un bloc de
+// la checklist (phase + pièce) : l'unité de travail déjà visible dans
+// l'interface (onglets de phase, accordéons de pièce).
+
+// Clé stable d'un bloc : "<phase>|flat" pour les points sans pièce,
+// "<phase>|<roomScope>_<index>" pour une pièce précise.
+export function checklistBlockKey(exigence, instance) {
+  const flat = !exigence.roomScope || exigence.roomScope === 'none' || exigence.roomScope === 'other';
+  return `${exigence.phase}|${flat ? 'flat' : `${exigence.roomScope}_${instance.roomIndex}`}`;
+}
+
+// Blocs distincts d'une checklist, dans l'ordre des phases puis des points.
+export function checklistBlocks(items, booking) {
+  const seen = new Map();
+  EXIGENCE_PHASES.forEach(phase => {
+    items.filter(e => e.phase === phase.key).forEach(exigence => {
+      exigenceInstances(exigence, booking).forEach(instance => {
+        const key = checklistBlockKey(exigence, instance);
+        if (!seen.has(key)) {
+          seen.set(key, { key, phase: phase.key, label: `${phase.label} · ${instance.label || 'Général'}` });
+        }
+      });
+    });
+  });
+  return [...seen.values()];
+}
+
+export function missionTaskId(bookingId, blockKey) {
+  return `${bookingId}__${blockKey.replace('|', '__')}`;
+}
+
+// Toutes les tâches de l'équipe (requête sur teamId : c'est ce que les
+// règles savent prouver, pour le chef comme pour un membre).
+export function subscribeTeamTasks(teamId, onData, onError) {
+  return onSnapshot(query(collection(db, 'missionTasks'), where('teamId', '==', teamId)),
+    snap => onData(snap.docs.map(d => ({ id: d.id, ...d.data() }))), onError);
+}
+
+export function subscribeTeamMembers(teamId, onData, onError) {
+  return onSnapshot(query(collection(db, 'users'), where('teamId', '==', teamId)),
+    snap => onData(snap.docs.map(d => ({ id: d.id, ...d.data() }))), onError);
+}
+
+export function setTeamMemberStatus(memberId, accountStatus) {
+  return updateDoc(doc(db, 'users', memberId), { accountStatus });
+}
+
+// Crée ou met à jour la tâche d'un bloc (id déterministe : un bloc, une tâche).
+export function saveMissionTask({ bookingId, teamId, block, assignedTo, assignedName, status = 'todo', note = '' }) {
+  return setDoc(doc(db, 'missionTasks', missionTaskId(bookingId, block.key)), {
+    bookingId, teamId, blockKey: block.key, phase: block.phase, label: block.label,
+    assignedTo, assignedName: assignedName || '', status, note,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export function updateMissionTaskFields(taskId, fields) {
+  return updateDoc(doc(db, 'missionTasks', taskId), { ...fields, updatedAt: serverTimestamp() });
+}
+
 export async function loadExigenceAnswers(bookingId) {
   const snap = await getDocs(query(collection(db, 'exigenceAnswers'), where('bookingId', '==', bookingId)));
   return snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
@@ -1385,7 +1451,7 @@ export function formatBookingStatus(status) {
 // "pending", invisible et sans droits tant qu'un admin ne l'a pas approuvé
 // dans /admin/. Passe par une seconde instance Firebase pour ne pas toucher
 // à la session en cours sur la page.
-export async function requestTeamAccess({ role, name, email, password, phone, inviteCode }) {
+export async function requestTeamAccess({ role, name, email, password, phone, inviteCode, teamId }) {
   const secondary = initializeApp(firebaseConfig, `access-request-${Date.now()}`);
   const secondaryAuth = getAuth(secondary);
   const secondaryDb = getFirestore(secondary);
@@ -1407,9 +1473,13 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
       email,
       phone,
       inviteCode: inviteCode || '',
+      ...(teamId ? { teamId } : {}),
       accountStatus: 'pending',
       createdAt: serverTimestamp(),
     }), 15000);
+    // Un membre d'équipe est approuvé par son chef d'opération, pas par
+    // l'équipe Zebramoon : pas de notification à la boîte de l'équipe.
+    if (role === 'membre') return credential.user.uid;
     await withTimeout(addDoc(collection(secondaryDb, 'mail'), {
       to: TEAM_EMAIL,
       message: {

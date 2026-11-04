@@ -2283,7 +2283,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
   const assignBtn = document.createElement('button');
   assignBtn.className = 'btn primary';
   assignBtn.type = 'button';
-  assignBtn.textContent = 'Assigner';
+  assignBtn.textContent = placeholder.startsWith('Choisir une équipe') ? 'Assigner à l’équipe' : 'Assigner';
   assignBtn.onclick = () => assignFn(select.value, assignBtn);
   row.appendChild(select);
   row.appendChild(assignBtn);
@@ -3356,8 +3356,8 @@ function renderMissionsToAssign() {
 
   pending.forEach(booking => {
     const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.surface ? ` · ${booking.surface} m²` : ''}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€ HT`;
-    appendAssignCard(missionsToAssign, booking, rankedPrestataires, 'Choisir un prestataire…',
-      'Aucun prestataire approuvé. Approuvez d’abord une demande d’accès.', metaText,
+    appendAssignCard(missionsToAssign, booking, rankedPrestataires, 'Choisir une équipe…',
+      'Aucune équipe approuvée. Approuvez d’abord une demande d’accès.', metaText,
       async (prestataireId, assignBtn) => {
         if (!prestataireId) { setAdminStatus('Choisissez un prestataire avant d’assigner.', 'error'); return; }
         const member = prestataires.find(p => p.id === prestataireId);
@@ -4306,6 +4306,7 @@ function subscribeAccessRequests() {
   accessUnsub = onSnapshot(pendingAccessQuery, snapshot => {
     const requests = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+      .filter(req => req.role !== 'membre')
       .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
     accessRequestCount = requests.length;
     renderAccessRequests(requests);
