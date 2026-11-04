@@ -3522,6 +3522,18 @@ function renderMissionsToAssign() {
   });
 }
 
+// Ce qu'un livreur apporte pour une réservation : les kits, puis chaque
+// option marquée « avec livreur » au catalogue.
+function deliveryLines(booking) {
+  const lines = [];
+  if (booking.kitCount) lines.push(`${booking.kitCount} kit${booking.kitCount > 1 ? 's' : ''}`);
+  (booking.extras || []).forEach(e => {
+    const delivered = typeof e.needsDelivery === 'boolean' ? e.needsDelivery : e.type !== 'service';
+    if (delivered && e.type !== 'service') lines.push(`${e.name} × ${e.qty}`);
+  });
+  return lines;
+}
+
 function renderKitsToAssign() {
   if (!kitsToAssign) return;
   kitsToAssign.innerHTML = '';
@@ -3542,7 +3554,7 @@ function renderKitsToAssign() {
 
   needing.forEach(booking => {
     const kitsPrice = comptaLine(booking).kits;
-    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.kitCount ? `${booking.kitCount} kit${booking.kitCount > 1 ? 's' : ''} à fournir` : 'kits à fournir'}${kitsPrice ? ` · ${kitsPrice}€ HT de kits` : ''} · dépôt kits / linge propre + récupération`;
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${deliveryLines(booking).join(', ') || 'à livrer'}${kitsPrice ? ` · ${kitsPrice}€ HT de kits` : ''} · dépôt kits / linge propre + récupération`;
     appendAssignCard(kitsToAssign, booking, rankedLivreurs, 'Choisir un livreur…',
       'Aucun livreur approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (livreurId, assignBtn) => {

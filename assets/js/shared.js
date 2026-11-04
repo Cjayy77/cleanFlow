@@ -1887,3 +1887,39 @@ export function authErrorMessage(error) {
       return error?.message || 'Une erreur est survenue.';
   }
 }
+
+
+// Les messages d'état (succès, information, erreur) disparaissent seuls :
+// 5 s pour un succès ou une information, 10 s pour une erreur. Tout élément
+// .status-banner qui porte un id (ou data-toast) est concerné ; les notes
+// permanentes (dossier renvoyé…) et le message de la carte de connexion
+// (#authError : compte suspendu, demande en attente) restent affichés.
+const TOAST_MS = { success: 5000, info: 6000, error: 10000 };
+const toastTimers = new WeakMap();
+function toastEligible(el) {
+  return el.classList.contains('status-banner') && (el.id || el.hasAttribute('data-toast')) && el.id !== 'authError';
+}
+function armToast(el) {
+  const old = toastTimers.get(el);
+  if (old) clearTimeout(old);
+  if (!toastEligible(el) || el.classList.contains('hidden') || !el.textContent.trim()) return;
+  const kind = el.classList.contains('success') ? 'success' : el.classList.contains('info') ? 'info' : 'error';
+  toastTimers.set(el, setTimeout(() => {
+    el.classList.add('hidden');
+    toastTimers.delete(el);
+  }, TOAST_MS[kind]));
+}
+if (typeof MutationObserver === 'function' && typeof document !== 'undefined') {
+  const watch = () => {
+    new MutationObserver(records => {
+      const seen = new Set();
+      records.forEach(r => {
+        const el = r.type === 'attributes' ? r.target : (r.target.nodeType === 1 ? r.target : r.target.parentElement);
+        const banner = el && el.closest ? el.closest('.status-banner') : null;
+        if (banner && !seen.has(banner)) { seen.add(banner); armToast(banner); }
+      });
+    }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+    document.querySelectorAll('.status-banner').forEach(armToast);
+  };
+  if (document.body) watch(); else document.addEventListener('DOMContentLoaded', watch);
+}

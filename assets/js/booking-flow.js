@@ -1044,7 +1044,7 @@ async function finalizeBooking() {
         keyBoxCount: Number(property.keyBoxCount) || 0,
         smokeDetectorCount: Number(property.smokeDetectorCount) || 0,
         kitCount: quote.kitCount,
-        linenRequested: quote.kitCount > 0,
+        linenRequested: quote.kitCount > 0 || extras.some(e => e.needsDelivery && e.type !== 'service'),
         prestationPrice: quote.prestation,
         amenitiesPrice: quote.amenitiesTotal,
         travelFee: quote.travel,
