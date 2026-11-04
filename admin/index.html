@@ -98,6 +98,18 @@
         <p>Réservations avec option contrôle sur place sans welcomer attribué. Choisissez le welcomer qui validera la prestation avant l’arrivée du voyageur.</p>
         <div id="welcomersToAssign"></div>
       </div>
+      <details class="card" id="archivesCard">
+        <summary>
+          <div>
+            <div class="eyebrow">Archives</div>
+            <h2>Missions de plus de 3 jours <span id="archivesCount"></span></h2>
+          </div>
+        </summary>
+        <div class="collapse-body">
+          <p>Les missions dont la date est passée depuis plus de 3 jours quittent les files de travail. Elles ne sont jamais supprimées automatiquement.</p>
+          <div id="archivesRoot"></div>
+        </div>
+      </details>
     </section>
 
     <section class="admin-section hidden" data-tab="cal">
@@ -146,6 +158,7 @@
           <h2 id="bookingTitle">Aucun dossier sélectionné</h2>
           <p id="bookingMeta">Sélectionnez un dossier dans la file pour contrôler les photos.</p>
           <div id="bookingCost" class="price-breakdown hidden"></div>
+          <div id="bookingProperty" class="price-breakdown hidden"></div>
           <div class="photo-grid" id="photoGrid"></div>
           <div class="form-row">
             <label for="rejectNote">Note (obligatoire en cas de rejet, visible par le prestataire)</label>
@@ -156,6 +169,7 @@
             <button class="btn ghost" id="rejectBtn" type="button" disabled>Renvoyer au prestataire</button>
             <button class="btn ghost" id="devisBtn" type="button" disabled>Devis (PDF)</button>
           </div>
+          <div id="bookingDangerRow" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;"></div>
           <div class="eyebrow" style="margin-top:26px;">Incidents signalés</div>
           <div id="incidentList"></div>
           <div class="eyebrow" style="margin-top:26px;">Commentaires du prestataire</div>
