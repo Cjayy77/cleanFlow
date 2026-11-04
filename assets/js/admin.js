@@ -19,6 +19,8 @@ import {
   queueEmail,
   getPricing,
   mountAppShell,
+  mountSegments,
+  segmentedControl,
   setPricing,
   DEFAULT_PRICING,
   PRICING_SCALARS,
@@ -481,13 +483,23 @@ function setCatalogStatus(message, type) {
   el.classList.toggle('hidden', !message);
 }
 
+const CATALOG_SHORT = { service: 'Prestations', kit: 'Kits d’accueil', consumable: 'Consommables', linen: 'Linge' };
+let catalogSeg = 'service';
 function renderCatalog() {
   const root = document.getElementById('catalogRoot');
   if (!root) return;
   root.innerHTML = '';
+  const groups = new Map();
+  const ctl = segmentedControl({
+    items: CATALOG_TYPES.map(t => ({ key: t.key, label: CATALOG_SHORT[t.key] || t.label, count: latestCatalog.filter(i => i.type === t.key).length })),
+    current: catalogSeg,
+    onChange: key => { catalogSeg = key; groups.forEach((g, k) => g.classList.toggle('seg-off', k !== key)); },
+  });
+  root.appendChild(ctl.el);
   CATALOG_TYPES.forEach(type => {
     const group = document.createElement('div');
-    group.className = 'catalog-group';
+    group.className = 'catalog-group' + (type.key === catalogSeg ? '' : ' seg-off');
+    groups.set(type.key, group);
     const head = document.createElement('div');
     head.className = 'roster-subhead';
     head.textContent = type.label;
@@ -2145,9 +2157,9 @@ function renderDashboard() {
     byMonth[k].count += 1;
   });
   const months = [];
-  for (let i = 5; i >= 0; i -= 1) {
+  for (let i = 11; i >= 0; i -= 1) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ key: monthKey(d), label: d.toLocaleDateString('fr-FR', { month: 'short' }) });
+    months.push({ key: monthKey(d), label: d.toLocaleDateString('fr-FR', { month: 'short' }), long: d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) });
   }
   const series = months.map(m => ({ ...m, ca: (byMonth[m.key] || {}).ca || 0, count: (byMonth[m.key] || {}).count || 0 }));
   const lastMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
@@ -2194,9 +2206,15 @@ function renderDashboard() {
   renderDashChart(series);
 }
 
-// Graphique CA mensuel : barres inline (une seule série = magnitude), survol par
-// barre, dernier mois étiqueté. État vide tant qu'aucune réservation datée.
+// Graphique CA mensuel : courbe de tendance avec aire dégradée, comme une
+// application de bourse. Toute la courbe est verte si la période finit plus
+// haut qu'elle n'a commencé, rouge sinon (avec ▲/▼ et le pourcentage, jamais
+// la couleur seule). Survol : réticule vertical + infobulle du mois.
+let dashRange = 6;
+let dashSeries = [];
+let dashResizeObs = null;
 function renderDashChart(series) {
+  dashSeries = series;
   const chartHost = document.getElementById('dashChart');
   if (!chartHost) return;
   chartHost.innerHTML = '';
@@ -2208,33 +2226,136 @@ function renderDashChart(series) {
     chartHost.appendChild(e);
     return;
   }
-  const maxCa = Math.max(1, ...series.map(s => s.ca));
-  const chart = document.createElement('div');
-  chart.className = 'dchart';
-  series.forEach((m, i) => {
-    const isLast = i === series.length - 1;
-    const col = document.createElement('div');
-    col.className = 'dchart-col' + (isLast ? ' current' : '');
-    const plot = document.createElement('div');
-    plot.className = 'dchart-plot';
-    const bar = document.createElement('div');
-    bar.className = 'dchart-bar';
-    bar.style.height = `${Math.max(3, Math.round(m.ca / maxCa * 100))}%`;
-    bar.title = `${m.label} · ${m.ca} €`;
-    if (isLast && m.ca > 0) {
-      const v = document.createElement('span');
-      v.className = 'dchart-val';
-      v.textContent = `${m.ca} €`;
-      bar.appendChild(v);
-    }
-    plot.appendChild(bar);
-    const x = document.createElement('div');
-    x.className = 'dchart-xlabel';
-    x.textContent = m.label;
-    col.append(plot, x);
-    chart.appendChild(col);
+  const data = series.slice(-dashRange);
+  const first = data[0].ca;
+  const last = data[data.length - 1].ca;
+  const up = last >= first;
+  const pct = first > 0 ? Math.round((last - first) / first * 100) : null;
+
+  const head = document.createElement('div');
+  head.className = 'trend-head';
+  const big = document.createElement('div');
+  big.className = 'trend-value';
+  big.textContent = `${last.toLocaleString('fr-FR')} €`;
+  const sub = document.createElement('div');
+  sub.className = `trend-delta ${up ? 'up' : 'down'}`;
+  sub.textContent = `${up ? '▲' : '▼'} ${pct == null ? 'nouveau' : `${pct > 0 ? '+' : ''}${pct} %`} sur ${dashRange} mois`;
+  const left = document.createElement('div');
+  const cap = document.createElement('div');
+  cap.className = 'trend-caption';
+  cap.textContent = `${data[data.length - 1].long}, mois en cours`;
+  left.append(big, sub, cap);
+  const range = segmentedControl({
+    items: [{ key: 3, label: '3 M' }, { key: 6, label: '6 M' }, { key: 12, label: '1 A' }],
+    current: dashRange,
+    onChange: key => { dashRange = key; renderDashChart(dashSeries); },
   });
-  chartHost.appendChild(chart);
+  range.el.classList.add('trend-range');
+  head.append(left, range.el);
+  chartHost.appendChild(head);
+
+  const plot = document.createElement('div');
+  plot.className = 'trend-plot';
+  chartHost.appendChild(plot);
+  const color = up ? 'var(--ok-ink)' : 'var(--danger-ink)';
+
+  const draw = () => {
+    const W = Math.max(280, plot.clientWidth || 640);
+    const H = 220;
+    const pad = { l: 6, r: 6, t: 18, b: 28 };
+    const max = Math.max(1, ...data.map(d => d.ca)) * 1.15;
+    const x = i => pad.l + (data.length === 1 ? (W - pad.l - pad.r) / 2 : i * (W - pad.l - pad.r) / (data.length - 1));
+    const y = v => pad.t + (1 - v / max) * (H - pad.t - pad.b);
+    const pts = data.map((d, i) => [x(i), y(d.ca)]);
+    // Courbe monotone (Fritsch-Carlson) : lisse sans jamais dépasser les
+    // valeurs réelles ni passer sous zéro.
+    const n = pts.length;
+    const dx = [], dy = [], m = [];
+    for (let i = 0; i < n - 1; i += 1) { dx[i] = pts[i + 1][0] - pts[i][0]; dy[i] = pts[i + 1][1] - pts[i][1]; m[i] = dy[i] / dx[i]; }
+    const t = new Array(n).fill(0);
+    if (n > 1) {
+      t[0] = m[0]; t[n - 1] = m[n - 2];
+      for (let i = 1; i < n - 1; i += 1) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+      for (let i = 0; i < n - 1; i += 1) {
+        if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+        const a = t[i] / m[i], c = t[i + 1] / m[i], h = a * a + c * c;
+        if (h > 9) { const k = 3 / Math.sqrt(h); t[i] = k * a * m[i]; t[i + 1] = k * c * m[i]; }
+      }
+    }
+    let line = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 0; i < n - 1; i += 1) {
+      const h = dx[i] / 3;
+      line += ` C${pts[i][0] + h},${pts[i][1] + h * t[i]} ${pts[i + 1][0] - h},${pts[i + 1][1] - h * t[i + 1]} ${pts[i + 1][0]},${pts[i + 1][1]}`;
+    }
+    const base = H - pad.b;
+    const area = `${line} L${pts[n - 1][0]},${base} L${pts[0][0]},${base} Z`;
+    const grid = [0.33, 0.66].map(f => `<line x1="0" x2="${W}" y1="${pad.t + f * (base - pad.t)}" y2="${pad.t + f * (base - pad.t)}" class="trend-grid"/>`).join('');
+    const labels = data.map((d, i) => {
+      const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+      const show = n <= 6 || i % 2 === (n - 1) % 2;
+      return show ? `<text x="${x(i)}" y="${H - 8}" text-anchor="${anchor}" class="trend-x">${d.label}</text>` : '';
+    }).join('');
+    const gid = `trendFill${up ? 'Up' : 'Down'}`;
+    plot.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Chiffre d'affaires HT, ${data[0].long} à ${data[n - 1].long} : de ${first} € à ${last} €">
+        <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="${up ? '#4FD17A' : '#E5484D'}" stop-opacity=".32"/>
+          <stop offset="1" stop-color="${up ? '#4FD17A' : '#E5484D'}" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${grid}
+        <line x1="0" x2="${W}" y1="${base}" y2="${base}" class="trend-base"/>
+        <path d="${area}" fill="url(#${gid})"/>
+        <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="${pts[n - 1][0]}" cy="${pts[n - 1][1]}" r="4.5" fill="${color}" stroke="var(--paper)" stroke-width="2"/>
+        <line class="trend-cross" x1="0" x2="0" y1="${pad.t}" y2="${base}" visibility="hidden"/>
+        <circle class="trend-hover-dot" r="5" fill="${color}" stroke="var(--paper)" stroke-width="2" visibility="hidden"/>
+        ${labels}
+      </svg>
+      <div class="trend-tip hidden" role="status"></div>`;
+    const svg = plot.querySelector('svg');
+    const cross = svg.querySelector('.trend-cross');
+    const dot = svg.querySelector('.trend-hover-dot');
+    const tip = plot.querySelector('.trend-tip');
+    const hide = () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.classList.add('hidden'); };
+    svg.addEventListener('pointermove', ev => {
+      const r = svg.getBoundingClientRect();
+      const px = (ev.clientX - r.left) * (W / r.width);
+      let i = 0;
+      pts.forEach((p, k) => { if (Math.abs(p[0] - px) < Math.abs(pts[i][0] - px)) i = k; });
+      cross.setAttribute('x1', pts[i][0]); cross.setAttribute('x2', pts[i][0]);
+      cross.setAttribute('visibility', 'visible');
+      dot.setAttribute('cx', pts[i][0]); dot.setAttribute('cy', pts[i][1]);
+      dot.setAttribute('visibility', 'visible');
+      tip.innerHTML = '';
+      const tv = document.createElement('b'); tv.textContent = `${data[i].ca.toLocaleString('fr-FR')} € HT`;
+      const tl = document.createElement('span'); tl.textContent = `${data[i].long} · ${data[i].count} réservation${data[i].count > 1 ? 's' : ''}`;
+      tip.append(tv, tl);
+      tip.classList.remove('hidden');
+      const leftPx = pts[i][0] / W * r.width;
+      tip.style.left = `${Math.min(Math.max(leftPx, 70), r.width - 70)}px`;
+    });
+    svg.addEventListener('pointerleave', hide);
+  };
+  draw();
+  if (dashResizeObs) dashResizeObs.disconnect();
+  if (typeof ResizeObserver === 'function') {
+    let lastW = plot.clientWidth;
+    dashResizeObs = new ResizeObserver(() => { if (Math.abs(plot.clientWidth - lastW) > 4) { lastW = plot.clientWidth; draw(); } });
+    dashResizeObs.observe(plot);
+  }
+
+  // Les mêmes chiffres en tableau, pour les lecteurs d'écran.
+  const table = document.createElement('table');
+  table.className = 'sr-only';
+  table.innerHTML = '<caption>Chiffre d’affaires HT par mois</caption><thead><tr><th>Mois</th><th>CA HT</th><th>Réservations</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  data.forEach(d => {
+    const tr = document.createElement('tr');
+    [d.long, `${d.ca} €`, String(d.count)].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+  table.appendChild(tb);
+  chartHost.appendChild(table);
 }
 
 // Prestataires et livreurs approuvés, pour les listes déroulantes d'assignation.
@@ -3658,6 +3779,8 @@ function buildBookingQueueItem(booking) {
   item.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
   item.onclick = async () => {
     selectedBooking = booking;
+    if (verifyMd) verifyMd.classList.add('show-detail');
+    window.scrollTo(0, 0);
     try {
       await refreshBookingDetail();
     } catch (e) {
@@ -3671,6 +3794,8 @@ function buildBookingQueueItem(booking) {
 
 function renderBookingQueue() {
   bookingQueue.innerHTML = '';
+  const vc = document.getElementById('verifyCount');
+  if (vc) vc.textContent = bookingQueueData.length ? String(bookingQueueData.length) : '';
   if (bookingQueueData.length === 0) {
     bookingQueue.innerHTML = '<div class="empty-state">Aucun dossier en attente de vérification.</div>';
     return;
@@ -3764,9 +3889,10 @@ function renderBookingProperty(booking) {
 }
 
 function renderBookingDetail() {
+  document.getElementById('verifyDetail')?.classList.toggle('has-dossier', !!selectedBooking);
   if (!selectedBooking) {
     bookingTitle.textContent = 'Aucun dossier sélectionné';
-    bookingMeta.textContent = 'Sélectionnez un dossier dans la file pour contrôler les photos.';
+    bookingMeta.textContent = 'Sélectionnez un dossier dans la liste pour contrôler la mission.';
     if (bookingCost) { bookingCost.classList.add('hidden'); bookingCost.innerHTML = ''; }
     photoGrid.innerHTML = '';
     incidentList.innerHTML = '';
@@ -3795,6 +3921,7 @@ function renderBookingDetail() {
   bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.surface ? ` · ${selectedBooking.surface} m²` : ''}${selectedBooking.kitCount ? ` · ${selectedBooking.kitCount} kit(s)` : ''} · ${selectedBooking.price}€ HT`;
   renderBookingCost(selectedBooking);
   photoGrid.innerHTML = '';
+  photoGrid.className = 'photo-grid';
 
   if (selectedBooking.exigences && selectedBooking.exigences.length) {
     renderExigenceAnswers();
@@ -3883,39 +4010,62 @@ function renderExigenceAnswers() {
     return slotEl;
   };
 
+  // Une section par phase, puis un groupe par pièce (Général, Chambre 1…) :
+  // l'admin contrôle la mission pièce par pièce, dans l'ordre du ménage.
+  photoGrid.className = 'photo-groups';
   EXIGENCE_PHASES.forEach(phase => {
     const items = selectedBooking.exigences.filter(e => e.phase === phase.key);
     if (!items.length) return;
+    const phaseBox = document.createElement('section');
+    phaseBox.className = 'photo-phase';
     const phaseHead = document.createElement('div');
-    phaseHead.className = 'roster-subhead';
+    phaseHead.className = 'photo-phase-head';
     phaseHead.textContent = phase.label;
-    photoGrid.appendChild(phaseHead);
+    phaseBox.appendChild(phaseHead);
+    const rooms = new Map();
+    const room = name => {
+      if (!rooms.has(name)) {
+        const box = document.createElement('div');
+        box.className = 'photo-group';
+        const h = document.createElement('div');
+        h.className = 'photo-group-head';
+        h.textContent = name;
+        const grid = document.createElement('div');
+        grid.className = 'photo-grid';
+        box.append(h, grid);
+        rooms.set(name, grid);
+        phaseBox.appendChild(box);
+      }
+      return rooms.get(name);
+    };
 
     items.forEach(exigence => {
       exigenceInstances(exigence, selectedBooking).forEach(instance => {
         const answerId = exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex);
         const answer = selectedBooking.exigenceAnswers[answerId];
-        const label = instance.label ? `${exigence.text} — ${instance.label}` : exigence.text;
+        const label = exigence.text;
+        const grid = room(instance.label || 'Général');
 
         if (exigence.requiresConfirmation) {
-          photoGrid.appendChild(buildTextCell(label, answer && answer.confirmed ? `${label} : fait` : `${label}, non confirmé`, !!(answer && answer.confirmed)));
+          grid.appendChild(buildTextCell(label, answer && answer.confirmed ? `${label} : fait` : `${label}, non confirmé`, !!(answer && answer.confirmed)));
         }
 
         if (exigence.requiresYesNo) {
           const done = !!(answer && answer.answerYesNo != null);
-          photoGrid.appendChild(buildTextCell(label, done ? `${label} : ${answer.answerYesNo ? 'Oui' : 'Non'}` : `${label}, sans réponse`, done));
+          grid.appendChild(buildTextCell(label, done ? `${label} : ${answer.answerYesNo ? 'Oui' : 'Non'}` : `${label}, sans réponse`, done));
         }
 
         if (exigence.photoSlots && exigence.photoSlots.length) {
           exigence.photoSlots.forEach((slotLabel, slotIndex) => {
             const slotAnswer = selectedBooking.exigenceAnswers[exigenceAnswerDocId(selectedBooking.id, exigence.id, instance.roomIndex, slotIndex)];
-            photoGrid.appendChild(buildPhotoCell(`${label} — ${slotLabel}`, slotAnswer && slotAnswer.photoKey));
+            grid.appendChild(buildPhotoCell(`${label}, ${slotLabel}`, slotAnswer && slotAnswer.photoKey));
           });
         } else if (exigence.requiresPhoto) {
-          photoGrid.appendChild(buildPhotoCell(label, answer && answer.photoKey));
+          grid.appendChild(buildPhotoCell(label, answer && answer.photoKey));
         }
       });
     });
+    photoGrid.appendChild(phaseBox);
   });
   verifyBtn.disabled = !allAnswered;
   rejectBtn.disabled = false;
@@ -4239,13 +4389,52 @@ if (adminTabs) {
     const badge = btn.querySelector('.tab-badge');
     const label = Array.from(btn.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
     const meta = ADMIN_VIEW_META[key] || {};
-    return { key, label, badge, heading: false, icon: meta.icon, title: label, subtitle: meta.subtitle,
+    return { key, label, badge, icon: meta.icon, title: label, subtitle: meta.subtitle,
       els: Array.from(document.querySelectorAll(`.admin-section[data-tab="${key}"]`)) };
   }).sort((a, b) => ADMIN_VIEW_ORDER.indexOf(a.key) - ADMIN_VIEW_ORDER.indexOf(b.key));
   document.querySelectorAll('.admin-section').forEach(sec => sec.classList.remove('hidden'));
   adminTabs.classList.add('hidden');
   adminShell = mountAppShell({ views, screen: appScreen, defaultKey: 'assign' });
 }
+
+// Sous-onglets des vues qui empilent plusieurs cartes : une carte à la fois,
+// avec le nombre d'éléments en attente sur chaque pilule.
+const countRows = el => el.querySelectorAll('.task-card').length;
+function segmentSection(tab, defs, opts) {
+  const sec = document.querySelector(`.admin-section[data-tab="${tab}"]`);
+  if (!sec) return;
+  const cards = Array.from(sec.querySelectorAll(':scope > .card'));
+  mountSegments(sec, defs.map((d, i) => ({
+    key: `${tab}-${i}`,
+    label: d.label,
+    els: [cards[i]],
+    count: d.count ? () => d.count(cards[i]) : undefined,
+  })), opts);
+}
+segmentSection('assign', [
+  { label: 'Dispatch', count: countRows },
+  { label: 'Kits et linge', count: countRows },
+  { label: 'Contrôle qualité', count: countRows },
+  { label: 'Archives', count: countRows },
+]);
+segmentSection('inbox', [{ label: 'Messages', count: countRows }, { label: 'Incidents', count: countRows }]);
+segmentSection('team', [{ label: 'Équipes' }, { label: 'Demandes d’accès', count: countRows }]);
+// Vérification : un dossier par mission. Photos (groupées par phase puis par
+// pièce), logement et prix, incidents et commentaires de CETTE mission.
+const verifyMd = document.getElementById('verifyMd');
+const dossierSegHost = document.getElementById('dossierSegHost');
+const childCount = id => () => {
+  const el = document.getElementById(id);
+  return el ? Array.from(el.children).filter(c => !c.classList.contains('empty-state')).length : 0;
+};
+mountSegments(dossierSegHost, [
+  { key: 'photos', label: 'Photos', els: [document.getElementById('dossierPhotos')] },
+  { key: 'infos', label: 'Logement et prix', els: [document.getElementById('dossierInfo')] },
+  { key: 'incidents', label: 'Incidents', els: [document.getElementById('dossierIncidents')], count: childCount('incidentList') },
+  { key: 'comments', label: 'Commentaires', els: [document.getElementById('dossierComments')], count: childCount('bookingCommentList') },
+]);
+document.getElementById('verifyBack')?.addEventListener('click', () => { verifyMd.classList.remove('show-detail'); window.scrollTo(0, 0); });
+segmentSection('properties', [{ label: 'Logements' }, { label: 'Configuration' }, { label: 'Exigences' }, { label: 'Personnaliser' }], { followReveal: true });
 
 const pricingFormEl = document.getElementById('pricingForm');
 if (pricingFormEl) {

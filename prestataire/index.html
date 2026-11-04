@@ -112,9 +112,10 @@
         </div>
       </summary>
       <div class="collapse-body">
-      <p>Objet cassé, objet perdu ou autre problème pendant la mission en cours.</p>
+      <p>Objet cassé, objet perdu ou autre problème pendant une mission.</p>
       <div id="incidentStatus" class="status-banner info hidden" role="status"></div>
       <form id="incidentForm">
+        <div class="form-row"><label for="incidentMission">Mission concernée</label><select id="incidentMission"></select></div>
         <div class="form-row">
           <label for="incidentType">Type d’incident</label>
           <select id="incidentType">
