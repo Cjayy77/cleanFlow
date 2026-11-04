@@ -9,6 +9,8 @@ import {
   loadUserDoc,
   registerClient,
   openDevisDocument,
+  openAccessAuthorization,
+  bookingTTC,
   openLogementQr,
   zoneFromPostalCode,
   zoneLabel,
@@ -315,7 +317,7 @@ function renderNextCleaning() {
   foot.className = 'next-clean-foot';
   const price = document.createElement('div');
   price.className = 'next-clean-price';
-  price.textContent = `${booking.price}€`;
+  price.textContent = `${bookingTTC(booking)}€ TTC`;
   const link = document.createElement('a');
   link.className = 'btn ghost';
   link.href = `#booking-${booking.id}`;
@@ -353,7 +355,7 @@ function renderBookings() {
         </div>
         <div class="status-pill ${booking.status}">${formatBookingStatus(booking.status)}</div>
       </div>
-      <div class="dossier-meta">${booking.price}€ · Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
+      <div class="dossier-meta">${bookingTTC(booking)}€ TTC · Réf ${booking.id.slice(0, 6).toUpperCase()}</div>
     `;
     card.querySelector('.dossier-addr').textContent = address;
     if (booking.status !== 'cancelled') {
@@ -420,6 +422,15 @@ function renderBookings() {
       devisBtn.textContent = 'Devis / reçu (PDF)';
       devisBtn.onclick = () => openDevisDocument(booking, currentUser);
       card.appendChild(devisBtn);
+      if (booking.consentVersion) {
+        const authBtn = document.createElement('button');
+        authBtn.className = 'mini-btn';
+        authBtn.type = 'button';
+        authBtn.style.paddingLeft = '0';
+        authBtn.textContent = 'Autorisation d’accès (PDF)';
+        authBtn.onclick = () => openAccessAuthorization(booking, currentUser);
+        card.appendChild(authBtn);
+      }
     }
     // Rapport : seulement une fois que le prestataire a au moins soumis
     // son dossier (rien à montrer avant), même logement "rejected" (le

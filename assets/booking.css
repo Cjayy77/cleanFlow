@@ -109,3 +109,10 @@
   .bk-panel, .dir-back .bk-panel, .dir-forward .bk-panel{ animation:none !important; }
   .bk-progress-fill{ transition:none; }
 }
+
+/* Autorisation d'accès au logement (étape de récapitulatif). */
+.bk-consent{ border:1px solid var(--line); border-radius:var(--radius-md); background:var(--soft); padding:18px; margin:18px 0; display:grid; gap:10px; }
+.bk-consent-title{ font-family:var(--font-secondary); font-weight:600; font-size:18px; color:var(--ink); }
+.bk-consent-text{ font-size:13px; line-height:1.55; color:var(--muted); margin:0; }
+.bk-consent-check{ display:flex; align-items:flex-start; gap:10px; font-size:14px; color:var(--ink); cursor:pointer; }
+.bk-consent-check input{ width:18px; height:18px; margin-top:2px; accent-color:var(--pink); flex-shrink:0; }

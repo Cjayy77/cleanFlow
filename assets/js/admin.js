@@ -161,10 +161,11 @@ function setBadge(el, count) {
 
 // Compteurs « ce qui demande une action » affichés sur les onglets.
 function renderTabBadges() {
-  const toAssign = latestBookings.filter(b => b.status === 'pending').length
-    + latestBookings.filter(b => b.linenRequested === true && !b.livreurId && b.status !== 'cancelled').length;
-  const toVerify = latestBookings.filter(b => b.status === 'submitted').length;
-  const urgentCount = latestBookings.filter(bookingIsUrgent).length;
+  const work = workBookings();
+  const toAssign = work.filter(b => b.status === 'pending').length
+    + work.filter(b => b.linenRequested === true && !b.livreurId && b.status !== 'cancelled').length;
+  const toVerify = work.filter(b => b.status === 'submitted').length;
+  const urgentCount = work.filter(bookingIsUrgent).length;
   setBadge(badgeAssign, toAssign);
   if (badgeAssign) badgeAssign.classList.toggle('urgent', urgentCount > 0);
   setBadge(badgeVerify, toVerify);
@@ -201,10 +202,23 @@ function isoInDays(days) {
 // dont l'échéance est proche ou dépassée.
 function bookingIsUrgent(booking) {
   if (!booking.scheduledDate || booking.status === 'cancelled') return false;
+  if (isStaleBooking(booking)) return false;
   if (booking.scheduledDate > isoInDays(URGENT_DAYS)) return false;
   const needsPrestataire = booking.status === 'pending';
   const needsLivreur = booking.linenRequested === true && !booking.livreurId && booking.status !== 'verified';
   return needsPrestataire || needsLivreur;
+}
+
+// Une mission dont la date est passée depuis plus de 3 jours est considérée
+// comme expirée ou terminée : elle quitte toutes les files de travail
+// (assignation, kits, welcomer, vérification, compteurs, calendrier) et
+// n'apparaît plus que dans les Archives. Rien n'est supprimé automatiquement.
+const STALE_DAYS = 3;
+function isStaleBooking(booking) {
+  return !!booking.scheduledDate && booking.scheduledDate < isoInDays(-STALE_DAYS);
+}
+function workBookings() {
+  return latestBookings.filter(b => !isStaleBooking(b));
 }
 
 function prestataireName(id) {
@@ -218,7 +232,11 @@ function subscribeStats() {
     latestBookings = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
     const counts = { pending: 0, accepted: 0, submitted: 0, verified: 0 };
     latestBookings.forEach(booking => {
-      if (counts[booking.status] !== undefined) counts[booking.status] += 1;
+      // « À faire » : seulement les missions encore d'actualité. Les validées
+      // restent comptées en entier (historique).
+      if (counts[booking.status] === undefined) return;
+      if (booking.status !== 'verified' && isStaleBooking(booking)) return;
+      counts[booking.status] += 1;
     });
     statPending.textContent = counts.pending;
     statAccepted.textContent = counts.accepted;
@@ -2252,6 +2270,10 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
     note.textContent = noMembersNote;
     card.appendChild(note);
     if (typeof extraActions === 'function') extraActions(card);
+    const dangerRow0 = document.createElement('div');
+    dangerRow0.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;';
+    dangerRow0.appendChild(buildRefuseDeleteButtons(booking));
+    card.appendChild(dangerRow0);
     container.appendChild(card);
     return;
   }
@@ -2267,6 +2289,10 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
   row.appendChild(assignBtn);
   if (typeof extraActions === 'function') extraActions(row);
   card.appendChild(row);
+  const dangerRow = document.createElement('div');
+  dangerRow.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;';
+  dangerRow.appendChild(buildRefuseDeleteButtons(booking));
+  card.appendChild(dangerRow);
   container.appendChild(card);
 }
 
@@ -2274,6 +2300,7 @@ function renderAssignments() {
   renderMissionsToAssign();
   renderKitsToAssign();
   renderWelcomersToAssign();
+  renderArchives();
   renderAdminCalendar();
   renderRoster();
   renderCompta();
@@ -2326,7 +2353,7 @@ function prestataireStats(memberId) {
   latestBookings.forEach(booking => {
     if (booking.prestataireId !== memberId) return;
     if (['accepted', 'submitted', 'rejected'].includes(booking.status)) {
-      active += 1;
+      if (!isStaleBooking(booking)) active += 1;
     } else if (booking.status === 'verified') {
       done += 1;
       if (typeof booking.rating === 'number') { ratingSum += booking.rating; ratingCount += 1; }
@@ -2352,7 +2379,7 @@ function livreurStats(memberId) {
   latestBookings.forEach(booking => {
     if (booking.livreurId !== memberId || booking.status === 'cancelled') return;
     if (booking.linenDone) done += 1;
-    else active += 1;
+    else if (!isStaleBooking(booking)) active += 1;
   });
   return { active, done };
 }
@@ -2364,7 +2391,7 @@ function welcomerStats(memberId) {
     if (booking.welcomerId !== memberId || booking.status === 'cancelled') return;
     // Contrôle réalisé une fois la mission validée ou rejetée par le Welcomer.
     if (['verified', 'rejected'].includes(booking.status) && booking.welcomerLevel) done += 1;
-    else active += 1;
+    else if (!isStaleBooking(booking)) active += 1;
   });
   return { active, done };
 }
@@ -2443,16 +2470,16 @@ function buildRosterCard(member, role, isSuspended) {
 // Liste des missions/tournées actives d'un membre (pour la fiche).
 function memberActiveJobs(member, role) {
   if (role === 'prestataire') {
-    return latestBookings
+    return workBookings()
       .filter(b => b.prestataireId === member.id && ['accepted', 'submitted', 'rejected'].includes(b.status))
       .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   }
   if (role === 'welcomer') {
-    return latestBookings
+    return workBookings()
       .filter(b => b.welcomerId === member.id && !b.welcomerLevel && b.status !== 'cancelled')
       .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   }
-  return latestBookings
+  return workBookings()
     .filter(b => b.livreurId === member.id && !b.linenDone && b.status !== 'cancelled' && b.status !== 'verified')
     .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
 }
@@ -2623,7 +2650,7 @@ function renderAdminCalendar() {
 
   // Réservations du mois (hors annulées), groupées par date.
   const byDate = {};
-  latestBookings.forEach(booking => {
+  workBookings().forEach(booking => {
     if (!booking.scheduledDate || booking.status === 'cancelled') return;
     (byDate[booking.scheduledDate] = byDate[booking.scheduledDate] || []).push(booking);
   });
@@ -2669,7 +2696,7 @@ function renderAdminCalendar() {
       ev.className = `acal-event ${booking.status}` + (urgent ? ' urgent' : '');
       ev.textContent = (urgent ? '⚠ ' : '') + (booking.propertyAddress || 'Réservation');
       const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
-      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€${urgent ? ' · à assigner sous 3 jours' : ''}`;
+      ev.title = `${booking.propertyAddress || 'Réservation'} · ${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'} · ${formatBookingStatus(booking.status)} · ${who}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€ HT${urgent ? ' · à assigner sous 3 jours' : ''}`;
       cell.appendChild(ev);
     });
     adminCalendar.appendChild(cell);
@@ -2685,7 +2712,7 @@ function renderDayPanel() {
   if (!panel) return;
   panel.innerHTML = '';
   if (!selectedCalDay) return;
-  const dayBookings = latestBookings
+  const dayBookings = workBookings()
     .filter(b => b.scheduledDate === selectedCalDay && b.status !== 'cancelled')
     .sort((a, b) => (CAL_STATUS_ORDER[a.status] ?? 9) - (CAL_STATUS_ORDER[b.status] ?? 9));
   const heading = document.createElement('div');
@@ -2711,7 +2738,7 @@ function renderDayPanel() {
     const meta = document.createElement('div');
     meta.className = 'task-meta';
     const who = booking.prestataireId ? prestataireName(booking.prestataireId) : 'non assignée';
-    meta.textContent = `${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'}${booking.surface ? ` · ${booking.surface} m²` : ''} · ${who} · ${booking.price}€`;
+    meta.textContent = `${booking.serviceType === 'deep' ? 'En profondeur' : 'Normal'}${booking.surface ? ` · ${booking.surface} m²` : ''} · ${who} · ${booking.price}€ HT`;
     left.appendChild(title);
     left.appendChild(meta);
     const pill = document.createElement('div');
@@ -2753,6 +2780,13 @@ function renderDayPanel() {
       reBtn.onclick = () => openReschedule(booking, row, reBtn);
       row.appendChild(reBtn);
     }
+    const delCalBtn = document.createElement('button');
+    delCalBtn.className = 'btn ghost danger';
+    delCalBtn.type = 'button';
+    delCalBtn.textContent = 'Supprimer';
+    delCalBtn.style.cssText = 'margin-top:12px; margin-left:10px;';
+    armInlineConfirm(delCalBtn, DELETE_CONFIRM_LABEL, () => deleteBooking(booking, delCalBtn));
+    row.appendChild(delCalBtn);
     panel.appendChild(row);
   });
 }
@@ -2779,6 +2813,145 @@ async function cancelBooking(booking, button) {
   } catch (e) {
     setAdminStatus(`Impossible d’annuler la mission : ${authErrorMessage(e)}`, 'error');
   }
+}
+
+// Admin : refuser une mission. Même écriture autorisée que l'annulation
+// (status + adminNote), avec un motif transmis au client.
+async function refuseBooking(booking, button, note) {
+  const reason = (note || '').trim() || 'Demande refusée par l’équipe Zebramoon.';
+  try {
+    await withButtonLoading(button, () =>
+      withTimeout(updateDoc(doc(db, 'bookings', booking.id), { status: 'cancelled', adminNote: reason }), 15000));
+    deleteDoc(doc(db, 'bookingSlots', `${booking.propertyId}_${booking.scheduledDate}`)).catch(() => {});
+    try {
+      let to = booking.clientEmail;
+      if (!to && booking.clientId) {
+        const clientSnap = await getDoc(doc(db, 'users', booking.clientId));
+        to = clientSnap.exists() ? clientSnap.data().email : '';
+      }
+      if (to) {
+        queueEmail({
+          to,
+          subject: `Zebramoon, réservation refusée · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+          text: `Votre demande de ménage du ${formatShortDate(booking.scheduledDate)} (${booking.propertyAddress || 'votre bien'}) n’a pas pu être acceptée. Motif : ${reason}`,
+        });
+      }
+    } catch (e) { /* la notification ne doit pas bloquer le refus */ }
+    setAdminStatus('Mission refusée. Le client est notifié par email.', 'success');
+  } catch (e) {
+    setAdminStatus(`Impossible de refuser la mission : ${authErrorMessage(e)}`, 'error');
+  }
+}
+
+// Admin : supprimer définitivement une mission et son verrou de créneau, en
+// un seul lot. Les photos, réponses de checklist et commentaires liés ne
+// sont PAS supprimés.
+async function deleteBooking(booking, button) {
+  try {
+    await withButtonLoading(button, () => {
+      const batch = writeBatch(db);
+      batch.delete(doc(db, 'bookings', booking.id));
+      if (booking.propertyId && booking.scheduledDate) {
+        batch.delete(doc(db, 'bookingSlots', `${booking.propertyId}_${booking.scheduledDate}`));
+      }
+      return withTimeout(batch.commit(), 15000);
+    });
+    if (selectedBooking && selectedBooking.id === booking.id) {
+      selectedBooking = null;
+      renderBookingQueue();
+      renderBookingDetail();
+    }
+    setAdminStatus('Mission supprimée.', 'success');
+  } catch (e) {
+    setAdminStatus(`Impossible de supprimer la mission : ${authErrorMessage(e)}`, 'error');
+  }
+}
+
+const DELETE_CONFIRM_LABEL = 'Confirmer la suppression (photos et réponses conservées)';
+
+// Boutons « Refuser » et « Supprimer » (confirmation en deux clics) réutilisés
+// par les cartes d'assignation, le calendrier et le détail d'un dossier.
+function buildRefuseDeleteButtons(booking, getNote) {
+  const frag = document.createDocumentFragment();
+  if (booking.status !== 'cancelled' && booking.status !== 'verified') {
+    const refuse = document.createElement('button');
+    refuse.className = 'btn ghost danger';
+    refuse.type = 'button';
+    refuse.textContent = 'Refuser';
+    armInlineConfirm(refuse, 'Confirmer le refus', () => refuseBooking(booking, refuse, getNote ? getNote() : ''));
+    frag.appendChild(refuse);
+  }
+  const del = document.createElement('button');
+  del.className = 'btn ghost danger';
+  del.type = 'button';
+  del.textContent = 'Supprimer';
+  armInlineConfirm(del, DELETE_CONFIRM_LABEL, () => deleteBooking(booking, del));
+  frag.appendChild(del);
+  return frag;
+}
+
+// Archives : missions de plus de 3 jours, hors files de travail. Section
+// repliée par défaut ; ne supprime rien sans action explicite.
+function renderArchives() {
+  const root = document.getElementById('archivesRoot');
+  if (!root) return;
+  const stale = latestBookings
+    .filter(isStaleBooking)
+    .sort((a, b) => (b.scheduledDate || '').localeCompare(a.scheduledDate || ''));
+  const count = document.getElementById('archivesCount');
+  if (count) count.textContent = stale.length ? `(${stale.length})` : '';
+  root.innerHTML = '';
+  if (stale.length === 0) {
+    root.innerHTML = '<div class="empty-state">Aucune mission archivée.</div>';
+    return;
+  }
+  const purgeable = stale.filter(b => b.status === 'cancelled' || b.status === 'pending');
+  if (purgeable.length) {
+    const purge = document.createElement('button');
+    purge.className = 'btn ghost danger';
+    purge.type = 'button';
+    purge.textContent = `Vider les archives annulées ou non assignées (${purgeable.length})`;
+    armInlineConfirm(purge, `Confirmer : supprimer ${purgeable.length} mission(s)`, async () => {
+      try {
+        await withButtonLoading(purge, async () => {
+          for (let i = 0; i < purgeable.length; i += 200) {
+            const batch = writeBatch(db);
+            purgeable.slice(i, i + 200).forEach(b => {
+              batch.delete(doc(db, 'bookings', b.id));
+              if (b.propertyId && b.scheduledDate) batch.delete(doc(db, 'bookingSlots', `${b.propertyId}_${b.scheduledDate}`));
+            });
+            await withTimeout(batch.commit(), 20000);
+          }
+        });
+        setAdminStatus('Archives nettoyées.', 'success');
+      } catch (e) {
+        setAdminStatus(`Impossible de vider les archives : ${authErrorMessage(e)}`, 'error');
+      }
+    });
+    root.appendChild(purge);
+  }
+  stale.forEach(booking => {
+    const card = document.createElement('div');
+    card.className = 'task-card';
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = booking.propertyAddress || booking.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    meta.textContent = `${formatShortDate(booking.scheduledDate)} · ${formatBookingStatus(booking.status)} · ${booking.price}€ HT`;
+    card.appendChild(title);
+    card.appendChild(meta);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;';
+    const del = document.createElement('button');
+    del.className = 'btn ghost danger';
+    del.type = 'button';
+    del.textContent = 'Supprimer';
+    armInlineConfirm(del, DELETE_CONFIRM_LABEL, () => deleteBooking(booking, del));
+    row.appendChild(del);
+    card.appendChild(row);
+    root.appendChild(card);
+  });
 }
 
 // Admin : reprogrammer une mission (changer sa date). Notifie le client au mieux.
@@ -2853,11 +3026,12 @@ function comptaLine(booking) {
   const extras = Number(booking.extrasHT) || 0;
   const commission = Number(booking.commission) || 0;
   // Kits de bienvenue = reliquat (prix − prestation − amenities − suppléments − commission − déplacement).
-  const kits = Math.max(0, price - prestation - amenities - extras - commission - travel);
+  const welcomer = Number(booking.welcomerFee) || 0;
+  const kits = Math.max(0, price - prestation - amenities - extras - commission - travel - welcomer);
   const base = Number(booking.prestatairePay) || 0;
   const adj = Number(booking.adjustment) || 0;
   const payout = base + adj;
-  return { price, prestation, travel, kits, amenities, extras, commission, base, adj, payout, margin: price - payout };
+  return { price, prestation, travel, welcomer, kits, amenities, extras, commission, base, adj, payout, margin: price - payout };
 }
 
 // Décomposition « ce que coûte quoi » d'une mission, pour que l'admin sache
@@ -3153,7 +3327,7 @@ async function focusCalendarBooking(booking) {
 function renderMissionsToAssign() {
   if (!missionsToAssign) return;
   missionsToAssign.innerHTML = '';
-  const pending = latestBookings
+  const pending = workBookings()
     .filter(booking => booking.status === 'pending')
     .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   if (pending.length === 0) {
@@ -3181,7 +3355,7 @@ function renderMissionsToAssign() {
   };
 
   pending.forEach(booking => {
-    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.surface ? ` · ${booking.surface} m²` : ''}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€`;
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${booking.surface ? ` · ${booking.surface} m²` : ''}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · ${booking.price}€ HT`;
     appendAssignCard(missionsToAssign, booking, rankedPrestataires, 'Choisir un prestataire…',
       'Aucun prestataire approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (prestataireId, assignBtn) => {
@@ -3208,7 +3382,7 @@ function renderMissionsToAssign() {
 function renderKitsToAssign() {
   if (!kitsToAssign) return;
   kitsToAssign.innerHTML = '';
-  const needing = latestBookings
+  const needing = workBookings()
     .filter(booking => booking.linenRequested === true && !booking.livreurId && booking.status !== 'cancelled' && booking.status !== 'verified')
     .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   if (needing.length === 0) {
@@ -3224,7 +3398,8 @@ function renderKitsToAssign() {
   const livreurAnnotate = member => `${livreurStats(member.id).active} à faire`;
 
   needing.forEach(booking => {
-    const metaText = `${formatShortDate(booking.scheduledDate)}${booking.kitCount ? ` · ${booking.kitCount} kit(s)` : ''} · dépôt kits / linge propre + récupération`;
+    const kitsPrice = comptaLine(booking).kits;
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.kitCount ? `${booking.kitCount} kit${booking.kitCount > 1 ? 's' : ''} à fournir` : 'kits à fournir'}${kitsPrice ? ` · ${kitsPrice}€ HT de kits` : ''} · dépôt kits / linge propre + récupération`;
     appendAssignCard(kitsToAssign, booking, rankedLivreurs, 'Choisir un livreur…',
       'Aucun livreur approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (livreurId, assignBtn) => {
@@ -3253,7 +3428,7 @@ function renderWelcomersToAssign() {
   welcomersToAssign.innerHTML = '';
   // Réservations où le client a demandé un contrôle Welcomer mais aucun
   // Welcomer n'est encore affecté. Le contrôle a lieu après le ménage.
-  const needing = latestBookings
+  const needing = workBookings()
     .filter(booking => booking.welcomerService && !booking.welcomerId && booking.status !== 'cancelled')
     .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
   if (needing.length === 0) {
@@ -3456,7 +3631,7 @@ function buildBookingQueueItem(booking) {
       </div>
       <div class="status-pill submitted">${formatBookingStatus('submitted')}</div>
     </div>
-    <div class="task-meta">${booking.price}€ · ${booking.clientEmail || ''}</div>
+    <div class="task-meta">${booking.price}€ HT · ${booking.clientEmail || ''}</div>
   `;
   item.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
   item.onclick = async () => {
@@ -3496,6 +3671,7 @@ function renderBookingCost(booking) {
   });
   if (l.commission) rows.push(['Commission Zebramoon', l.commission, '']);
   if (l.travel) rows.push(['Frais de déplacement', l.travel, '']);
+  if (l.welcomer) rows.push(['Contrôle qualité sur place (Welcomer)', l.welcomer, '']);
   // HT → TVA → TTC (TVA = pass-through, hors marge).
   const rate = getPricing().vatRate;
   const vat = Math.round(l.price * rate);
@@ -3509,6 +3685,62 @@ function renderBookingCost(booking) {
   bookingCost.querySelectorAll('.pb-line span').forEach((span, i) => { span.textContent = rows[i][0]; });
 }
 
+// Panneau « Logement » du dossier : tout ce qui a été saisi sur le bien
+// (copie figée sur la réservation, complétée par la fiche logement) et
+// l'autorisation d'accès signée par le client.
+function renderBookingProperty(booking) {
+  const host = document.getElementById('bookingProperty');
+  if (!host) return;
+  const prop = latestProperties.find(p => p.id === booking.propertyId) || {};
+  const pick = key => (booking[key] != null && booking[key] !== '' ? booking[key] : prop[key]);
+  const yesNo = v => (v ? 'Oui' : 'Non');
+  const typeLabel = { studio: 'Studio', appartement: 'Appartement', maison: 'Maison' };
+  const rows = [
+    ['Adresse', booking.propertyAddress || prop.street || ''],
+    ['Surface', pick('surface') ? `${pick('surface')} m²` : ''],
+    ['Type', typeLabel[pick('propertyType')] || pick('propertyType') || ''],
+    ['Chambres', pick('bedrooms')],
+    ['Salles de bain', pick('bathrooms')],
+    ['Lits', pick('beds')],
+    ['WC', pick('wcCount')],
+    ['Canapé-lit', yesNo(pick('hasSofaBed'))],
+    ['Terrasse / balcon', yesNo(pick('hasTerrace'))],
+    ['Climatisation', yesNo(pick('hasClim'))],
+    ['Boîtes à clés', pick('keyBoxCount')],
+    ['Détecteurs de fumée', pick('smokeDetectorCount')],
+    ['Accès et clés', pick('keyAccess')],
+    ['Notes du client', prop.notes || ''],
+  ].filter(r => r[1] !== undefined && r[1] !== null && r[1] !== '');
+  host.classList.remove('hidden');
+  host.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'eyebrow';
+  head.style.marginTop = '22px';
+  head.textContent = 'Logement';
+  host.appendChild(head);
+  rows.forEach(([label, value]) => {
+    const line = document.createElement('div');
+    line.className = 'pb-line';
+    const l = document.createElement('span');
+    l.textContent = label;
+    const v = document.createElement('b');
+    v.textContent = String(value);
+    line.appendChild(l);
+    line.appendChild(v);
+    host.appendChild(line);
+  });
+  const consent = document.createElement('div');
+  consent.className = 'task-meta';
+  consent.style.marginTop = '10px';
+  if (booking.consentVersion) {
+    const at = booking.consentAt && booking.consentAt.toDate ? booking.consentAt.toDate() : booking.consentAt;
+    consent.textContent = `Autorisation d’accès signée par ${booking.consentName || 'le client'}${at ? ` le ${formatShortDate(at)}` : ''}.`;
+  } else {
+    consent.textContent = 'Aucune autorisation d’accès enregistrée pour cette réservation.';
+  }
+  host.appendChild(consent);
+}
+
 function renderBookingDetail() {
   if (!selectedBooking) {
     bookingTitle.textContent = 'Aucun dossier sélectionné';
@@ -3520,7 +3752,17 @@ function renderBookingDetail() {
     verifyBtn.disabled = true;
     rejectBtn.disabled = true;
     if (devisBtn) devisBtn.disabled = true;
+    const noPanel = document.getElementById('bookingProperty');
+    if (noPanel) { noPanel.classList.add('hidden'); noPanel.innerHTML = ''; }
+    const noDanger = document.getElementById('bookingDangerRow');
+    if (noDanger) noDanger.innerHTML = '';
     return;
+  }
+  renderBookingProperty(selectedBooking);
+  const dangerRow = document.getElementById('bookingDangerRow');
+  if (dangerRow) {
+    dangerRow.innerHTML = '';
+    dangerRow.appendChild(buildRefuseDeleteButtons(selectedBooking, () => rejectNote.value));
   }
   if (devisBtn) {
     devisBtn.disabled = false;
@@ -3528,7 +3770,7 @@ function renderBookingDetail() {
   }
 
   bookingTitle.textContent = selectedBooking.propertyAddress || selectedBooking.propertyId;
-  bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.surface ? ` · ${selectedBooking.surface} m²` : ''}${selectedBooking.kitCount ? ` · ${selectedBooking.kitCount} kit(s)` : ''} · ${selectedBooking.price}€`;
+  bookingMeta.textContent = `${selectedBooking.clientEmail || ''} · ${formatShortDate(selectedBooking.scheduledDate)} · ${selectedBooking.serviceType === 'deep' ? 'Nettoyage en profondeur' : 'Nettoyage normal'}${selectedBooking.surface ? ` · ${selectedBooking.surface} m²` : ''}${selectedBooking.kitCount ? ` · ${selectedBooking.kitCount} kit(s)` : ''} · ${selectedBooking.price}€ HT`;
   renderBookingCost(selectedBooking);
   photoGrid.innerHTML = '';
 
@@ -3766,6 +4008,7 @@ function refreshQueue() {
   bookingQueueUnsub = onSnapshot(queueQuery, async snapshot => {
     const rows = snapshot.docs
       .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+      .filter(b => !isStaleBooking(b))
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
     for (const row of rows) {
       try {

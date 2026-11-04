@@ -27,6 +27,9 @@ import {
   withTimeout,
   queueEmail,
   TEAM_EMAIL,
+  getPricing,
+  ACCESS_CONSENT_VERSION,
+  ACCESS_CONSENT_PARAGRAPHS,
 } from './shared.js';
 import {
   collection,
@@ -90,6 +93,8 @@ function freshDraft() {
     selectedDate: null,
     extras: {}, // { itemId: quantité }
     welcomerService: '',
+    consentAccepted: false,
+    consentName: '',
     readyToSubmit: false,
   };
 }
@@ -666,7 +671,7 @@ function renderWelcomerStep() {
   WELCOMER_TIERS.forEach(t => {
     group.appendChild(optionCard({
       title: t.label,
-      meta: `${t.fee}€ HT`,
+      meta: `${Math.round(t.fee * (1 + (Number(getPricing().vatRate) || 0)))}€ TTC`,
       selected: draft.welcomerService === t.key,
       onClick: () => { draft.welcomerService = t.key; saveDraft(); goToStep('review'); },
     }));
@@ -727,10 +732,44 @@ function renderReviewStep() {
     const finalHT = quote.total + extrasHT + welcomerFee;
     const vat = Math.round(finalHT * quote.vatRate);
     const ttc = finalHT + vat;
-    priceBox.appendChild(el('div', 'bk-price-total', `${ttc}€`));
+    priceBox.appendChild(el('div', 'bk-price-total', `${ttc}€ TTC`));
     priceBox.appendChild(el('div', 'bk-price-sub', 'TTC, toutes options incluses'));
   }
   panel.appendChild(priceBox);
+
+  // Autorisation d'accès : requise pour une vraie réservation (pas pour une
+  // simple demande de devis sur mesure), conservée sur la réservation.
+  const needsConsent = !!quote && !quote.custom;
+  if (needsConsent) {
+    const consent = el('div', 'bk-consent');
+    consent.appendChild(el('div', 'bk-consent-title', 'Autorisation d’accès au logement'));
+    ACCESS_CONSENT_PARAGRAPHS.forEach(t => consent.appendChild(el('p', 'bk-consent-text', t)));
+    const nameField = el('div', 'bk-field');
+    nameField.appendChild(el('label', null, 'Nom et prénom du signataire'));
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.autocomplete = 'name';
+    nameInput.value = draft.consentName || '';
+    nameField.appendChild(nameInput);
+    consent.appendChild(nameField);
+    const row = el('label', 'bk-consent-check');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!draft.consentAccepted;
+    row.appendChild(cb);
+    row.appendChild(el('span', null, 'Je lis et j’accepte cette autorisation d’accès.'));
+    consent.appendChild(row);
+    const sync = () => {
+      draft.consentName = nameInput.value;
+      draft.consentAccepted = cb.checked;
+      saveDraft();
+      const ok = consentReady();
+      reserve.disabled = submitting || !canSubmit || !ok;
+    };
+    nameInput.addEventListener('input', sync);
+    cb.addEventListener('change', sync);
+    panel.appendChild(consent);
+  }
 
   const errorBox = el('div', 'bk-error hidden');
   if (authError) { errorBox.textContent = authError; errorBox.classList.remove('hidden'); }
@@ -738,14 +777,19 @@ function renderReviewStep() {
 
   const canSubmit = !!quote && !!draft.selectedDate;
   const label = quote && quote.custom ? 'Demander un devis' : 'Réserver ce ménage';
-  panel.appendChild(primaryButton(label, () => {
+  const reserve = primaryButton(label, () => {
     draft.readyToSubmit = true;
     saveDraft();
     if (!currentUser) { goToStep('auth'); return; }
     finalizeBooking();
-  }, submitting || !canSubmit));
+  }, submitting || !canSubmit || (needsConsent && !consentReady()));
+  panel.appendChild(reserve);
 
   return panel;
+}
+
+function consentReady() {
+  return !!draft.consentAccepted && String(draft.consentName || '').trim().length > 1;
 }
 
 function propertyLabelForReview() {
@@ -938,6 +982,12 @@ async function finalizeBooking() {
       return;
     }
 
+    if (!consentReady()) {
+      const err = new Error('Merci d’accepter l’autorisation d’accès au logement avant de réserver.');
+      err.code = 'app/consent-missing';
+      throw err;
+    }
+
     const extras = extrasList().map(e => ({ id: e.id, name: e.name, type: e.type, priceHT: e.priceHT, priceTTC: e.priceTTC, qty: e.qty }));
     const extrasHT = extras.reduce((s, e) => s + e.priceHT * e.qty, 0);
     const welcomerFee = draft.welcomerService ? (welcomerTier(draft.welcomerService) || {}).fee || 0 : 0;
@@ -963,6 +1013,9 @@ async function finalizeBooking() {
       tx.set(bookingRef, {
         clientId: currentUser.uid,
         clientEmail: currentUser.email || '',
+        consentVersion: ACCESS_CONSENT_VERSION,
+        consentName: String(draft.consentName).trim(),
+        consentAt: serverTimestamp(),
         propertyId,
         propertyAddress: `${property.street}, ${property.city}`,
         keyAccess: property.keyAccess || '',
@@ -1049,7 +1102,7 @@ function renderConfirmStep() {
   if (lastBookingSummary) {
     const s = lastBookingSummary;
     panel.appendChild(el('p', 'bk-sub', `${s.property.street}, ${s.property.city} · ${formatShortDate(s.date)} · ${s.serviceType === 'deep' ? 'Ménage en profondeur' : 'Ménage standard'}`));
-    panel.appendChild(el('div', 'bk-price-total', `${s.priceTTC}€`));
+    panel.appendChild(el('div', 'bk-price-total', `${s.priceTTC}€ TTC`));
     panel.appendChild(el('div', 'bk-price-sub', `TTC · Référence ${s.bookingId.slice(0, 6).toUpperCase()}`));
   } else {
     panel.appendChild(el('p', 'bk-sub', 'Votre demande de devis a bien été envoyée, nous revenons vers vous rapidement.'));

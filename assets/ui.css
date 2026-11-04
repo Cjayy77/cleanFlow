@@ -179,7 +179,7 @@ textarea{ min-height:110px; resize:vertical; }
 .rating-avg .stars-static{ margin-top:0; }
 
 /* Onglets console admin, une section à la fois, moins de scroll sur mobile */
-.tabbar{ position:sticky; top:0; z-index:20; display:flex; gap:26px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; background:var(--soft); padding:6px 0 0; margin-bottom:24px; border-bottom:1px solid var(--line); }
+.tabbar{ position:sticky; top:0; z-index:20; display:flex; gap:26px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; background:linear-gradient(var(--soft), var(--soft)), var(--ivory); box-shadow:0 10px 24px -12px rgba(0,0,0,.7); padding:6px 0 0; margin-bottom:24px; border-bottom:1px solid var(--line); }
 .tabbar::-webkit-scrollbar{ display:none; }
 .tab{ flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; background:none; color:var(--muted); border:none; border-bottom:2px solid transparent; border-radius:0; box-shadow:none; font-family:var(--font-nav); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:0.04em; padding:10px 2px 14px; cursor:pointer; white-space:nowrap; transition: color .12s ease-out, border-color .12s ease-out; }
 .tab:hover:not(.active){ color:var(--ink); }
