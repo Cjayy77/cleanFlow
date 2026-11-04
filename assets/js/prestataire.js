@@ -3,6 +3,15 @@ import {
   auth,
   db,
   ROLE_PRESTATAIRE,
+  ROLE_MEMBRE,
+  checklistBlockKey,
+  checklistBlocks,
+  subscribeTeamTasks,
+  subscribeTeamMembers,
+  setTeamMemberStatus,
+  saveMissionTask,
+  updateMissionTaskFields,
+  missionTaskId,
   PHOTO_SLOTS,
   EXIGENCE_PHASES,
   loadUserDoc,
@@ -45,6 +54,7 @@ import {
   query,
   where,
   onSnapshot,
+  getDoc,
   updateDoc,
   doc,
   addDoc,
@@ -121,6 +131,45 @@ let timerTickId = null;
 let activeComments = [];
 let assignedUnsub = null;
 
+// ---- Équipe : chef d'opération (rôle prestataire) et membres (rôle membre)
+let teamTasks = [];
+let teamMembers = [];
+let teamTasksUnsub = null;
+let teamMembersUnsub = null;
+let answersRefreshId = null;
+
+function isMember() { return !!currentUser && currentUser.role === ROLE_MEMBRE; }
+function teamId() { return isMember() ? currentUser.teamId : currentUser.uid; }
+function activeTasks() { return activeBooking ? teamTasks.filter(t => t.bookingId === activeBooking.id) : []; }
+
+// Un membre ne voit et ne remplit que les blocs (phase + pièce) qui lui sont
+// confiés ; le chef voit toute la mission.
+function myBlockKeys() {
+  return new Set(activeTasks().filter(t => t.assignedTo === currentUser.uid).map(t => t.blockKey));
+}
+function visibleInstances(exigence) {
+  const all = exigenceInstances(exigence, activeBooking);
+  if (!isMember()) return all;
+  const mine = myBlockKeys();
+  return all.filter(instance => mine.has(checklistBlockKey(exigence, instance)));
+}
+function phaseItems(phaseKey) {
+  return activeExigences.filter(e => e.phase === phaseKey && visibleInstances(e).length > 0);
+}
+function blockProgress(blockKey) {
+  let done = 0;
+  let required = 0;
+  activeExigences.forEach(exigence => {
+    visibleInstances(exigence).forEach(instance => {
+      if (checklistBlockKey(exigence, instance) !== blockKey) return;
+      const st = exigenceAnswerStats(exigence, instance);
+      done += st.done;
+      required += st.required;
+    });
+  });
+  return { done, required };
+}
+
 function setAuthMessage(message, type = '') {
   authError.textContent = message;
   authError.className = 'status-banner' + (type ? ` ${type}` : '') + (message ? '' : ' hidden');
@@ -147,13 +196,18 @@ function showApp() {
   authScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
   setAuthMessage('');
+  const member = isMember();
   userNameLabel.textContent = currentUser.name || currentUser.email;
-  initSectionTabs(appScreen, [
-    { id: 'missionsCard', label: 'Missions' },
-    { id: 'incidentCard', label: 'Incident' },
-    { id: 'ratingsCard', label: 'Évaluations' },
-    { id: 'comptaCard', label: 'Compta' },
-  ]);
+  const tag = document.querySelector('.role-tag');
+  if (tag) tag.textContent = member ? 'Équipe · membre' : 'Chef d’opération';
+  // Un membre ne voit ni la rémunération, ni les évaluations, ni la gestion d'équipe.
+  ['ratingsCard', 'comptaCard'].forEach(id => document.getElementById(id)?.classList.toggle('hidden', member));
+  document.getElementById('teamCard')?.classList.toggle('hidden', member);
+  const tabs = [{ id: 'missionsCard', label: 'Missions' }];
+  if (!member) tabs.push({ id: 'teamCard', label: 'Équipe' });
+  tabs.push({ id: 'incidentCard', label: 'Incident' });
+  if (!member) tabs.push({ id: 'ratingsCard', label: 'Évaluations' }, { id: 'comptaCard', label: 'Compta' });
+  initSectionTabs(appScreen, tabs);
 }
 
 async function loadPhotosForBooking(bookingId) {
@@ -190,6 +244,218 @@ async function loadTimerAndCommentsForBooking(booking) {
 
 function countUploadedPhotos() {
   return PHOTO_SLOTS.filter(slot => activePhotoRecords[slot.key]).length;
+}
+
+
+// ---------------------------------------------------------------- équipe ----
+
+function approvedMembers() {
+  return teamMembers.filter(m => m.role === ROLE_MEMBRE && (m.accountStatus || 'approved') === 'approved');
+}
+
+function taskForBlock(blockKey) {
+  return activeTasks().find(t => t.blockKey === blockKey) || null;
+}
+
+function progressLabel(p) {
+  if (p.required === 0) return 'rien à saisir';
+  return `${p.done}/${p.required}`;
+}
+
+// Chef d'opération : répartit les blocs de la mission entre les membres.
+// Un bloc sans tâche reste au chef ; changer l'assigné crée ou met à jour la
+// tâche (un bloc, une tâche). Toutes les photos/réponses restent attachées à
+// la mission : le chef les voit au fil de l'eau et seul lui soumet le dossier.
+function buildSplitPanel() {
+  const box = document.createElement('div');
+  box.className = 'team-split';
+  const title = document.createElement('div');
+  title.className = 'roster-subhead';
+  title.textContent = 'Répartition de l’équipe';
+  box.appendChild(title);
+
+  const members = approvedMembers();
+  if (members.length === 0) {
+    const hint = document.createElement('p');
+    hint.className = 'field-hint';
+    hint.textContent = 'Aucun membre dans votre équipe pour l’instant : vous réalisez toute la mission. Invitez vos équipiers depuis la carte « Mon équipe ».';
+    box.appendChild(hint);
+    return box;
+  }
+
+  checklistBlocks(activeExigences, activeBooking).forEach(block => {
+    const task = taskForBlock(block.key);
+    const progress = blockProgress(block.key);
+    const row = document.createElement('div');
+    row.className = 'team-split-row';
+
+    const info = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'team-split-label';
+    name.textContent = block.label;
+    const meta = document.createElement('div');
+    meta.className = 'field-hint';
+    const state = task && task.status === 'returned' ? 'renvoyé au membre'
+      : (progress.required > 0 && progress.done >= progress.required) || (task && task.status === 'done') ? 'terminé'
+      : 'en cours';
+    meta.textContent = `${progressLabel(progress)} · ${state}`;
+    info.append(name, meta);
+
+    const select = document.createElement('select');
+    const me = document.createElement('option');
+    me.value = currentUser.uid;
+    me.textContent = 'Moi (chef d’opération)';
+    select.appendChild(me);
+    members.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name || m.email;
+      select.appendChild(opt);
+    });
+    select.value = task ? task.assignedTo : currentUser.uid;
+    select.onchange = async () => {
+      const chosen = members.find(m => m.id === select.value);
+      try {
+        await saveMissionTask({
+          bookingId: activeBooking.id, teamId: currentUser.uid, block,
+          assignedTo: select.value, assignedName: chosen ? (chosen.name || chosen.email) : (currentUser.name || ''),
+          status: 'todo', note: '',
+        });
+      } catch (e) {
+        setWorkStatus(`Répartition non enregistrée : ${authErrorMessage(e)}`);
+      }
+    };
+    row.append(info, select);
+
+    if (task && task.assignedTo !== currentUser.uid) {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'mini-btn';
+      back.textContent = 'Renvoyer';
+      back.onclick = () => {
+        const note = document.createElement('input');
+        note.type = 'text';
+        note.placeholder = 'Ce qu’il faut reprendre…';
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.className = 'btn ghost';
+        ok.textContent = 'Envoyer';
+        ok.onclick = async () => {
+          try {
+            await updateMissionTaskFields(task.id, { status: 'returned', note: note.value.trim() });
+          } catch (e) { setWorkStatus(`Renvoi impossible : ${authErrorMessage(e)}`); }
+        };
+        back.replaceWith(note, ok);
+        note.focus();
+      };
+      row.appendChild(back);
+    }
+    box.appendChild(row);
+  });
+  return box;
+}
+
+// Membre : ses blocs, leur avancement, et le bouton de fin par bloc.
+function buildMyTasksPanel(canUpload) {
+  const box = document.createElement('div');
+  box.className = 'team-split';
+  const title = document.createElement('div');
+  title.className = 'roster-subhead';
+  title.textContent = 'Mes tâches sur cette mission';
+  box.appendChild(title);
+  const mine = activeTasks().filter(t => t.assignedTo === currentUser.uid);
+  if (mine.length === 0) {
+    const hint = document.createElement('p');
+    hint.className = 'field-hint';
+    hint.textContent = 'Aucune tâche ne vous est confiée sur cette mission.';
+    box.appendChild(hint);
+    return box;
+  }
+  mine.forEach(task => {
+    const progress = blockProgress(task.blockKey);
+    const complete = progress.required === 0 || progress.done >= progress.required;
+    const row = document.createElement('div');
+    row.className = 'team-split-row';
+    const info = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'team-split-label';
+    name.textContent = task.label;
+    const meta = document.createElement('div');
+    meta.className = 'field-hint';
+    meta.textContent = `${progressLabel(progress)}${task.status === 'done' ? ' · terminé' : ''}`;
+    info.append(name, meta);
+    if (task.status === 'returned') {
+      const note = document.createElement('div');
+      note.className = 'status-banner';
+      note.textContent = `À reprendre : ${task.note || 'voir avec votre chef d’opération'}`;
+      info.appendChild(note);
+    }
+    row.appendChild(info);
+    const done = document.createElement('button');
+    done.type = 'button';
+    done.className = 'btn ghost';
+    done.textContent = task.status === 'done' ? 'Terminé' : 'J’ai terminé ce bloc';
+    done.disabled = !canUpload || !complete || task.status === 'done';
+    done.onclick = async () => {
+      try { await updateMissionTaskFields(task.id, { status: 'done' }); }
+      catch (e) { setWorkStatus(`Impossible de valider : ${authErrorMessage(e)}`); }
+    };
+    row.appendChild(done);
+    box.appendChild(row);
+  });
+  return box;
+}
+
+// Carte « Mon équipe » (chef) : lien d'invitation + membres à accepter.
+function renderTeamCard() {
+  const card = document.getElementById('teamCard');
+  if (!card || isMember()) return;
+  const invite = document.getElementById('teamInvite');
+  const list = document.getElementById('teamMembersList');
+  const link = `${location.origin}/prestataire/?equipe=${encodeURIComponent(currentUser.uid)}`;
+  invite.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.readOnly = true;
+  input.value = link;
+  input.onclick = () => input.select();
+  invite.appendChild(input);
+  list.innerHTML = '';
+  const members = teamMembers.filter(m => m.role === ROLE_MEMBRE);
+  if (members.length === 0) {
+    list.innerHTML = '<div class="empty-state">Aucun membre. Envoyez le lien ci-dessus : chaque équipier crée son compte sur son téléphone, vous l’acceptez ici.</div>';
+    return;
+  }
+  const STATUS = { pending: 'En attente', approved: 'Actif', suspended: 'Suspendu', rejected: 'Refusé' };
+  members.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'team-split-row';
+    const info = document.createElement('div');
+    const name = document.createElement('div');
+    name.className = 'team-split-label';
+    name.textContent = m.name || m.email;
+    const meta = document.createElement('div');
+    meta.className = 'field-hint';
+    meta.textContent = `${m.email}${m.phone ? ` · ${m.phone}` : ''} · ${STATUS[m.accountStatus || 'approved'] || m.accountStatus}`;
+    info.append(name, meta);
+    row.appendChild(info);
+    const act = (label, status) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mini-btn';
+      b.textContent = label;
+      b.onclick = async () => {
+        try { await setTeamMemberStatus(m.id, status); }
+        catch (e) { setWorkStatus(`Action impossible : ${authErrorMessage(e)}`); }
+      };
+      row.appendChild(b);
+    };
+    const st = m.accountStatus || 'approved';
+    if (st === 'pending') { act('Accepter', 'approved'); act('Refuser', 'rejected'); }
+    else if (st === 'approved') act('Suspendre', 'suspended');
+    else act('Réactiver', 'approved');
+    list.appendChild(row);
+  });
 }
 
 function renderAssignedList() {
@@ -384,7 +650,7 @@ function exigenceStatusState(exigence, instance) {
 function totalRequiredExigenceAnswers(items = activeExigences) {
   let total = 0;
   items.forEach(exigence => {
-    exigenceInstances(exigence, activeBooking).forEach(instance => {
+    visibleInstances(exigence).forEach(instance => {
       total += exigenceAnswerStats(exigence, instance).required;
     });
   });
@@ -394,7 +660,7 @@ function totalRequiredExigenceAnswers(items = activeExigences) {
 function countAnsweredExigences(items = activeExigences) {
   let count = 0;
   items.forEach(exigence => {
-    exigenceInstances(exigence, activeBooking).forEach(instance => {
+    visibleInstances(exigence).forEach(instance => {
       count += exigenceAnswerStats(exigence, instance).done;
     });
   });
@@ -409,7 +675,7 @@ function renderExigenceChecklist(canAnswer) {
   progress.textContent = `${countAnsweredExigences()} sur ${totalRequiredExigenceAnswers()} exigences`;
   wrap.appendChild(progress);
 
-  const phasesWithItems = EXIGENCE_PHASES.filter(phase => activeExigences.some(e => e.phase === phase.key));
+  const phasesWithItems = EXIGENCE_PHASES.filter(phase => phaseItems(phase.key).length > 0);
   if (!phasesWithItems.some(p => p.key === activeExigencePhase)) {
     activeExigencePhase = phasesWithItems.length ? phasesWithItems[0].key : null;
   }
@@ -423,11 +689,13 @@ function renderExigenceChecklist(canAnswer) {
     // présentes pour ce logement, pas à l'ordre fixe avant/ménage/après :
     // un logement sans contenu "avant" ne bloque jamais sur une phase vide.
     phasesWithItems.forEach((phase, index) => {
-      const items = activeExigences.filter(e => e.phase === phase.key);
+      const items = phaseItems(phase.key);
       const prevPhase = index > 0 ? phasesWithItems[index - 1] : null;
       let locked = false;
-      if (prevPhase) {
-        const prevItems = activeExigences.filter(e => e.phase === prevPhase.key);
+      // Pas de verrouillage de phase pour un membre : ses blocs sont indépendants
+      // de ceux des autres (l'ordre de travail dans l'équipe est libre).
+      if (prevPhase && !isMember()) {
+        const prevItems = phaseItems(prevPhase.key);
         locked = countAnsweredExigences(prevItems) < totalRequiredExigenceAnswers(prevItems);
       }
       const tab = document.createElement('button');
@@ -456,7 +724,7 @@ function renderExigenceChecklist(canAnswer) {
     wrap.appendChild(phaseHead);
   }
 
-  const activeItems = activeExigences.filter(e => e.phase === activeExigencePhase);
+  const activeItems = phaseItems(activeExigencePhase);
   // 'none'/'other' ne se répètent jamais ; tout le reste (bedroom/bathroom/
   // wc/smoke_detector/key_box…) se répète et va dans un accordéon par
   // instance — négatif plutôt que positif pour qu'un futur roomScope
@@ -466,7 +734,7 @@ function renderExigenceChecklist(canAnswer) {
   const roomItems = activeItems.filter(e => e.roomScope !== 'none' && e.roomScope !== 'other');
 
   flatItems.forEach(exigence => {
-    exigenceInstances(exigence, activeBooking).forEach(instance => {
+    visibleInstances(exigence).forEach(instance => {
       wrap.appendChild(buildExigenceRow(exigence, instance, canAnswer));
     });
   });
@@ -477,7 +745,7 @@ function renderExigenceChecklist(canAnswer) {
   // lisible sur un logement avec beaucoup d'exigences.
   const roomGroups = new Map();
   roomItems.forEach(exigence => {
-    exigenceInstances(exigence, activeBooking).forEach(instance => {
+    visibleInstances(exigence).forEach(instance => {
       const key = `${exigence.roomScope}_${instance.roomIndex}`;
       if (!roomGroups.has(key)) roomGroups.set(key, { label: instance.label, entries: [] });
       roomGroups.get(key).entries.push({ exigence, instance });
@@ -1060,13 +1328,15 @@ function renderActiveBooking() {
 
   const canUpload = ['accepted', 'rejected'].includes(activeBooking.status);
 
-  activeBookingContainer.appendChild(renderTimerBlock(canUpload));
+  if (!isMember()) activeBookingContainer.appendChild(renderTimerBlock(canUpload));
+  if (isMember()) activeBookingContainer.appendChild(buildMyTasksPanel(canUpload));
+  else if (activeExigences.length) activeBookingContainer.appendChild(buildSplitPanel());
 
   if (activeExigences.length) {
     activeBookingContainer.appendChild(renderExigenceChecklist(canUpload));
     const total = totalRequiredExigenceAnswers();
     const answered = countAnsweredExigences();
-    activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${answered}/${total})`, !canUpload || answered < total));
+    if (!isMember()) activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${answered}/${total})`, !canUpload || answered < total));
   } else {
     const photoGrid = document.createElement('div');
     photoGrid.className = 'photo-grid';
@@ -1116,11 +1386,13 @@ function renderActiveBooking() {
     activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`, !canUpload || count < PHOTO_SLOTS.length));
   }
 
-  activeBookingContainer.appendChild(buildCostsTile());
-  activeBookingContainer.appendChild(buildAttachmentsTile());
-  activeBookingContainer.appendChild(buildCommentsTile(canUpload));
+  if (!isMember()) {
+    activeBookingContainer.appendChild(buildCostsTile());
+    activeBookingContainer.appendChild(buildAttachmentsTile());
+    activeBookingContainer.appendChild(buildCommentsTile(canUpload));
+  }
 
-  if (activeBooking.status === 'accepted' || activeBooking.status === 'rejected') {
+  if (!isMember() && (activeBooking.status === 'accepted' || activeBooking.status === 'rejected')) {
     const releaseBtn = document.createElement('button');
     releaseBtn.className = 'btn ghost danger';
     releaseBtn.type = 'button';
@@ -1168,55 +1440,102 @@ function renderActiveBooking() {
   }
 }
 
+async function handleBookingsUpdate(mine) {
+  assignedBookings = mine
+    .filter(booking => ACTIONABLE_STATUSES.includes(booking.status))
+    .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+  ratedBookings = mine
+    .filter(booking => booking.status === 'verified' && typeof booking.rating === 'number')
+    .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+  allMyBookings = mine
+    .filter(booking => booking.status !== 'cancelled')
+    .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+  const stillThere = assignedBookings.find(b => b.id === selectedMissionId);
+  activeBooking = stillThere || assignedBookings[0] || null;
+  selectedMissionId = activeBooking ? activeBooking.id : null;
+  if (activeBooking) {
+    // Un chargement annexe qui échoue ne doit jamais laisser l'écran vide :
+    // on affiche la mission avec ce qui a pu être lu, et on le dit.
+    try {
+      await loadPhotosForBooking(activeBooking.id);
+      await loadExigencesForBooking(activeBooking);
+      if (!isMember()) await loadTimerAndCommentsForBooking(activeBooking);
+    } catch (e) {
+      setWorkStatus(`Une partie de la mission n’a pas pu être chargée : ${authErrorMessage(e)}`);
+    }
+  } else {
+    activePhotoRecords = {};
+    activeExigences = [];
+    activeExigenceAnswers = {};
+    activeIncidents = [];
+    activeCustomExigences = [];
+    activePropertyOverrides = [];
+    activeTimer = null;
+    activeComments = [];
+  }
+  renderAssignedList();
+  renderActiveBooking();
+  renderRatings();
+  renderMyCompta();
+}
+
 function loadAssignedBookings() {
   if (assignedUnsub) assignedUnsub();
+  if (isMember()) return; // les missions d'un membre viennent de ses tâches (startTeamSubscriptions)
   // Filtre unique + tri côté client : aucun index composite à créer.
   const assignedQuery = query(collection(db, 'bookings'), where('prestataireId', '==', currentUser.uid));
   assignedUnsub = onSnapshot(assignedQuery, async snapshot => {
-    const mine = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-    assignedBookings = mine
-      .filter(booking => ACTIONABLE_STATUSES.includes(booking.status))
-      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
-    ratedBookings = mine
-      .filter(booking => booking.status === 'verified' && typeof booking.rating === 'number')
-      .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
-    allMyBookings = mine
-      .filter(booking => booking.status !== 'cancelled')
-      .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
-    const stillThere = assignedBookings.find(b => b.id === selectedMissionId);
-    activeBooking = stillThere || assignedBookings[0] || null;
-    selectedMissionId = activeBooking ? activeBooking.id : null;
-    if (activeBooking) {
-      // Un chargement annexe qui échoue ne doit jamais laisser l'écran vide :
-      // on affiche la mission avec ce qui a pu être lu, et on le dit.
-      try {
-        await loadPhotosForBooking(activeBooking.id);
-        await loadExigencesForBooking(activeBooking);
-        await loadTimerAndCommentsForBooking(activeBooking);
-      } catch (e) {
-        setWorkStatus(`Une partie de la mission n’a pas pu être chargée : ${authErrorMessage(e)}`);
-      }
-    } else {
-      activePhotoRecords = {};
-      activeExigences = [];
-      activeExigenceAnswers = {};
-      activeIncidents = [];
-      activeCustomExigences = [];
-      activePropertyOverrides = [];
-      activeTimer = null;
-      activeComments = [];
-    }
-    renderAssignedList();
-    renderActiveBooking();
-    renderRatings();
-    renderMyCompta();
+    await handleBookingsUpdate(snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
   }, error => setWorkStatus(`Impossible de charger vos missions : ${storageErrorMessage(error)}`));
+}
+
+// Un membre n'a pas de requête sur les missions : ses missions sont celles où
+// une tâche lui est confiée. Le chef suit en plus tous les membres/tâches.
+async function refreshMemberBookings() {
+  const ids = [...new Set(teamTasks.filter(t => t.assignedTo === currentUser.uid).map(t => t.bookingId))];
+  const snaps = await Promise.all(ids.map(id => getDoc(doc(db, 'bookings', id)).catch(() => null)));
+  await handleBookingsUpdate(snaps.filter(sn => sn && sn.exists()).map(sn => ({ id: sn.id, ...sn.data() })));
+}
+
+function startTeamSubscriptions() {
+  if (teamTasksUnsub) teamTasksUnsub();
+  if (teamMembersUnsub) teamMembersUnsub();
+  teamTasksUnsub = subscribeTeamTasks(teamId(), async tasks => {
+    teamTasks = tasks;
+    if (isMember()) await refreshMemberBookings();
+    else if (activeBooking) renderActiveBooking();
+  }, error => setWorkStatus(`Impossible de charger les tâches de l’équipe : ${authErrorMessage(error)}`));
+  if (!isMember()) {
+    teamMembersUnsub = subscribeTeamMembers(currentUser.uid, members => {
+      teamMembers = members;
+      renderTeamCard();
+      if (activeBooking) renderActiveBooking();
+    }, error => setWorkStatus(`Impossible de charger votre équipe : ${authErrorMessage(error)}`));
+  }
+  // Les réponses des autres membres ne passent par aucun écouteur : on
+  // relit celles de la mission ouverte toutes les 20 s et on ne redessine que
+  // si la progression a changé (sinon on effacerait un champ en cours de saisie).
+  if (answersRefreshId) clearInterval(answersRefreshId);
+  answersRefreshId = setInterval(async () => {
+    if (!activeBooking || document.hidden) return;
+    try {
+      const before = countAnsweredExigences();
+      const answers = await loadExigenceAnswers(activeBooking.id);
+      activeExigenceAnswers = answers.reduce((acc, a) => ({ ...acc, [a.id]: a }), {});
+      if (countAnsweredExigences() !== before) renderActiveBooking();
+    } catch { /* prochaine tentative dans 20 s */ }
+  }, 20000);
 }
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
     currentUser = null;
     if (assignedUnsub) assignedUnsub();
+    if (teamTasksUnsub) { teamTasksUnsub(); teamTasksUnsub = null; }
+    if (teamMembersUnsub) { teamMembersUnsub(); teamMembersUnsub = null; }
+    if (answersRefreshId) { clearInterval(answersRefreshId); answersRefreshId = null; }
+    teamTasks = [];
+    teamMembers = [];
     if (authNotice) {
       showAuth(authNotice.message, authNotice.type);
       authNotice = null;
@@ -1227,14 +1546,14 @@ onAuthStateChanged(auth, async user => {
   }
   try {
     const docData = await loadUserDoc(user.uid);
-    if (!docData || docData.role !== ROLE_PRESTATAIRE) {
+    if (!docData || (docData.role !== ROLE_PRESTATAIRE && docData.role !== ROLE_MEMBRE)) {
       authNotice = { message: 'Ce compte n’est pas autorisé sur l’interface prestataire.', type: '' };
       await signOut(auth);
       return;
     }
     const accountStatus = docData.accountStatus ?? 'approved';
     if (accountStatus === 'pending') {
-      authNotice = { message: 'Votre demande d’accès est en cours de vérification par l’équipe Zebramoon. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
+      authNotice = { message: docData.role === ROLE_MEMBRE ? 'Votre demande est en attente : votre chef d’opération doit l’approuver. Vous pourrez vous connecter ensuite.' : 'Votre demande d’accès est en cours de vérification par l’équipe Zebramoon. Vous pourrez vous connecter dès qu’elle sera approuvée.', type: 'info' };
       await signOut(auth);
       return;
     }
@@ -1255,6 +1574,7 @@ onAuthStateChanged(auth, async user => {
     // connexion, compromis raisonnable pour un contenu qui change rarement.
     protocolTemplatesCache = await loadProtocolTemplates().catch(() => []);
     loadAssignedBookings();
+    startTeamSubscriptions();
   } catch (error) {
     authNotice = { message: authErrorMessage(error), type: '' };
     await signOut(auth);
@@ -1346,13 +1666,18 @@ requestForm.addEventListener('submit', async event => {
   const email = document.getElementById('requestEmail').value.trim();
   const password = document.getElementById('requestPassword').value;
   const inviteCode = document.getElementById('requestCode').value.trim();
+  const joinTeam = document.getElementById('requestJoinTeam').checked;
+  const teamCode = document.getElementById('requestTeamCode').value.trim();
   try {
+    if (joinTeam && !teamCode) throw new Error('Saisissez le code d’équipe donné par votre chef d’opération.');
     await withButtonLoading(requestForm.querySelector('button[type="submit"]'), () =>
-      requestTeamAccess({ role: ROLE_PRESTATAIRE, name, email, password, phone, inviteCode }));
+      requestTeamAccess(joinTeam
+        ? { role: ROLE_MEMBRE, name, email, password, phone, teamId: teamCode }
+        : { role: ROLE_PRESTATAIRE, name, email, password, phone, inviteCode }));
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
-    setAuthMessage('Demande envoyée. L’équipe Zebramoon va la vérifier, vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
+    setAuthMessage(joinTeam ? 'Demande envoyée à votre chef d’opération. Vous pourrez vous connecter dès qu’il l’aura acceptée.' : 'Demande envoyée. L’équipe Zebramoon va la vérifier, vous pourrez vous connecter dès qu’elle sera approuvée.', 'success');
   } catch (err) {
     setAuthMessage(authErrorMessage(err), 'error');
   }
@@ -1372,3 +1697,25 @@ document.getElementById('forgotPassword').addEventListener('click', async event 
     setAuthMessage(authErrorMessage(err), 'error');
   }
 });
+
+// Lien d'invitation d'équipe (?equipe=<uid du chef>) : ouvre directement le
+// formulaire « rejoindre une équipe », code prérempli.
+(() => {
+  const joinBox = document.getElementById('requestJoinTeam');
+  const teamRow = document.getElementById('requestTeamRow');
+  const inviteRow = document.getElementById('requestCodeRow');
+  if (!joinBox) return;
+  const sync = () => {
+    teamRow.classList.toggle('hidden', !joinBox.checked);
+    inviteRow.classList.toggle('hidden', joinBox.checked);
+  };
+  joinBox.addEventListener('change', sync);
+  const code = new URLSearchParams(location.search).get('equipe');
+  if (code) {
+    joinBox.checked = true;
+    document.getElementById('requestTeamCode').value = code;
+    signInForm.classList.add('hidden');
+    requestForm.classList.remove('hidden');
+  }
+  sync();
+})();

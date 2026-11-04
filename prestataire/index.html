@@ -4,7 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>Zebramoon, Prestataire</title>
+<title>Zebramoon, Équipe de ménage</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Zebramoon">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:url" content="https://clean-flow-dun.vercel.app/prestataire/">
+<meta property="og:title" content="Zebramoon, Équipe de ménage">
+<meta property="og:description" content="Zebramoon coordonne le ménage, le linge et le contrôle qualité de votre logement entre deux séjours.">
+<meta property="og:image" content="https://clean-flow-dun.vercel.app/assets/images/og-prestataire.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Zebramoon">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Zebramoon, Équipe de ménage">
+<meta name="twitter:description" content="Zebramoon coordonne le ménage, le linge et le contrôle qualité de votre logement entre deux séjours.">
+<meta name="twitter:image" content="https://clean-flow-dun.vercel.app/assets/images/og-prestataire.png">
+<link rel="apple-touch-icon" href="../assets/images/apple-touch-icon.png">
 <link rel="icon" href="../assets/images/moon-nav.png">
 <link rel="stylesheet" href="../assets/fonts.css">
 <link rel="stylesheet" href="../assets/tokens.css">
@@ -48,7 +63,9 @@
         <div class="form-row"><label for="requestEmail">Email</label><input id="requestEmail" type="email" autocomplete="email" required></div>
         <div class="form-row"><label for="requestPassword">Mot de passe</label><input id="requestPassword" type="password" autocomplete="new-password" minlength="6" required></div>
       </div>
-      <div class="form-row"><label for="requestCode">Code d’invitation (si fourni par Zebramoon)</label><input id="requestCode" type="text"></div>
+      <div class="form-row"><label style="display:flex;gap:8px;align-items:center;font-weight:600;"><input id="requestJoinTeam" type="checkbox" style="width:auto;"> Je rejoins l’équipe d’un chef d’opération existant</label></div>
+      <div class="form-row hidden" id="requestTeamRow"><label for="requestTeamCode">Code d’équipe (donné par votre chef d’opération)</label><input id="requestTeamCode" type="text" autocomplete="off"></div>
+      <div class="form-row" id="requestCodeRow"><label for="requestCode">Code d’invitation (si fourni par Zebramoon)</label><input id="requestCode" type="text"></div>
       <button class="btn primary" type="submit">Envoyer la demande</button>
       <div class="note-box"><a href="#" id="switchToSignIn">J’ai déjà un compte, me connecter</a></div>
     </form>
@@ -68,6 +85,14 @@
       <h2>Missions assignées</h2>
       <div id="assignedList"></div>
       <div id="activeBooking"></div>
+    </div>
+
+    <div class="card hidden" id="teamCard">
+      <div class="eyebrow">Mon équipe</div>
+      <h2>Chef d’opération</h2>
+      <p>Envoyez ce lien à vos équipiers : chacun crée son compte sur son téléphone, puis vous l’acceptez ici. Vous répartissez ensuite chaque mission entre eux.</p>
+      <div id="teamInvite"></div>
+      <div id="teamMembersList"></div>
     </div>
 
     <details class="card" id="incidentCard">
