@@ -44,8 +44,12 @@
      est transparente et le logo est grand ; dès qu'on défile elle devient
      une pilule vitrée plus compacte, se masque quand on descend et revient
      quand on remonte. */
-  nav{ position:fixed; top:0; left:0; right:0; z-index:50; padding:14px 16px 0; transition:transform .5s var(--ease); pointer-events:none; }
-  nav.hide{ transform:translateY(-130%); }
+  /* Entrée : sortie rapide puis amorti (la barre « se pose »). Sortie : la
+     même courbe expo se terminait en quelques dizaines de ms, donc la barre
+     semblait disparaître d'un coup ; on utilise ici une courbe ease-in-out
+     plus longue, avec fondu et léger rétrécissement. */
+  nav{ position:fixed; top:0; left:0; right:0; z-index:50; padding:14px 16px 0; transition:transform .65s var(--ease), opacity .45s ease; pointer-events:none; }
+  nav.hide{ transform:translateY(-120%) scale(.97); opacity:0; transition:transform .6s cubic-bezier(.65,0,.35,1), opacity .5s ease .05s; }
   .nav-inner{ pointer-events:auto; position:relative; display:flex; align-items:center; justify-content:space-between; gap:20px; max-width:1100px; margin:0 auto; height:84px; padding:0 8px; border:1px solid transparent; border-radius:999px; background:transparent;
     transition:height .4s var(--ease), padding .4s var(--ease), background .4s ease, border-color .4s ease, box-shadow .4s ease, backdrop-filter .4s ease; }
   nav.scrolled .nav-inner{ height:62px; padding:0 14px 0 20px; background:rgba(10,10,9,0.82); -webkit-backdrop-filter:blur(22px) saturate(1.3); backdrop-filter:blur(22px) saturate(1.3); border-color:var(--line); box-shadow:0 12px 44px rgba(0,0,0,.5); }
