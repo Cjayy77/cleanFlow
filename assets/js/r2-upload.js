@@ -40,9 +40,28 @@ async function workerFetch(path, { method = 'GET', body } = {}) {
   return data;
 }
 
+// PUT via XMLHttpRequest : fetch() ne donne pas la progression de l'envoi.
+function putWithProgress(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'image/jpeg');
+    if (xhr.upload && typeof onProgress === 'function') {
+      xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+    }
+    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300
+      ? resolve()
+      : reject(new WorkerError(`Échec de l'envoi vers le stockage (${xhr.status})`, xhr.status)));
+    xhr.onerror = () => reject(new WorkerError('Connexion interrompue pendant l’envoi de la photo.', 0));
+    xhr.ontimeout = () => reject(new WorkerError('L’envoi de la photo a pris trop de temps.', 0));
+    xhr.timeout = 120000;
+    xhr.send(file);
+  });
+}
+
 // Upload direct navigateur -> R2 (scope: 'bookings' | 'incidents' | 'welcomer').
 // Retourne l'objectKey à stocker dans Firestore à la place de downloadUrl.
-export async function uploadPhotoToR2({ bookingId, scope, file }) {
+export async function uploadPhotoToR2({ bookingId, scope, file, onProgress }) {
   const { uploadUrl, objectKey } = await workerFetch('/photos/upload-url', {
     method: 'POST',
     body: {
@@ -53,12 +72,7 @@ export async function uploadPhotoToR2({ bookingId, scope, file }) {
     },
   });
 
-  const putRes = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type || 'image/jpeg' },
-    body: file,
-  });
-  if (!putRes.ok) throw new WorkerError(`Échec de l'envoi vers le stockage (${putRes.status})`, putRes.status);
+  await putWithProgress(uploadUrl, file, onProgress);
 
   await workerFetch('/photos/verify', { method: 'POST', body: { bookingId, scope, objectKey } });
 

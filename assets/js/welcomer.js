@@ -8,6 +8,7 @@ import {
   formatShortDate,
   formatBookingStatus,
   authErrorMessage,
+  storageErrorMessage,
   withButtonLoading,
   withTimeout,
   resetPassword,
@@ -286,12 +287,16 @@ function buildValidationForm(booking) {
   const preview = document.createElement('div'); preview.className = 'wc-photos';
   const fileIn = document.createElement('input'); fileIn.type = 'file'; fileIn.accept = 'image/*'; fileIn.multiple = true;
   fileIn.addEventListener('change', async () => {
-    for (const file of Array.from(fileIn.files || [])) {
+    const files = Array.from(fileIn.files || []);
+    for (const [i, file] of files.entries()) {
       try {
-        const objectKey = await withTimeout(uploadPhotoToR2({ bookingId: booking.id, scope: 'welcomer', file }), 30000);
+        const label = `Photo ${i + 1} sur ${files.length}`;
+        setWorkStatus(`${label} : envoi 0 %`, 'info');
+        const objectKey = await uploadPhotoToR2({ bookingId: booking.id, scope: 'welcomer', file, onProgress: pct => setWorkStatus(`${label} : envoi ${pct} %`, 'info') });
+        setWorkStatus(`${label} envoyée.`, 'info');
         photoObjectKeys.push(objectKey);
         const img = document.createElement('img'); img.src = URL.createObjectURL(file); preview.appendChild(img);
-      } catch (e) { setWorkStatus(`Photo non envoyée : ${authErrorMessage(e)}`); }
+      } catch (e) { setWorkStatus(`Photo ${i + 1} non envoyée : ${storageErrorMessage(e)}. Sélectionnez-la de nouveau pour réessayer.`); }
     }
     fileIn.value = '';
   });
@@ -459,9 +464,11 @@ requestForm.addEventListener('submit', async event => {
   const email = document.getElementById('requestEmail').value.trim();
   const password = document.getElementById('requestPassword').value;
   const inviteCode = document.getElementById('requestCode').value.trim();
+  const contractAccepted = document.getElementById('requestContract').checked;
   try {
+    if (!contractAccepted) throw new Error('Acceptez le contrat de prestation pour envoyer la demande.');
     await withButtonLoading(requestForm.querySelector('button[type="submit"]'), () =>
-      requestTeamAccess({ role: ROLE_WELCOMER, name, email, password, phone, inviteCode }));
+      requestTeamAccess({ role: ROLE_WELCOMER, name, email, password, phone, inviteCode, contractAccepted }));
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');

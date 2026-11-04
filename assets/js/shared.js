@@ -26,6 +26,22 @@ export const ROLE_PRESTATAIRE = 'prestataire';
 export const ROLE_LIVREUR = 'livreur';
 export const ROLE_WELCOMER = 'welcomer';
 export const ROLE_MEMBRE = 'membre';
+
+// Contrat de prestation des partenaires indépendants (legal/contrat-prestataire.html).
+// Changer la version quand le texte change : la preuve d'acceptation garde la
+// version signée, nom et horodatage.
+export const CONTRACT_VERSION = '2026-11';
+
+// Texte d'accès recopié sur la réservation : consigne du client, plus la
+// mention d'un rendez-vous obligatoire pour remettre les clés si le logement
+// en exige un. Prestataire, welcomer et admin lisent ce seul champ.
+export function composeKeyAccess(property) {
+  const base = String((property && property.keyAccess) || '').trim();
+  if (!property || !property.accessMeeting) return base;
+  const note = String(property.accessMeetingNote || '').trim();
+  const rdv = `Rendez-vous obligatoire pour accéder au logement ou récupérer les clés${note ? ` : ${note}` : '.'}`;
+  return base ? `${base}\n${rdv}` : rdv;
+}
 export const ROLE_ADMIN = 'admin';
 
 // Formules Welcomer (contrôle qualité sur place). Facturables ; l'admin peut
@@ -1204,9 +1220,9 @@ export async function saveExigenceComment({ bookingId, exigenceId, propertyId, r
 // omis pour une tâche à photo unique, l'id reste identique à avant.
 // photoKey (objectKey R2) remplace photoUrl : stockage privé, voir
 // resolvePhotoUrl / r2-upload.js pour l'affichage.
-export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, slotIndex = null, file, answeredBy }) {
+export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propertyId, roomIndex = null, slotIndex = null, file, answeredBy, onProgress }) {
   const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex, slotIndex);
-  const photoKey = await uploadPhotoToR2({ bookingId, scope: 'bookings', file });
+  const photoKey = await uploadPhotoToR2({ bookingId, scope: 'bookings', file, onProgress });
   const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, slotIndex, answeredBy, photoKey, answeredAt: serverTimestamp() };
   await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
   return answerDoc;
@@ -1451,7 +1467,7 @@ export function formatBookingStatus(status) {
 // "pending", invisible et sans droits tant qu'un admin ne l'a pas approuvé
 // dans /admin/. Passe par une seconde instance Firebase pour ne pas toucher
 // à la session en cours sur la page.
-export async function requestTeamAccess({ role, name, email, password, phone, inviteCode, teamId }) {
+export async function requestTeamAccess({ role, name, email, password, phone, inviteCode, teamId, contractAccepted }) {
   const secondary = initializeApp(firebaseConfig, `access-request-${Date.now()}`);
   const secondaryAuth = getAuth(secondary);
   const secondaryDb = getFirestore(secondary);
@@ -1474,6 +1490,7 @@ export async function requestTeamAccess({ role, name, email, password, phone, in
       phone,
       inviteCode: inviteCode || '',
       ...(teamId ? { teamId } : {}),
+      ...(contractAccepted ? { contractVersion: CONTRACT_VERSION, contractName: name, contractAt: serverTimestamp() } : {}),
       accountStatus: 'pending',
       createdAt: serverTimestamp(),
     }), 15000);

@@ -538,6 +538,7 @@ function buildCatalogCard(item, type) {
   const bits = [`${item.priceHT || 0}€ HT`, `${item.priceTTC || 0}€ TTC`];
   if (type.hasCategory && item.category) bits.unshift(item.category);
   if (type.hasStock && item.stock != null) bits.push(`stock ${item.stock}`);
+  bits.push((typeof item.needsDelivery === 'boolean' ? item.needsDelivery : type.key !== 'service') ? 'avec livreur' : 'sans livreur');
   if (item.unit === 'bed') bits.push('par lit');
   else if (item.unit === 'guest') bits.push('par voyageur');
   meta.textContent = bits.join(' · ');
@@ -612,6 +613,23 @@ function catalogItemForm(type, existing) {
   });
   fUnit.append(uSpan, uSel);
 
+  // Livraison : un livreur apporte l'article au logement, ou non (prestation
+  // sur place, article déjà fourni par le prestataire).
+  const fDel = document.createElement('label');
+  fDel.className = 'form-row';
+  const dSpan = document.createElement('span');
+  dSpan.textContent = 'Livraison';
+  dSpan.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;font-weight:600;';
+  const dSel = document.createElement('select');
+  dSel.name = 'needsDelivery';
+  const delDefault = existing && typeof existing.needsDelivery === 'boolean' ? existing.needsDelivery : type.key !== 'service';
+  [['yes', 'Avec livreur (apporté au logement)'], ['no', 'Sans livreur']].forEach(([v, l]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = l;
+    if ((v === 'yes') === delDefault) o.selected = true;
+    dSel.appendChild(o);
+  });
+  fDel.append(dSpan, dSel);
+
   form.append(fName, fDesc);
   if (fCat) form.append(fCat);
   const cols = document.createElement('div');
@@ -619,7 +637,7 @@ function catalogItemForm(type, existing) {
   cols.append(fHT, fTTC);
   form.append(cols);
   if (fStock) form.append(fStock);
-  form.append(fUnit, fPhoto);
+  form.append(fUnit, fDel, fPhoto);
 
   // TTC auto-calculé depuis le HT (modifiable ensuite).
   fHT.querySelector('input').addEventListener('input', e => {
@@ -672,6 +690,7 @@ function catalogItemForm(type, existing) {
       priceTTC: Math.max(0, Number(get('priceTTC').value) || 0),
       photoUrl: get('photoUrl').value.trim(),
       unit: get('unit') ? get('unit').value : 'unit',
+      needsDelivery: get('needsDelivery').value === 'yes',
       active: true,
     };
     if (type.hasCategory) data.category = get('category').value.trim();
@@ -4256,6 +4275,13 @@ function buildAccessRequestCard(req) {
   card.appendChild(title);
   card.appendChild(meta);
   card.appendChild(code);
+  const contract = document.createElement('div');
+  contract.className = 'task-meta';
+  const accepted = req.contractAt && req.contractAt.toDate ? req.contractAt.toDate().toLocaleString('fr-FR') : '';
+  contract.textContent = req.contractVersion
+    ? `Contrat accepté : version ${req.contractVersion}, signé « ${req.contractName || req.name} »${accepted ? `, le ${accepted}` : ''}`
+    : 'Contrat non accepté';
+  card.appendChild(contract);
 
   const actions = document.createElement('div');
   actions.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap;';

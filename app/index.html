@@ -132,6 +132,8 @@
           </div>
           <div class="form-row"><label for="propertyBeds">Lits</label><input id="propertyBeds" type="number" min="0" step="1" inputmode="numeric"></div>
           <div class="form-row"><label for="propertyKeyAccess">Accès & emplacement des clés</label><textarea id="propertyKeyAccess" placeholder="Ex. boîte à clés à gauche de la porte, code 1234 · ou : gardien au rez-de-chaussée · ou digicode 45B12"></textarea><div class="field-hint">Visible par le prestataire et le welcomer une fois la mission assignée, indiquez précisément comment récupérer les clés.</div></div>
+          <div class="form-row"><label style="display:flex;gap:8px;align-items:center;font-weight:600;"><input id="propertyAccessMeeting" type="checkbox" style="width:auto;"> Un rendez-vous est nécessaire pour accéder au logement ou récupérer les clés</label></div>
+          <div class="form-row hidden" id="propertyAccessMeetingRow"><label for="propertyAccessMeetingNote">Contact et disponibilités</label><input id="propertyAccessMeetingNote" type="text" placeholder="Ex. Marie, 06 12 34 56 78, du lundi au vendredi après 17 h"></div>
           <div class="form-row"><label for="propertyNotes">Autres notes / consignes</label><textarea id="propertyNotes"></textarea></div>
           <button class="btn primary" type="submit" id="propertySubmitBtn">Enregistrer le logement</button>
           <div class="note-box hidden" id="cancelEditWrap"><a href="#" id="cancelEditBtn">Annuler la modification</a></div>
