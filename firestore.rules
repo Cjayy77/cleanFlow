@@ -187,10 +187,14 @@ service cloud.firestore {
         // Emplacement des clés / accès, recopié du bien pour que le prestataire
         // et le welcomer (qui ne lisent pas le bien) sachent comment entrer.
         && request.resource.data.keyAccess is string
+        // Autorisation d'accès au logement donnée par le client à la réservation.
+        && request.resource.data.consentVersion is string
+        && request.resource.data.consentName is string
+        && request.resource.data.consentName.size() > 1
         // Liste blanche des champs : empêche le client d'injecter des champs
         // réservés à l'admin (adjustment, rating, verifiedBy, adminNote…) qui
         // fausseraient la vérification ou la compta.
-        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'keyAccess', 'prestataireId', 'livreurId', 'welcomerId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'wcCount', 'hasSofaBed', 'hasTerrace', 'hasClim', 'keyBoxCount', 'smokeDetectorCount', 'clientEmail', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'welcomerService', 'welcomerFee', 'price', 'scheduledDate', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['clientId', 'propertyId', 'propertyAddress', 'keyAccess', 'prestataireId', 'livreurId', 'welcomerId', 'serviceType', 'surface', 'zone', 'propertyType', 'beds', 'bathrooms', 'guests', 'hours', 'bedrooms', 'wcCount', 'hasSofaBed', 'hasTerrace', 'hasClim', 'keyBoxCount', 'smokeDetectorCount', 'clientEmail', 'consentVersion', 'consentName', 'consentAt', 'kitCount', 'linenRequested', 'prestationPrice', 'amenitiesPrice', 'travelFee', 'commission', 'extras', 'extrasHT', 'welcomerService', 'welcomerFee', 'price', 'scheduledDate', 'status', 'createdAt'])
         && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.ownerId == request.auth.uid;
 
       allow update: if isSignedIn() && (
@@ -275,6 +279,9 @@ service cloud.firestore {
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prestatairePay', 'adjustment', 'adjustmentNote']))
       );
+
+      // L'admin peut supprimer une mission (refusée, périmée, créée par erreur).
+      allow delete: if isAdmin();
     }
 
     // Verrou de créneau : un document par (logement, date), jamais modifiable
