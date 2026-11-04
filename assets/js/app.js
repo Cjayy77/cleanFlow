@@ -15,6 +15,7 @@ import {
   zoneFromPostalCode,
   zoneLabel,
   formatShortDate,
+  composeKeyAccess,
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
@@ -82,6 +83,11 @@ const propertyBathrooms = document.getElementById('propertyBathrooms');
 const propertyBeds = document.getElementById('propertyBeds');
 const propertyNotes = document.getElementById('propertyNotes');
 const propertyKeyAccess = document.getElementById('propertyKeyAccess');
+const propertyAccessMeeting = document.getElementById('propertyAccessMeeting');
+const propertyAccessMeetingRow = document.getElementById('propertyAccessMeetingRow');
+const propertyAccessMeetingNote = document.getElementById('propertyAccessMeetingNote');
+function syncAccessMeeting() { propertyAccessMeetingRow.classList.toggle('hidden', !propertyAccessMeeting.checked); }
+propertyAccessMeeting.addEventListener('change', syncAccessMeeting);
 const propertyFormTitle = document.getElementById('propertyFormTitle');
 const propertySubmitBtn = document.getElementById('propertySubmitBtn');
 const cancelEditWrap = document.getElementById('cancelEditWrap');
@@ -127,6 +133,9 @@ function setPropertyFormMode(property = null) {
   propertyBeds.value = property && property.beds != null ? property.beds : '';
   propertyNotes.value = property ? (property.notes || '') : '';
   if (propertyKeyAccess) propertyKeyAccess.value = property ? (property.keyAccess || '') : '';
+  propertyAccessMeeting.checked = !!(property && property.accessMeeting);
+  propertyAccessMeetingNote.value = property ? (property.accessMeetingNote || '') : '';
+  syncAccessMeeting();
   if (property) {
     propertyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
     propertyStreet.focus();
@@ -892,6 +901,8 @@ propertyForm.addEventListener('submit', async event => {
   const beds = propertyBeds.value === '' ? null : Math.max(0, Math.floor(Number(propertyBeds.value) || 0));
   const notes = propertyNotes.value.trim();
   const keyAccess = propertyKeyAccess ? propertyKeyAccess.value.trim() : '';
+  const accessMeeting = propertyAccessMeeting.checked;
+  const accessMeetingNote = accessMeeting ? propertyAccessMeetingNote.value.trim() : '';
   if (!street || !city || !postalCode) {
     setAppStatus('Veuillez renseigner l’adresse complète du logement.', 'error');
     return;
@@ -900,7 +911,7 @@ propertyForm.addEventListener('submit', async event => {
     setAppStatus('Indiquez la surface du logement (en m²) : elle détermine le tarif.', 'error');
     return;
   }
-  const fields = { street, city, postalCode, surface, zone, propertyType, bedrooms, bathrooms, beds, notes, keyAccess };
+  const fields = { street, city, postalCode, surface, zone, propertyType, bedrooms, bathrooms, beds, notes, keyAccess, accessMeeting, accessMeetingNote };
   try {
     if (editingPropertyId) {
       const propertyId = editingPropertyId;
@@ -911,7 +922,7 @@ propertyForm.addEventListener('submit', async event => {
       await withButtonLoading(propertySubmitBtn, () => withTimeout((async () => {
         await updateDoc(doc(db, 'properties', propertyId), fields);
         await Promise.all(affected.map(b =>
-          updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress, keyAccess })));
+          updateDoc(doc(db, 'bookings', b.id), { propertyAddress: newAddress, keyAccess: composeKeyAccess(fields) })));
       })(), 20000));
       setPropertyFormMode(null);
       setAppStatus(affected.length

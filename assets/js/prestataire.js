@@ -38,6 +38,7 @@ import {
   addBookingComment,
   buildClientPriceBreakdown,
   formatShortDate,
+  welcomerTier,
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
@@ -812,34 +813,54 @@ function buildPhotoSlotControl(exigence, instance, canAnswer, slotIndex, slotLab
     slotEl.appendChild(span);
   }
   if (canAnswer) {
+    const status = document.createElement('div');
+    status.className = 'photo-status task-meta';
+    status.setAttribute('role', 'status');
+    const send = async file => {
+      setWorkStatus('');
+      status.innerHTML = '';
+      status.classList.remove('error');
+      slotEl.classList.add('uploading');
+      slotEl.style.setProperty('--pct', '0%');
+      status.textContent = 'Envoi 0 %';
+      try {
+        const saved = await uploadExigenceAnswerImage({
+          bookingId: activeBooking.id,
+          exigenceId: exigence.id,
+          propertyId: activeBooking.propertyId,
+          roomIndex: instance.roomIndex,
+          slotIndex,
+          file,
+          answeredBy: currentUser.uid,
+          onProgress: pct => { slotEl.style.setProperty('--pct', pct + '%'); status.textContent = `Envoi ${pct} %`; },
+        });
+        activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
+        renderActiveBooking();
+      } catch (e) {
+        slotEl.classList.remove('uploading');
+        status.classList.add('error');
+        status.textContent = `Photo non envoyée : ${storageErrorMessage(e)} `;
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn ghost';
+        retry.textContent = 'Réessayer';
+        retry.onclick = () => send(file);
+        status.appendChild(retry);
+      }
+    };
     slotEl.onclick = () => {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
       fileInput.accept = 'image/*';
-      fileInput.onchange = async event => {
+      fileInput.onchange = event => {
         const file = event.target.files[0];
-        if (!file) return;
-        setWorkStatus('');
-        slotEl.classList.add('uploading');
-        try {
-          const saved = await withTimeout(uploadExigenceAnswerImage({
-            bookingId: activeBooking.id,
-            exigenceId: exigence.id,
-            propertyId: activeBooking.propertyId,
-            roomIndex: instance.roomIndex,
-            slotIndex,
-            file,
-            answeredBy: currentUser.uid,
-          }), 30000);
-          activeExigenceAnswers[answerId] = { ...activeExigenceAnswers[answerId], ...saved };
-          renderActiveBooking();
-        } catch (e) {
-          slotEl.classList.remove('uploading');
-          setWorkStatus(`Photo non envoyée : ${storageErrorMessage(e)}`);
-        }
+        if (file) send(file);
       };
       fileInput.click();
     };
+    wrap.appendChild(slotEl);
+    wrap.appendChild(status);
+    return wrap;
   }
   wrap.appendChild(slotEl);
   return wrap;
@@ -1288,6 +1309,36 @@ function buildCommentsTile(canUpload) {
   return details;
 }
 
+// Ce que le client a commandé en plus du ménage : le prestataire sait quoi
+// réaliser, ce qui est livré par un livreur et ce qu'il doit installer.
+function buildOrderPanel(booking) {
+  const box = document.createElement('div');
+  box.className = 'key-access';
+  const head = document.createElement('div');
+  head.className = 'key-access-head';
+  head.textContent = 'À prévoir pour cette mission';
+  box.appendChild(head);
+  const lines = [];
+  lines.push(booking.serviceType === 'deep' ? 'Ménage en profondeur' : 'Ménage normal');
+  const extras = Array.isArray(booking.extras) ? booking.extras : [];
+  extras.forEach(e => {
+    const delivered = typeof e.needsDelivery === 'boolean' ? e.needsDelivery : e.type !== 'service';
+    lines.push(`${e.name} × ${e.qty} : ${delivered ? 'livré par un livreur, à installer dans le logement' : 'à réaliser sur place'}`);
+  });
+  if (booking.kitCount) lines.push(`${booking.kitCount} kit(s) de bienvenue : livrés par un livreur, à installer dans le logement`);
+  if (booking.welcomerService) {
+    const tier = welcomerTier(booking.welcomerService);
+    lines.push(`Contrôle qualité par un Welcomer après le ménage${tier ? ` (${tier.label})` : ''}`);
+  }
+  lines.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'key-access-body';
+    row.textContent = t;
+    box.appendChild(row);
+  });
+  return box;
+}
+
 function renderActiveBooking() {
   if (timerTickId) { clearInterval(timerTickId); timerTickId = null; }
   activeBookingContainer.innerHTML = '';
@@ -1318,6 +1369,8 @@ function renderActiveBooking() {
     keyBox.append(kh, kt);
     activeBookingContainer.appendChild(keyBox);
   }
+
+  activeBookingContainer.appendChild(buildOrderPanel(activeBooking));
 
   if (activeBooking.status === 'rejected' && (activeBooking.adminNote || activeBooking.welcomerNote)) {
     const note = document.createElement('div');
@@ -1666,14 +1719,16 @@ requestForm.addEventListener('submit', async event => {
   const email = document.getElementById('requestEmail').value.trim();
   const password = document.getElementById('requestPassword').value;
   const inviteCode = document.getElementById('requestCode').value.trim();
+  const contractAccepted = document.getElementById('requestContract').checked;
   const joinTeam = document.getElementById('requestJoinTeam').checked;
   const teamCode = document.getElementById('requestTeamCode').value.trim();
   try {
+    if (!joinTeam && !contractAccepted) throw new Error('Acceptez le contrat de prestation pour envoyer la demande.');
     if (joinTeam && !teamCode) throw new Error('Saisissez le code d’équipe donné par votre chef d’opération.');
     await withButtonLoading(requestForm.querySelector('button[type="submit"]'), () =>
       requestTeamAccess(joinTeam
         ? { role: ROLE_MEMBRE, name, email, password, phone, teamId: teamCode }
-        : { role: ROLE_PRESTATAIRE, name, email, password, phone, inviteCode }));
+        : { role: ROLE_PRESTATAIRE, name, email, password, phone, inviteCode, contractAccepted }));
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
@@ -1708,6 +1763,8 @@ document.getElementById('forgotPassword').addEventListener('click', async event 
   const sync = () => {
     teamRow.classList.toggle('hidden', !joinBox.checked);
     inviteRow.classList.toggle('hidden', joinBox.checked);
+    const contractRow = document.getElementById('requestContractRow');
+    if (contractRow) contractRow.classList.toggle('hidden', joinBox.checked);
   };
   joinBox.addEventListener('change', sync);
   const code = new URLSearchParams(location.search).get('equipe');

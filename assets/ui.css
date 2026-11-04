@@ -432,3 +432,15 @@ textarea{ min-height:110px; resize:vertical; }
 .team-split-label{ font-weight:600; font-size:14px; color:var(--ink); }
 .team-split-row select, .team-split-row input[type=text]{ min-width:180px; }
 @media (max-width:560px){ .team-split-row{ grid-template-columns:1fr; } .team-split-row select, .team-split-row input[type=text]{ width:100%; } }
+
+/* Progression d'envoi des photos */
+.photo-slot.uploading{ background-image:linear-gradient(to right, rgba(255,255,255,.14) var(--pct,0%), transparent var(--pct,0%)); }
+.photo-status{ margin-top:6px; max-width:200px; }
+.photo-status.error{ color:var(--danger-ink); }
+.photo-status .btn{ margin-top:6px; padding:6px 12px; }
+
+/* Transition d'arrivée sur une page : fondu discret, sans déplacement (un
+   transform sur body casserait les éléments position:fixed). */
+@keyframes pageIn{ from{ opacity:0; } to{ opacity:1; } }
+body{ animation:pageIn .35s ease-out both; }
+@media (prefers-reduced-motion: reduce){ body{ animation:none; } }

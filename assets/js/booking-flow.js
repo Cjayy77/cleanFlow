@@ -21,6 +21,7 @@ import {
   WELCOMER_TIERS,
   welcomerTier,
   formatShortDate,
+  composeKeyAccess,
   registerClient,
   loadUserDoc,
   authErrorMessage,
@@ -703,7 +704,7 @@ function extrasList() {
     .map(i => {
       const qty = draft.extras[i.id];
       const priceHT = Number(i.priceHT) || 0;
-      return { id: i.id, name: i.name || '', type: i.type || '', priceHT, priceTTC: Number(i.priceTTC) || 0, qty, lineHT: priceHT * qty };
+      return { id: i.id, name: i.name || '', type: i.type || '', priceHT, priceTTC: Number(i.priceTTC) || 0, qty, lineHT: priceHT * qty, needsDelivery: i.needsDelivery };
     });
 }
 
@@ -988,7 +989,7 @@ async function finalizeBooking() {
       throw err;
     }
 
-    const extras = extrasList().map(e => ({ id: e.id, name: e.name, type: e.type, priceHT: e.priceHT, priceTTC: e.priceTTC, qty: e.qty }));
+    const extras = extrasList().map(e => ({ id: e.id, name: e.name, type: e.type, priceHT: e.priceHT, priceTTC: e.priceTTC, qty: e.qty, needsDelivery: typeof e.needsDelivery === 'boolean' ? e.needsDelivery : e.type !== 'service' }));
     const extrasHT = extras.reduce((s, e) => s + e.priceHT * e.qty, 0);
     const welcomerFee = draft.welcomerService ? (welcomerTier(draft.welcomerService) || {}).fee || 0 : 0;
     const finalHT = quote.total + extrasHT + welcomerFee;
@@ -1018,7 +1019,7 @@ async function finalizeBooking() {
         consentAt: serverTimestamp(),
         propertyId,
         propertyAddress: `${property.street}, ${property.city}`,
-        keyAccess: property.keyAccess || '',
+        keyAccess: composeKeyAccess(property),
         prestataireId: null,
         livreurId: null,
         welcomerId: null,

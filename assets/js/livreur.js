@@ -214,9 +214,11 @@ requestForm.addEventListener('submit', async event => {
   const email = document.getElementById('requestEmail').value.trim();
   const password = document.getElementById('requestPassword').value;
   const inviteCode = document.getElementById('requestCode').value.trim();
+  const contractAccepted = document.getElementById('requestContract').checked;
   try {
+    if (!contractAccepted) throw new Error('Acceptez le contrat de prestation pour envoyer la demande.');
     await withButtonLoading(requestForm.querySelector('button[type="submit"]'), () =>
-      requestTeamAccess({ role: ROLE_LIVREUR, name, email, password, phone, inviteCode }));
+      requestTeamAccess({ role: ROLE_LIVREUR, name, email, password, phone, inviteCode, contractAccepted }));
     requestForm.reset();
     requestForm.classList.add('hidden');
     signInForm.classList.remove('hidden');
