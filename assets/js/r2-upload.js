@@ -59,7 +59,7 @@ function putWithProgress(url, file, onProgress) {
   });
 }
 
-// Upload direct navigateur -> R2 (scope: 'bookings' | 'incidents' | 'welcomer').
+// Upload direct navigateur -> R2 (scope: 'bookings' | 'incidents' | 'welcomer' | 'deliveries').
 // Retourne l'objectKey à stocker dans Firestore à la place de downloadUrl.
 export async function uploadPhotoToR2({ bookingId, scope, file, onProgress }) {
   const { uploadUrl, objectKey } = await workerFetch('/photos/upload-url', {

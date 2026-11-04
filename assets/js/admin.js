@@ -3522,6 +3522,18 @@ function renderMissionsToAssign() {
   });
 }
 
+// Ce qu'un livreur apporte pour une réservation : les kits, puis chaque
+// option marquée « avec livreur » au catalogue.
+function deliveryLines(booking) {
+  const lines = [];
+  if (booking.kitCount) lines.push(`${booking.kitCount} kit${booking.kitCount > 1 ? 's' : ''}`);
+  (booking.extras || []).forEach(e => {
+    const delivered = typeof e.needsDelivery === 'boolean' ? e.needsDelivery : e.type !== 'service';
+    if (delivered && e.type !== 'service') lines.push(`${e.name} × ${e.qty}`);
+  });
+  return lines;
+}
+
 function renderKitsToAssign() {
   if (!kitsToAssign) return;
   kitsToAssign.innerHTML = '';
@@ -3542,7 +3554,7 @@ function renderKitsToAssign() {
 
   needing.forEach(booking => {
     const kitsPrice = comptaLine(booking).kits;
-    const metaText = `${formatShortDate(booking.scheduledDate)} · ${booking.kitCount ? `${booking.kitCount} kit${booking.kitCount > 1 ? 's' : ''} à fournir` : 'kits à fournir'}${kitsPrice ? ` · ${kitsPrice}€ HT de kits` : ''} · dépôt kits / linge propre + récupération`;
+    const metaText = `${formatShortDate(booking.scheduledDate)} · ${deliveryLines(booking).join(', ') || 'à livrer'}${kitsPrice ? ` · ${kitsPrice}€ HT de kits` : ''} · dépôt kits / linge propre + récupération`;
     appendAssignCard(kitsToAssign, booking, rankedLivreurs, 'Choisir un livreur…',
       'Aucun livreur approuvé. Approuvez d’abord une demande d’accès.', metaText,
       async (livreurId, assignBtn) => {
@@ -3886,6 +3898,35 @@ function renderBookingProperty(booking) {
     consent.textContent = 'Aucune autorisation d’accès enregistrée pour cette réservation.';
   }
   host.appendChild(consent);
+  appendDeliveryProof(host, booking);
+}
+
+// Preuve de livraison du livreur : heure et photo déposées sur place.
+function appendDeliveryProof(host, booking) {
+  if (!booking.linenRequested) return;
+  const head = document.createElement('div');
+  head.className = 'eyebrow';
+  head.style.marginTop = '22px';
+  head.textContent = 'Livraison';
+  host.appendChild(head);
+  const line = document.createElement('div');
+  line.className = 'task-meta';
+  if (!booking.linenDone) {
+    line.textContent = booking.livreurId ? 'Livraison assignée, pas encore confirmée par le livreur.' : 'Aucun livreur assigné.';
+    host.appendChild(line);
+    return;
+  }
+  const when = booking.deliveredAt && booking.deliveredAt.toDate ? booking.deliveredAt.toDate() : null;
+  line.textContent = when ? `Livré le ${when.toLocaleDateString('fr-FR')} à ${when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Livraison confirmée (sans horodatage).';
+  host.appendChild(line);
+  if (booking.deliveryPhotoKey) {
+    const img = document.createElement('img');
+    img.alt = 'Preuve de livraison';
+    img.className = 'delivery-photo';
+    host.appendChild(img);
+    getPhotoDownloadUrl({ bookingId: booking.id, scope: 'deliveries', objectKey: booking.deliveryPhotoKey })
+      .then(url => { img.src = url; }).catch(() => { img.remove(); });
+  }
 }
 
 function renderBookingDetail() {
