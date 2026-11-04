@@ -1695,6 +1695,84 @@ export function mountAppShell({ views, screen, defaultKey, onShow }) {
   return { go, current: () => current };
 }
 
+// Contrôle segmenté (pilules) : une rangée de choix, un seul actif. Pur
+// affichage ; l'appelant décide quoi montrer dans onChange.
+export function segmentedControl({ items, current, onChange }) {
+  const bar = document.createElement('div');
+  bar.className = 'segbar';
+  bar.setAttribute('role', 'tablist');
+  const buttons = new Map();
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'seg-pill';
+    b.setAttribute('role', 'tab');
+    const label = document.createElement('span');
+    label.textContent = it.label;
+    b.appendChild(label);
+    const count = document.createElement('span');
+    count.className = 'seg-count';
+    if (it.count) count.textContent = String(it.count);
+    b.appendChild(count);
+    b.addEventListener('click', () => { set(it.key); if (onChange) onChange(it.key); });
+    buttons.set(it.key, b);
+    bar.appendChild(b);
+  });
+  function set(key) {
+    buttons.forEach((b, k) => { b.classList.toggle('active', k === key); b.setAttribute('aria-selected', String(k === key)); });
+  }
+  function setCount(key, n) {
+    const b = buttons.get(key);
+    if (b) b.querySelector('.seg-count').textContent = n ? String(n) : '';
+  }
+  set(current);
+  return { el: bar, set, setCount, buttons };
+}
+
+// Sous-navigation d'une vue : chaque segment regroupe des éléments déjà dans
+// la page, un seul groupe visible à la fois. Un segment dont tous les
+// éléments portent .hidden disparaît de la barre ; avec followReveal, un
+// segment qui réapparaît (ex. un logement sélectionné) devient le segment actif.
+export function mountSegments(host, segments, { followReveal = false } = {}) {
+  segments = segments.map(s => ({ ...s, els: (s.els || []).filter(Boolean) })).filter(s => s.els.length);
+  if (segments.length < 2 || !host) return null;
+  let current = segments[0].key;
+  const visible = s => s.els.some(el => !el.classList.contains('hidden'));
+  const ctl = segmentedControl({ items: segments, current, onChange: key => show(key) });
+  ctl.el.classList.add('segbar-sticky');
+  host.insertBefore(ctl.el, host.firstChild);
+  segments.forEach(s => s.els.forEach(el => {
+    el.classList.add('in-seg');
+    if (el.tagName === 'DETAILS') { el.open = true; el.classList.add('as-view'); }
+  }));
+  function show(key) {
+    current = key;
+    ctl.set(key);
+    segments.forEach(s => s.els.forEach(el => el.classList.toggle('seg-off', s.key !== key)));
+  }
+  const state = new Map(segments.map(s => [s.key, visible(s)]));
+  function sync() {
+    let revealed = null;
+    segments.forEach(s => {
+      const v = visible(s);
+      if (v && !state.get(s.key)) revealed = s.key;
+      state.set(s.key, v);
+      ctl.buttons.get(s.key).classList.toggle('hidden', !v);
+      if (typeof s.count === 'function') ctl.setCount(s.key, s.count());
+    });
+    if (followReveal && revealed) show(revealed);
+    else if (!state.get(current)) {
+      const first = segments.find(s => state.get(s.key));
+      if (first) show(first.key);
+    }
+  }
+  const observer = new MutationObserver(sync);
+  segments.forEach(s => s.els.forEach(el => observer.observe(el, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true })));
+  show(current);
+  sync();
+  return { show, current: () => current };
+}
+
 // Raccourci pour les espaces à sections simples (une ou plusieurs cartes par vue).
 export function initSectionTabs(mountEl, sections, options = {}) {
   return mountAppShell({

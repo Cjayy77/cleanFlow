@@ -39,6 +39,7 @@ import {
   buildClientPriceBreakdown,
   formatShortDate,
   welcomerTier,
+  segmentedControl,
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
@@ -107,6 +108,7 @@ let assignedBookings = [];
 let ratedBookings = [];
 let allMyBookings = [];
 let selectedMissionId = null;
+let missionSeg = 'checklist';
 let activeBooking = null;
 let activePhotoRecords = {};
 // Liste normalisée issue de computeChecklistItems() : fusion de la
@@ -207,7 +209,7 @@ function showApp() {
   const first = (currentUser.name || '').split(' ')[0];
   const tabs = [{ id: 'missionsCard', key: 'missions', label: 'Missions', icon: 'missions', title: 'Missions', subtitle: first ? `Bonjour ${first}. Choisissez une mission pour voir sa checklist.` : 'Choisissez une mission pour voir sa checklist.' }];
   if (!member) tabs.push({ id: 'teamCard', key: 'equipe', label: 'Équipe', icon: 'team', title: 'Mon équipe', subtitle: 'Invitez vos équipiers, acceptez-les, puis répartissez chaque mission.' });
-  tabs.push({ id: 'incidentCard', key: 'incident', label: 'Incident', icon: 'incident', title: 'Signaler un incident', subtitle: 'Objet cassé, objet perdu ou autre problème pendant la mission en cours.' });
+  tabs.push({ id: 'incidentCard', key: 'incident', label: 'Incident', icon: 'incident', title: 'Signaler un incident', subtitle: 'Choisissez la mission concernée. Vous pouvez aussi signaler depuis l’onglet Incidents de chaque mission.' });
   if (!member) tabs.push(
     { id: 'ratingsCard', key: 'evaluations', label: 'Évaluations', icon: 'star', title: 'Mes évaluations', subtitle: 'Les notes laissées par les clients après vérification.' },
     { id: 'comptaCard', key: 'compta', label: 'Compta', icon: 'wallet', title: 'Ma rémunération', subtitle: 'Zebramoon règle l’équipe ; le chef d’opération répartit entre les équipiers.' },
@@ -487,6 +489,7 @@ document.getElementById('missionsBack')?.addEventListener('click', () => {
 });
 
 function renderAssignedList() {
+  renderIncidentMissionOptions();
   assignedList.innerHTML = '';
   if (missionsCount) missionsCount.textContent = assignedBookings.length ? String(assignedBookings.length) : '';
   missionsMd.classList.toggle('single', assignedBookings.length <= 1);
@@ -517,6 +520,7 @@ function renderAssignedList() {
     item.onclick = async () => {
       missionsMd.classList.add('show-detail');
       window.scrollTo(0, 0);
+      if (selectedMissionId !== booking.id) missionSeg = 'checklist';
       selectedMissionId = booking.id;
       activeBooking = booking;
       await loadPhotosForBooking(booking.id);
@@ -1399,17 +1403,6 @@ function renderActiveBooking() {
   activeBookingContainer.appendChild(title);
   activeBookingContainer.appendChild(text);
 
-  if (activeBooking.keyAccess) {
-    const keyBox = document.createElement('div');
-    keyBox.className = 'key-access';
-    const kh = document.createElement('div'); kh.className = 'key-access-head'; kh.textContent = '🔑 Accès & clés';
-    const kt = document.createElement('div'); kt.className = 'key-access-body'; kt.textContent = activeBooking.keyAccess;
-    keyBox.append(kh, kt);
-    activeBookingContainer.appendChild(keyBox);
-  }
-
-  activeBookingContainer.appendChild(buildOrderPanel(activeBooking));
-
   if (activeBooking.status === 'rejected' && (activeBooking.adminNote || activeBooking.welcomerNote)) {
     const note = document.createElement('div');
     note.className = 'status-banner';
@@ -1417,17 +1410,55 @@ function renderActiveBooking() {
     activeBookingContainer.appendChild(note);
   }
 
+  // Une mission = des sections : checklist, infos du logement, répartition
+  // d'équipe, rapport (coûts, pièces jointes, commentaires) et incidents de
+  // CETTE mission. Une seule section visible à la fois.
+  const panes = {};
+  const segs = [{ key: 'checklist', label: 'Checklist' }, { key: 'infos', label: 'Infos' }];
+  if (!isMember() && activeExigences.length) segs.push({ key: 'equipe', label: 'Équipe' });
+  if (!isMember()) segs.push({ key: 'rapport', label: 'Rapport' });
+  segs.push({ key: 'incidents', label: 'Incidents', count: activeIncidents.length });
+  if (!segs.some(sg => sg.key === missionSeg)) missionSeg = 'checklist';
+  const segCtl = segmentedControl({
+    items: segs,
+    current: missionSeg,
+    onChange: key => {
+      missionSeg = key;
+      Object.entries(panes).forEach(([k, el]) => el.classList.toggle('seg-off', k !== key));
+    },
+  });
+  segCtl.el.classList.add('segbar-sticky', 'mission-segbar');
+  activeBookingContainer.appendChild(segCtl.el);
+  segs.forEach(sg => {
+    const pane = document.createElement('div');
+    pane.className = 'mission-pane' + (sg.key === missionSeg ? '' : ' seg-off');
+    panes[sg.key] = pane;
+    activeBookingContainer.appendChild(pane);
+  });
+
+  if (activeBooking.keyAccess) {
+    const keyBox = document.createElement('div');
+    keyBox.className = 'key-access';
+    const kh = document.createElement('div'); kh.className = 'key-access-head'; kh.textContent = '🔑 Accès & clés';
+    const kt = document.createElement('div'); kt.className = 'key-access-body'; kt.textContent = activeBooking.keyAccess;
+    keyBox.append(kh, kt);
+    panes.infos.appendChild(keyBox);
+  }
+
+  panes.infos.appendChild(buildOrderPanel(activeBooking));
+  panes.incidents.appendChild(buildMissionIncidents());
+
   const canUpload = ['accepted', 'rejected'].includes(activeBooking.status);
 
-  if (!isMember()) activeBookingContainer.appendChild(renderTimerBlock(canUpload));
-  if (isMember()) activeBookingContainer.appendChild(buildMyTasksPanel(canUpload));
-  else if (activeExigences.length) activeBookingContainer.appendChild(buildSplitPanel());
+  if (!isMember()) panes.checklist.appendChild(renderTimerBlock(canUpload));
+  if (isMember()) panes.checklist.appendChild(buildMyTasksPanel(canUpload));
+  else if (activeExigences.length) panes.equipe.appendChild(buildSplitPanel());
 
   if (activeExigences.length) {
-    activeBookingContainer.appendChild(renderExigenceChecklist(canUpload));
+    panes.checklist.appendChild(renderExigenceChecklist(canUpload));
     const total = totalRequiredExigenceAnswers();
     const answered = countAnsweredExigences();
-    if (!isMember()) activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${answered}/${total})`, !canUpload || answered < total));
+    if (!isMember()) panes.checklist.appendChild(buildSubmitButton(`Envoyer pour vérification (${answered}/${total})`, !canUpload || answered < total));
   } else {
     const photoGrid = document.createElement('div');
     photoGrid.className = 'photo-grid';
@@ -1471,23 +1502,23 @@ function renderActiveBooking() {
       }
       photoGrid.appendChild(slotEl);
     });
-    activeBookingContainer.appendChild(photoGrid);
+    panes.checklist.appendChild(photoGrid);
 
     const count = countUploadedPhotos();
-    activeBookingContainer.appendChild(buildSubmitButton(`Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`, !canUpload || count < PHOTO_SLOTS.length));
+    if (!isMember()) panes.checklist.appendChild(buildSubmitButton(`Envoyer pour vérification (${count}/${PHOTO_SLOTS.length})`, !canUpload || count < PHOTO_SLOTS.length));
   }
 
   if (!isMember()) {
-    activeBookingContainer.appendChild(buildCostsTile());
-    activeBookingContainer.appendChild(buildAttachmentsTile());
-    activeBookingContainer.appendChild(buildCommentsTile(canUpload));
+    panes.rapport.appendChild(buildCostsTile());
+    panes.rapport.appendChild(buildAttachmentsTile());
+    panes.rapport.appendChild(buildCommentsTile(canUpload));
   }
 
   if (!isMember() && (activeBooking.status === 'accepted' || activeBooking.status === 'rejected')) {
     const releaseBtn = document.createElement('button');
     releaseBtn.className = 'btn ghost danger';
     releaseBtn.type = 'button';
-    releaseBtn.style.marginLeft = '12px';
+    releaseBtn.style.marginTop = '18px';
     // Confirmation en deux temps sur le bouton lui-même : pas de window.confirm
     // (qui reste muet si les boîtes de dialogue ont été bloquées par le
     // navigateur), donc un clic produit toujours un retour visible.
@@ -1527,7 +1558,7 @@ function renderActiveBooking() {
         setWorkStatus(`Impossible de décliner la mission : ${authErrorMessage(e)}`);
       }
     };
-    activeBookingContainer.appendChild(releaseBtn);
+    panes.infos.appendChild(releaseBtn);
   }
 }
 
@@ -1692,48 +1723,149 @@ signOutBtn.addEventListener('click', async () => {
   activePhotoRecords = {};
 });
 
-incidentForm.addEventListener('submit', async event => {
-  event.preventDefault();
-  if (!activeBooking) {
-    setIncidentMessage('Aucune mission active à laquelle rattacher le signalement.');
-    return;
-  }
-  const type = incidentType.value;
-  const description = incidentDescription.value.trim();
-  const file = incidentPhoto.files[0];
-  if (!description) {
-    setIncidentMessage('Veuillez décrire l’incident.');
-    return;
-  }
-
-  const incidentPayload = {
-    bookingId: activeBooking.id,
+// Un incident est toujours rattaché à une mission précise. Le chef
+// d'opération comme les équipiers peuvent en signaler.
+async function sendIncident(booking, { type, description, file }, button) {
+  const payload = {
+    bookingId: booking.id,
     reportedBy: currentUser.uid,
     type,
     description,
     reportedAt: serverTimestamp(),
     status: 'open',
   };
+  await withButtonLoading(button, async () => {
+    if (file) {
+      const objectKey = await uploadPhotoToR2({ bookingId: booking.id, scope: 'incidents', file });
+      payload.photoRefs = [objectKey];
+    }
+    await withTimeout(addDoc(collection(db, 'incidents'), payload), 15000);
+  });
+  queueEmail({
+    to: TEAM_EMAIL,
+    subject: `Zebramoon, incident signalé · Réf ${booking.id.slice(0, 6).toUpperCase()}`,
+    text: `${booking.propertyAddress || booking.propertyId} · ${formatShortDate(booking.scheduledDate)} · ${type}, « ${description} » signalé par ${currentUser.name || currentUser.email}.${file ? ' (photo jointe)' : ''} À traiter dans /admin/.`,
+  });
+  if (activeBooking && activeBooking.id === booking.id) {
+    try { activeIncidents = await loadIncidentDocs(booking.id); } catch { /* la liste se mettra à jour au prochain chargement */ }
+    renderActiveBooking();
+  }
+}
 
+const incidentMission = document.getElementById('incidentMission');
+function renderIncidentMissionOptions() {
+  if (!incidentMission) return;
+  const keep = incidentMission.value || selectedMissionId || '';
+  incidentMission.innerHTML = '';
+  if (!assignedBookings.length) {
+    const o = document.createElement('option');
+    o.value = '';
+    o.textContent = 'Aucune mission assignée';
+    incidentMission.appendChild(o);
+    return;
+  }
+  assignedBookings.forEach(b => {
+    const o = document.createElement('option');
+    o.value = b.id;
+    o.textContent = `${b.propertyAddress || b.propertyId} · ${formatShortDate(b.scheduledDate)}`;
+    incidentMission.appendChild(o);
+  });
+  incidentMission.value = assignedBookings.some(b => b.id === keep) ? keep : assignedBookings[0].id;
+}
+
+incidentForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const booking = assignedBookings.find(b => b.id === (incidentMission ? incidentMission.value : '')) || activeBooking;
+  if (!booking) {
+    setIncidentMessage('Aucune mission à laquelle rattacher le signalement.');
+    return;
+  }
+  const description = incidentDescription.value.trim();
+  if (!description) {
+    setIncidentMessage('Veuillez décrire l’incident.');
+    return;
+  }
   try {
-    await withButtonLoading(incidentForm.querySelector('button[type="submit"]'), async () => {
-      if (file) {
-        const objectKey = await withTimeout(uploadPhotoToR2({ bookingId: activeBooking.id, scope: 'incidents', file }), 30000);
-        incidentPayload.photoRefs = [objectKey];
-      }
-      await withTimeout(addDoc(collection(db, 'incidents'), incidentPayload), 15000);
-    });
-    queueEmail({
-      to: TEAM_EMAIL,
-      subject: `Zebramoon, incident signalé · Réf ${activeBooking.id.slice(0, 6).toUpperCase()}`,
-      text: `${activeBooking.propertyAddress || activeBooking.propertyId} · ${formatShortDate(activeBooking.scheduledDate)} · ${type}, « ${description} » signalé par ${currentUser.name || currentUser.email}.${file ? ' (photo jointe)' : ''} À traiter dans /admin/.`,
-    });
+    await sendIncident(booking, { type: incidentType.value, description, file: incidentPhoto.files[0] }, incidentForm.querySelector('button[type="submit"]'));
     incidentForm.reset();
-    setIncidentMessage('Signalement envoyé à l’équipe Zebramoon.', 'success');
+    renderIncidentMissionOptions();
+    setIncidentMessage(`Signalement envoyé à l’équipe Zebramoon pour ${booking.propertyAddress || 'la mission'}.`, 'success');
   } catch (err) {
     setIncidentMessage(`Impossible d’envoyer le signalement : ${storageErrorMessage(err)}`, 'error');
   }
 });
+
+function buildMissionIncidents() {
+  const wrap = document.createElement('div');
+  const typeLabel = key => {
+    const opt = incidentType && Array.from(incidentType.options).find(o => o.value === key);
+    const cat = ANOMALY_CATEGORIES.find(c => c.key === key);
+    return (opt && opt.textContent) || (cat && cat.label) || key;
+  };
+  if (activeIncidents.length) {
+    activeIncidents.forEach(inc => {
+      const row = document.createElement('div');
+      row.className = 'task-card';
+      const top = document.createElement('div');
+      top.className = 'task-top';
+      const t = document.createElement('div');
+      t.className = 'task-title';
+      t.textContent = typeLabel(inc.type);
+      const st = document.createElement('div');
+      st.className = `status-pill ${inc.status === 'open' ? 'anomaly' : 'verified'}`;
+      st.textContent = inc.status === 'open' ? 'Ouvert' : 'Traité';
+      top.append(t, st);
+      const d = document.createElement('div');
+      d.className = 'task-meta';
+      const at = inc.reportedAt && inc.reportedAt.toDate ? formatShortDate(inc.reportedAt.toDate()) : '';
+      d.textContent = `${inc.description || ''}${at ? ` · ${at}` : ''}`;
+      row.append(top, d);
+      wrap.appendChild(row);
+    });
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Aucun incident signalé sur cette mission.';
+    wrap.appendChild(empty);
+  }
+
+  const form = document.createElement('form');
+  form.className = 'mission-incident-form';
+  const head = document.createElement('div');
+  head.className = 'photo-group-head';
+  head.textContent = 'Signaler un incident sur cette mission';
+  const sel = document.createElement('select');
+  if (incidentType) Array.from(incidentType.options).forEach(o => sel.appendChild(o.cloneNode(true)));
+  const area = document.createElement('textarea');
+  area.placeholder = 'Que s’est-il passé ? Où dans le logement ?';
+  area.required = true;
+  const file = document.createElement('input');
+  file.type = 'file';
+  file.accept = 'image/*';
+  const msg = document.createElement('div');
+  msg.className = 'status-banner hidden';
+  msg.setAttribute('role', 'status');
+  const btn = document.createElement('button');
+  btn.type = 'submit';
+  btn.className = 'btn primary';
+  btn.textContent = 'Envoyer le signalement';
+  const row = (label, el) => { const r = document.createElement('label'); r.className = 'form-row'; const sp = document.createElement('span'); sp.textContent = label; sp.className = 'form-label'; r.append(sp, el); return r; };
+  form.append(head, row('Type', sel), row('Description', area), row('Photo (optionnelle)', file), msg, btn);
+  const booking = activeBooking;
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const description = area.value.trim();
+    if (!description) return;
+    try {
+      await sendIncident(booking, { type: sel.value, description, file: file.files[0] }, btn);
+    } catch (err) {
+      msg.textContent = `Impossible d’envoyer le signalement : ${storageErrorMessage(err)}`;
+      msg.className = 'status-banner error';
+    }
+  });
+  wrap.appendChild(form);
+  return wrap;
+}
 
 switchToRequest.addEventListener('click', event => {
   event.preventDefault();

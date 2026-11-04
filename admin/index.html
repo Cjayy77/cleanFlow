@@ -162,33 +162,34 @@
     </section>
 
     <section class="admin-section hidden" data-tab="verify">
-      <div class="grid2">
-        <div class="card">
-          <div class="eyebrow">File d’attente</div>
-          <h2>Dossiers soumis</h2>
+      <div class="md" id="verifyMd">
+        <div class="md-list">
+          <div class="md-list-head">Dossiers soumis <span id="verifyCount"></span></div>
           <div id="bookingQueue"></div>
         </div>
-        <div class="card">
+        <div class="md-detail" id="verifyDetail">
+          <button type="button" class="md-back" id="verifyBack">‹ Tous les dossiers</button>
           <div class="eyebrow">Dossier sélectionné</div>
           <h2 id="bookingTitle">Aucun dossier sélectionné</h2>
-          <p id="bookingMeta">Sélectionnez un dossier dans la file pour contrôler les photos.</p>
-          <div id="bookingCost" class="price-breakdown hidden"></div>
-          <div id="bookingProperty" class="price-breakdown hidden"></div>
-          <div class="photo-grid" id="photoGrid"></div>
-          <div class="form-row">
-            <label for="rejectNote">Note (obligatoire en cas de rejet, visible par le prestataire)</label>
-            <textarea id="rejectNote" placeholder="Ex. : photo de la salle de bain floue, à reprendre."></textarea>
+          <p id="bookingMeta">Sélectionnez un dossier dans la liste pour contrôler la mission.</p>
+          <div id="dossierSegHost">
+            <div id="dossierPhotos"><div class="photo-grid" id="photoGrid"></div></div>
+            <div id="dossierInfo"><div id="bookingCost" class="price-breakdown hidden"></div><div id="bookingProperty" class="price-breakdown hidden"></div></div>
+            <div id="dossierIncidents"><div id="incidentList"></div></div>
+            <div id="dossierComments"><div id="bookingCommentList"></div></div>
           </div>
-          <div style="display:flex; gap:12px; flex-wrap:wrap;">
-            <button class="btn primary" id="verifyBtn" type="button" disabled>Valider le dossier</button>
-            <button class="btn ghost" id="rejectBtn" type="button" disabled>Renvoyer au prestataire</button>
-            <button class="btn ghost" id="devisBtn" type="button" disabled>Devis (PDF)</button>
+          <div class="dossier-decision">
+            <div class="form-row">
+              <label for="rejectNote">Note (obligatoire en cas de rejet, visible par le prestataire)</label>
+              <textarea id="rejectNote" placeholder="Ex. : photo de la salle de bain floue, à reprendre."></textarea>
+            </div>
+            <div class="decision-actions">
+              <button class="btn primary" id="verifyBtn" type="button" disabled>Valider le dossier</button>
+              <button class="btn ghost" id="rejectBtn" type="button" disabled>Renvoyer au prestataire</button>
+              <button class="btn ghost" id="devisBtn" type="button" disabled>Devis (PDF)</button>
+            </div>
+            <div id="bookingDangerRow" class="decision-actions" style="margin-top:12px;"></div>
           </div>
-          <div id="bookingDangerRow" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;"></div>
-          <div class="eyebrow" style="margin-top:26px;">Incidents signalés</div>
-          <div id="incidentList"></div>
-          <div class="eyebrow" style="margin-top:26px;">Commentaires du prestataire</div>
-          <div id="bookingCommentList"></div>
         </div>
       </div>
     </section>
