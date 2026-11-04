@@ -204,10 +204,14 @@ function showApp() {
   // Un membre ne voit ni la rémunération, ni les évaluations, ni la gestion d'équipe.
   ['ratingsCard', 'comptaCard'].forEach(id => document.getElementById(id)?.classList.toggle('hidden', member));
   document.getElementById('teamCard')?.classList.toggle('hidden', member);
-  const tabs = [{ id: 'missionsCard', label: 'Missions' }];
-  if (!member) tabs.push({ id: 'teamCard', label: 'Équipe' });
-  tabs.push({ id: 'incidentCard', label: 'Incident' });
-  if (!member) tabs.push({ id: 'ratingsCard', label: 'Évaluations' }, { id: 'comptaCard', label: 'Compta' });
+  const first = (currentUser.name || '').split(' ')[0];
+  const tabs = [{ id: 'missionsCard', key: 'missions', label: 'Missions', icon: 'missions', title: 'Missions', subtitle: first ? `Bonjour ${first}. Choisissez une mission pour voir sa checklist.` : 'Choisissez une mission pour voir sa checklist.' }];
+  if (!member) tabs.push({ id: 'teamCard', key: 'equipe', label: 'Équipe', icon: 'team', title: 'Mon équipe', subtitle: 'Invitez vos équipiers, acceptez-les, puis répartissez chaque mission.' });
+  tabs.push({ id: 'incidentCard', key: 'incident', label: 'Incident', icon: 'incident', title: 'Signaler un incident', subtitle: 'Objet cassé, objet perdu ou autre problème pendant la mission en cours.' });
+  if (!member) tabs.push(
+    { id: 'ratingsCard', key: 'evaluations', label: 'Évaluations', icon: 'star', title: 'Mes évaluations', subtitle: 'Les notes laissées par les clients après vérification.' },
+    { id: 'comptaCard', key: 'compta', label: 'Compta', icon: 'wallet', title: 'Ma rémunération', subtitle: 'Zebramoon règle l’équipe ; le chef d’opération répartit entre les équipiers.' },
+  );
   initSectionTabs(appScreen, tabs);
 }
 
@@ -376,8 +380,9 @@ function buildMyTasksPanel(canUpload) {
     const progress = blockProgress(task.blockKey);
     const complete = progress.required === 0 || progress.done >= progress.required;
     const row = document.createElement('div');
-    row.className = 'team-split-row';
+    row.className = 'member-row';
     const info = document.createElement('div');
+    info.className = 'member-info';
     const name = document.createElement('div');
     name.className = 'team-split-label';
     name.textContent = task.label;
@@ -420,7 +425,19 @@ function renderTeamCard() {
   input.readOnly = true;
   input.value = link;
   input.onclick = () => input.select();
-  invite.appendChild(input);
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'btn ghost';
+  copy.textContent = 'Copier le lien';
+  copy.onclick = async () => {
+    try { await navigator.clipboard.writeText(link); copy.textContent = 'Lien copié'; }
+    catch { input.select(); copy.textContent = 'Sélectionné, copiez-le'; }
+    setTimeout(() => { copy.textContent = 'Copier le lien'; }, 2500);
+  };
+  const inviteRow = document.createElement('div');
+  inviteRow.className = 'invite-row';
+  inviteRow.append(input, copy);
+  invite.appendChild(inviteRow);
   list.innerHTML = '';
   const members = teamMembers.filter(m => m.role === ROLE_MEMBRE);
   if (members.length === 0) {
@@ -440,16 +457,19 @@ function renderTeamCard() {
     meta.textContent = `${m.email}${m.phone ? ` · ${m.phone}` : ''} · ${STATUS[m.accountStatus || 'approved'] || m.accountStatus}`;
     info.append(name, meta);
     row.appendChild(info);
+    const actions = document.createElement('div');
+    actions.className = 'member-actions';
+    row.appendChild(actions);
     const act = (label, status) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'mini-btn';
+      b.className = status === 'approved' ? 'pill-btn primary' : 'pill-btn';
       b.textContent = label;
       b.onclick = async () => {
         try { await setTeamMemberStatus(m.id, status); }
         catch (e) { setWorkStatus(`Action impossible : ${authErrorMessage(e)}`); }
       };
-      row.appendChild(b);
+      actions.appendChild(b);
     };
     const st = m.accountStatus || 'approved';
     if (st === 'pending') { act('Accepter', 'approved'); act('Refuser', 'rejected'); }
@@ -459,15 +479,30 @@ function renderTeamCard() {
   });
 }
 
+const missionsMd = document.getElementById('missionsMd');
+const missionsCount = document.getElementById('missionsCount');
+document.getElementById('missionsBack')?.addEventListener('click', () => {
+  missionsMd.classList.remove('show-detail');
+  window.scrollTo(0, 0);
+});
+
 function renderAssignedList() {
   assignedList.innerHTML = '';
+  if (missionsCount) missionsCount.textContent = assignedBookings.length ? String(assignedBookings.length) : '';
+  missionsMd.classList.toggle('single', assignedBookings.length <= 1);
+  if (assignedBookings.length === 1) missionsMd.classList.add('show-detail');
+  if (!assignedBookings.length) missionsMd.classList.remove('show-detail');
   if (assignedBookings.length === 0) {
     assignedList.innerHTML = '<div class="empty-state">Aucune mission ne vous est assignée pour le moment. L’équipe Zebramoon vous attribue vos missions.</div>';
     return;
   }
   assignedBookings.forEach(booking => {
     const item = document.createElement('div');
-    item.className = 'task-card selectable' + (booking.id === selectedMissionId ? ' active' : '');
+    const isActive = booking.id === selectedMissionId;
+    item.className = 'task-card selectable' + (isActive ? ' active' : '');
+    item.setAttribute('role', 'button');
+    item.tabIndex = 0;
+    if (isActive) item.setAttribute('aria-current', 'true');
     item.innerHTML = `
       <div class="task-top">
         <div>
@@ -478,7 +513,10 @@ function renderAssignedList() {
       </div>
     `;
     item.querySelector('.task-title').textContent = booking.propertyAddress || booking.propertyId;
+    item.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); item.click(); } };
     item.onclick = async () => {
+      missionsMd.classList.add('show-detail');
+      window.scrollTo(0, 0);
       selectedMissionId = booking.id;
       activeBooking = booking;
       await loadPhotosForBooking(booking.id);

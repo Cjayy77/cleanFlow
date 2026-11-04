@@ -18,6 +18,7 @@ import {
   requestTeamAccess,
   queueEmail,
   getPricing,
+  mountAppShell,
   setPricing,
   DEFAULT_PRICING,
   PRICING_SCALARS,
@@ -147,7 +148,9 @@ let openMessagesCount = 0;
 let openIncidentsCount = 0;
 let accessRequestCount = 0;
 
+let adminShell = null;
 function activateTab(name) {
+  if (adminShell) { adminShell.go(name); return; }
   if (!adminTabs) return;
   adminTabs.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.admin-section').forEach(s => s.classList.toggle('hidden', s.dataset.tab !== name));
@@ -4211,13 +4214,37 @@ signOutBtn.addEventListener('click', async () => {
 verifyBtn.addEventListener('click', () => resolveBooking('verified'));
 rejectBtn.addEventListener('click', () => resolveBooking('rejected'));
 
+// Navigation : chaque onglet devient une vue de la coquille commune (barre
+// latérale sur ordinateur, barre d'onglets en bas sur téléphone). Les
+// pastilles de compteur sont déplacées telles quelles sur les nouveaux liens.
+const ADMIN_VIEW_ORDER = ['assign', 'verify', 'inbox', 'team', 'cal', 'dashboard', 'compta', 'prospects', 'catalog', 'properties', 'suggestions', 'protocols', 'tarifs'];
+const ADMIN_VIEW_META = {
+  assign: { icon: 'missions', subtitle: 'Missions, livraisons et contrôles en attente d’une équipe.' },
+  verify: { icon: 'check', subtitle: 'Les dossiers photo soumis, à valider ou à renvoyer.' },
+  inbox: { icon: 'chat', subtitle: 'Messages des clients et incidents ouverts.' },
+  team: { icon: 'team', subtitle: 'Équipes de ménage, livreurs, Welcomers et demandes d’accès.' },
+  cal: { icon: 'calendar', subtitle: 'Toutes les réservations, mois par mois.' },
+  dashboard: { icon: 'grid' },
+  compta: { icon: 'wallet' },
+  prospects: { icon: 'target' },
+  catalog: { icon: 'box', subtitle: 'Options, kits, consommables et linge proposés au client.' },
+  properties: { icon: 'building' },
+  suggestions: { icon: 'bulb' },
+  protocols: { icon: 'list' },
+  tarifs: { icon: 'tag' },
+};
 if (adminTabs) {
-  adminTabs.addEventListener('click', event => {
-    const btn = event.target.closest('.tab');
-    if (!btn) return;
-    activateTab(btn.dataset.tab);
-    adminTabs.scrollIntoView({ block: 'start' });
-  });
+  const views = Array.from(adminTabs.querySelectorAll('.tab')).map(btn => {
+    const key = btn.dataset.tab;
+    const badge = btn.querySelector('.tab-badge');
+    const label = Array.from(btn.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+    const meta = ADMIN_VIEW_META[key] || {};
+    return { key, label, badge, heading: false, icon: meta.icon, title: label, subtitle: meta.subtitle,
+      els: Array.from(document.querySelectorAll(`.admin-section[data-tab="${key}"]`)) };
+  }).sort((a, b) => ADMIN_VIEW_ORDER.indexOf(a.key) - ADMIN_VIEW_ORDER.indexOf(b.key));
+  document.querySelectorAll('.admin-section').forEach(sec => sec.classList.remove('hidden'));
+  adminTabs.classList.add('hidden');
+  adminShell = mountAppShell({ views, screen: appScreen, defaultKey: 'assign' });
 }
 
 const pricingFormEl = document.getElementById('pricingForm');

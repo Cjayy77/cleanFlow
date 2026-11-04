@@ -78,6 +78,7 @@ function showAuth(message = '', type = '') {
   signInForm.classList.remove('hidden');
   setAuthMessage(message, type);
 }
+let shell = null;
 function showApp() {
   loadingScreen.classList.add('hidden');
   signOutBtn.classList.remove('hidden');
@@ -85,9 +86,9 @@ function showApp() {
   appScreen.classList.remove('hidden');
   setAuthMessage('');
   userNameLabel.textContent = currentUser.name || currentUser.email;
-  initSectionTabs(appScreen, [
-    { id: 'scanCard', label: 'Scanner' },
-    { id: 'missionsCard', label: 'Missions' },
+  shell = initSectionTabs(appScreen, [
+    { id: 'missionsCard', key: 'missions', label: 'Missions', icon: 'check', title: 'Missions à contrôler', subtitle: 'Les logements à vérifier après le ménage.' },
+    { id: 'scanCard', key: 'scanner', label: 'Scanner', icon: 'scan', title: 'Scanner le logement', subtitle: 'Scannez le QR code affiché dans le logement pour ouvrir son contrôle.' },
   ]);
 }
 
@@ -197,6 +198,7 @@ function focusMissionByCode(raw, { viaQr = false } = {}) {
     .filter(e => !e.done && e.open)
     .sort((a, b) => (a.booking.scheduledDate || '').localeCompare(b.booking.scheduledDate || ''));
   const entry = pending[0] || matches[0];
+  if (shell) shell.go('missions');
   entry.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   if (entry.done || !entry.open) { setWorkStatus('Ce logement a déjà été contrôlé.', 'info'); return; }
   entry.open(viaQr);

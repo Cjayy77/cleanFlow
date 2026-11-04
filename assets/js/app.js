@@ -154,6 +154,7 @@ function showAuth(mode = 'signin', message = '') {
   authError.classList.toggle('hidden', !message);
 }
 
+let shell = null;
 function showApp() {
   loadingScreen.classList.add('hidden');
   signOutBtn.classList.remove('hidden');
@@ -162,10 +163,11 @@ function showApp() {
   authError.textContent = '';
   authError.classList.add('hidden');
   userNameLabel.textContent = currentUser.name || currentUser.email;
-  initSectionTabs(appScreen, [
-    { id: 'homeCard', label: 'Accueil' },
-    { id: 'propertiesCard', label: 'Logements' },
-    { id: 'historyCard', label: 'Suivi' },
+  const first = (currentUser.name || '').split(' ')[0];
+  shell = initSectionTabs(appScreen, [
+    { ids: ['nextCleaningCard', 'bookingFlowSection'], key: 'accueil', label: 'Accueil', icon: 'home', title: first ? `Bonjour ${first}` : 'Accueil', subtitle: 'Votre prochain ménage, et une nouvelle réservation en quelques étapes.', heading: false },
+    { id: 'propertiesCard', key: 'logements', label: 'Logements', icon: 'building', title: 'Vos logements', subtitle: 'Adresse, accès et informations utiles au prestataire.' },
+    { id: 'historyCard', key: 'suivi', label: 'Suivi', icon: 'clock', title: 'Suivi des interventions', subtitle: 'Chaque ménage, sa vérification photo et son rapport.' },
   ]);
 }
 
@@ -774,6 +776,7 @@ function draftAwaitingSubmit() {
 }
 
 function showBookingFlow() {
+  if (shell) shell.go('accueil');
   bookingFlowSection.classList.remove('hidden');
   bookingFlowSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
