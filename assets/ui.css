@@ -755,3 +755,8 @@ details.as-view .collapse-body{ margin-top:0; }
 .dep-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; margin-bottom:8px; border-radius:16px; background:var(--surface-2); }
 
 @media (max-width:520px){ .dep-row{ flex-direction:column; align-items:stretch; } .dep-row .btn{ width:100%; } }
+
+/* Ajouter à mon agenda */
+.add-to-cal{ margin-top:12px; padding:14px 16px; border-radius:14px; background:var(--surface-2); }
+.add-to-cal-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+a.pill-btn{ display:inline-flex; align-items:center; text-decoration:none; }

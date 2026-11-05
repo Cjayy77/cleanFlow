@@ -1986,3 +1986,77 @@ export async function fetchIcalDepartures(feedUrl, options) {
   }
   return icsDepartures(await res.text(), options);
 }
+
+
+// ---- Ajouter une mission à son agenda -----------------------------------
+// Aucun compte à relier : chaque bouton ouvre l'agenda de la personne avec
+// l'événement prérempli (Google, Outlook) ou télécharge un fichier .ics
+// (Apple Calendar et tout autre agenda). L'événement ne contient jamais les
+// clés, codes ou consignes d'accès : seulement l'adresse, le type et la réf.
+function compactDate(iso) { return String(iso || '').replace(/-/g, ''); }
+function nextDay(iso) {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function icsEscape(t) { return String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+export function missionCalendarEvent(booking, kind = 'cleaning') {
+  const ref = String(booking.id || '').slice(0, 6).toUpperCase();
+  const label = { cleaning: 'Ménage', delivery: 'Livraison linge et kits', control: 'Contrôle qualité' }[kind] || 'Mission';
+  const deep = booking.serviceType === 'deep' && kind === 'cleaning' ? ' en profondeur' : '';
+  return {
+    title: `Zebramoon, ${label}${deep}`,
+    location: booking.propertyAddress || '',
+    details: `Mission Zebramoon, réf ${ref}. Détails et accès dans votre espace Zebramoon.`,
+    start: booking.scheduledDate,
+    end: nextDay(booking.scheduledDate),
+    uid: `${booking.id}-${kind}@zebramoon`,
+  };
+}
+export function googleCalendarUrl(ev) {
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: ev.title, dates: `${compactDate(ev.start)}/${compactDate(ev.end)}`, details: ev.details, location: ev.location });
+  return `https://calendar.google.com/calendar/render?${q.toString()}`;
+}
+export function outlookCalendarUrl(ev) {
+  const q = new URLSearchParams({ path: '/calendar/action/compose', rru: 'addevent', allday: 'true', subject: ev.title, startdt: ev.start, enddt: ev.end, body: ev.details, location: ev.location });
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${q.toString()}`;
+}
+export function eventIcs(ev) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Zebramoon//FR', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT',
+    `UID:${ev.uid}`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${compactDate(ev.start)}`, `DTEND;VALUE=DATE:${compactDate(ev.end)}`,
+    `SUMMARY:${icsEscape(ev.title)}`, `LOCATION:${icsEscape(ev.location)}`, `DESCRIPTION:${icsEscape(ev.details)}`,
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+}
+export function buildCalendarButtons(booking, kind = 'cleaning') {
+  const wrap = document.createElement('div');
+  wrap.className = 'add-to-cal';
+  const head = document.createElement('div');
+  head.className = 'key-access-head';
+  head.textContent = 'Ajouter à mon agenda';
+  wrap.appendChild(head);
+  if (!booking.scheduledDate) return wrap;
+  const ev = missionCalendarEvent(booking, kind);
+  const row = document.createElement('div');
+  row.className = 'add-to-cal-row';
+  const link = (label, href) => { const a = document.createElement('a'); a.className = 'pill-btn'; a.href = href; a.target = '_blank'; a.rel = 'noopener'; a.textContent = label; return a; };
+  row.appendChild(link('Google Agenda', googleCalendarUrl(ev)));
+  row.appendChild(link('Outlook', outlookCalendarUrl(ev)));
+  const apple = document.createElement('button');
+  apple.type = 'button';
+  apple.className = 'pill-btn';
+  apple.textContent = 'Apple / autre (.ics)';
+  apple.onclick = () => {
+    const url = URL.createObjectURL(new Blob([eventIcs(ev)], { type: 'text/calendar;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zebramoon-${String(booking.id).slice(0, 6)}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+  row.appendChild(apple);
+  wrap.appendChild(row);
+  return wrap;
+}
