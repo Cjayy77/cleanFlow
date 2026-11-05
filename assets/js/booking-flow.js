@@ -92,6 +92,7 @@ function freshDraft() {
     bedrooms: null, bathrooms: null, beds: null, // valeurs effectives pour un bien existant sans ces champs
     guests: 0,
     selectedDate: null,
+    startTime: '09:00',
     extras: {}, // { itemId: quantité }
     welcomerService: '',
     consentAccepted: false,
@@ -516,6 +517,19 @@ function renderDateStep() {
   if (draft.selectedDate) {
     const chosen = el('div', 'bk-chosen-date', `Le ${formatShortDate(draft.selectedDate)}`);
     panel.appendChild(chosen);
+    const timeRow = el('label', 'bk-time-row');
+    timeRow.appendChild(el('span', '', 'Heure d’arrivée du prestataire'));
+    const timeSel = document.createElement('select');
+    for (let h = 7; h <= 18; h += 1) {
+      const v = `${String(h).padStart(2, '0')}:00`;
+      const o = document.createElement('option');
+      o.value = v; o.textContent = `${h} h`;
+      if ((draft.startTime || '09:00') === v) o.selected = true;
+      timeSel.appendChild(o);
+    }
+    timeSel.addEventListener('change', () => { draft.startTime = timeSel.value; saveDraft(); });
+    timeRow.appendChild(timeSel);
+    panel.appendChild(timeRow);
     // Pas de suppléments à proposer : passe directement au contrôle qualité,
     // décidé ici pour que Retour depuis « welcomer » revienne correctement
     // à « date » (et pas à une étape « extras » jamais réellement affichée).
@@ -718,6 +732,7 @@ function renderReviewStep() {
   summary.appendChild(summaryRow('Logement', propertyLabelForReview(), () => { goToStep(draft.propertyId ? 'property' : 'address'); }));
   summary.appendChild(summaryRow('Prestation', draft.serviceType === 'deep' ? 'Ménage en profondeur' : 'Ménage standard', () => { goToStep('service'); }));
   summary.appendChild(summaryRow('Date', draft.selectedDate ? formatShortDate(draft.selectedDate) : ',', () => { goToStep('date'); }));
+  summary.appendChild(summaryRow('Horaire', draft.selectedDate ? timeWindowLabel(draft.startTime || '09:00', quote ? quote.hours : 0) : ',', () => { goToStep('date'); }));
   summary.appendChild(summaryRow('Suppléments', extras.length ? extras.map(e => `${e.name}${e.qty > 1 ? ` ×${e.qty}` : ''}`).join(', ') : 'Aucun', () => { goToStep('extras'); }));
   summary.appendChild(summaryRow('Contrôle qualité', draft.welcomerService ? (welcomerTier(draft.welcomerService) || {}).label : 'Non', () => { goToStep('welcomer'); }));
   panel.appendChild(summary);
@@ -800,6 +815,17 @@ function propertyLabelForReview() {
   }
   const np = draft.newProperty || {};
   return np.street ? `${np.street}, ${np.city}` : 'Logement à préciser';
+}
+
+// « 9 h à 12 h » : l'heure de fin vient du temps alloué à la prestation.
+function addHoursToTime(start, hours) {
+  const [h, m] = String(start || '09:00').split(':').map(Number);
+  const total = Math.round((h * 60 + (m || 0) + (Number(hours) || 0) * 60) / 15) * 15;
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+function fmtClock(t) { const [h, m] = t.split(':'); return m === '00' ? `${Number(h)} h` : `${Number(h)} h ${m}`; }
+function timeWindowLabel(start, hours) {
+  return hours ? `${fmtClock(start)} à ${fmtClock(addHoursToTime(start, hours))} (${String(hours).replace('.', ',')} h)` : fmtClock(start);
 }
 
 function summaryRow(label, value, onChange) {
@@ -1018,7 +1044,7 @@ async function finalizeBooking() {
         consentName: String(draft.consentName).trim(),
         consentAt: serverTimestamp(),
         propertyId,
-        propertyAddress: `${property.street}, ${property.city}`,
+        propertyAddress: `${property.street}, ${property.postalCode ? `${property.postalCode} ` : ''}${property.city}`,
         keyAccess: composeKeyAccess(property),
         prestataireId: null,
         livreurId: null,
@@ -1031,6 +1057,8 @@ async function finalizeBooking() {
         bathrooms: quote.bathrooms,
         guests: Number(draft.guests) || 0,
         hours: quote.hours,
+        startTime: draft.startTime || '09:00',
+        endTime: addHoursToTime(draft.startTime || '09:00', quote.hours),
         bedrooms: quote.bedrooms,
         // Comptes/équipements du protocole de ménage, figés au moment de la
         // réservation comme bedrooms/bathrooms ci-dessus : absents tant que

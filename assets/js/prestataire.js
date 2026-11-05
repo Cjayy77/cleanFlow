@@ -40,6 +40,8 @@ import {
   formatShortDate,
   welcomerTier,
   segmentedControl,
+  addExigenceExtraPhoto,
+  PROTOCOL_CATEGORIES,
   buildCalendarButtons,
   formatBookingStatus,
   authErrorMessage,
@@ -768,34 +770,47 @@ function renderExigenceChecklist(canAnswer) {
     wrap.appendChild(phaseHead);
   }
 
+  // Pièce par pièce : un groupe par catégorie (Cuisine, Salon…) et, pour les
+  // pièces répétables, par instance (Chambre 1, Chambre 2…). Les groupes
+  // suivent l'ordre du protocole ; dans un groupe, l'ordre du modèle.
   const activeItems = phaseItems(activeExigencePhase);
-  // 'none'/'other' ne se répètent jamais ; tout le reste (bedroom/bathroom/
-  // wc/smoke_detector/key_box…) se répète et va dans un accordéon par
-  // instance — négatif plutôt que positif pour qu'un futur roomScope
-  // répétable n'ait pas besoin d'une modification ici en plus de
-  // exigenceInstances()/REPEATABLE_ROOM_SCOPES (shared.js).
-  const flatItems = activeItems.filter(e => e.roomScope === 'none' || e.roomScope === 'other');
-  const roomItems = activeItems.filter(e => e.roomScope !== 'none' && e.roomScope !== 'other');
-
-  flatItems.forEach(exigence => {
+  const catIndex = key => { const i = PROTOCOL_CATEGORIES.findIndex(c => c.key === key); return i < 0 ? 999 : i; };
+  const catLabel = key => (PROTOCOL_CATEGORIES.find(c => c.key === key) || {}).label || '';
+  const groups = new Map();
+  activeItems.forEach(exigence => {
     visibleInstances(exigence).forEach(instance => {
-      wrap.appendChild(buildExigenceRow(exigence, instance, canAnswer));
+      const repeat = exigence.roomScope !== 'none' && exigence.roomScope !== 'other';
+      const key = `${exigence.category || ''}|${repeat ? instance.roomIndex : ''}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          cat: catIndex(exigence.category),
+          roomIndex: repeat ? Number(instance.roomIndex) || 0 : 0,
+          label: repeat ? (instance.label || catLabel(exigence.category)) : (catLabel(exigence.category) || 'Général'),
+          entries: [],
+        });
+      }
+      groups.get(key).entries.push({ exigence, instance });
     });
   });
+  const ordered = Array.from(groups.values())
+    .sort((x, y) => x.cat - y.cat || x.roomIndex - y.roomIndex)
+    .map(g => ({ ...g, entries: g.entries.slice().sort((x, y) => (x.exigence.order || 0) - (y.exigence.order || 0)) }));
 
-  // Une pièce peut porter plusieurs exigences (ex. "vérifier les draps" ET
-  // "dépoussiérer", toutes deux par chambre) : regroupées sous un même
-  // accordéon par pièce plutôt que répétées en liste plate, pour rester
-  // lisible sur un logement avec beaucoup d'exigences.
-  const roomGroups = new Map();
-  roomItems.forEach(exigence => {
-    visibleInstances(exigence).forEach(instance => {
-      const key = `${exigence.roomScope}_${instance.roomIndex}`;
-      if (!roomGroups.has(key)) roomGroups.set(key, { label: instance.label, entries: [] });
-      roomGroups.get(key).entries.push({ exigence, instance });
-    });
-  });
-  roomGroups.forEach(group => wrap.appendChild(buildRoomAccordion(group, canAnswer)));
+  // Une tâche n'est ouverte que si les précédentes sont terminées.
+  let current = null;
+  ordered.forEach(g => g.entries.forEach(entry => {
+    const st = exigenceAnswerStats(entry.exigence, entry.instance);
+    entry.complete = st.required === 0 || st.done >= st.required;
+    if (!current && !entry.complete) current = entry;
+  }));
+  let reached = false;
+  ordered.forEach(g => g.entries.forEach(entry => {
+    if (entry === current) reached = true;
+    entry.locked = !!current && reached && entry !== current;
+    entry.isCurrent = entry === current;
+  }));
+
+  ordered.forEach(group => wrap.appendChild(buildRoomAccordion(group, canAnswer)));
 
   return wrap;
 }
@@ -806,7 +821,7 @@ function buildRoomAccordion(group, canAnswer) {
 
   const details = document.createElement('details');
   details.className = 'card exigence-room';
-  if (done === total) details.open = false; else details.open = true;
+  details.open = group.entries.some(e => e.isCurrent);
 
   const summary = document.createElement('summary');
   const title = document.createElement('div');
@@ -820,14 +835,70 @@ function buildRoomAccordion(group, canAnswer) {
 
   const body = document.createElement('div');
   body.className = 'collapse-body';
-  group.entries.forEach(({ exigence, instance }) => {
-    const row = buildExigenceRow(exigence, instance, canAnswer);
+  group.entries.forEach(({ exigence, instance, locked, isCurrent }) => {
+    const row = buildExigenceRow(exigence, instance, canAnswer && !locked);
     row.querySelector('.dossier-addr').textContent = exigence.text; // la pièce est déjà dans le titre de l'accordéon
+    if (isCurrent) row.classList.add('current');
+    if (locked) {
+      row.classList.add('locked');
+      const note = document.createElement('div');
+      note.className = 'task-meta lock-note';
+      note.textContent = 'Terminez la tâche précédente pour ouvrir celle-ci.';
+      row.insertBefore(note, row.children[1] || null);
+      row.querySelectorAll('.exigence-anomaly').forEach(el => el.remove());
+    }
     body.appendChild(row);
   });
   details.appendChild(body);
 
   return details;
+}
+
+// Photos en plus de la principale : autant que nécessaire, par tâche.
+function buildExtraPhotos(exigence, instance, canAnswer, answer) {
+  const wrap = document.createElement('div');
+  wrap.className = 'extra-photos';
+  const keys = (answer && answer.extraPhotoKeys) || [];
+  keys.forEach(key => {
+    const img = document.createElement('img');
+    img.className = 'extra-photo';
+    img.alt = 'Photo supplémentaire';
+    wrap.appendChild(img);
+    resolvePhotoUrl({ photoKey: key }, { bookingId: activeBooking.id, scope: 'bookings' }).then(url => { img.src = url; });
+  });
+  if (canAnswer && answer && answer.photoKey) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pill-btn';
+    btn.textContent = '+ Ajouter une photo';
+    btn.onclick = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        btn.disabled = true;
+        try {
+          const saved = await addExigenceExtraPhoto({
+            bookingId: activeBooking.id, exigenceId: exigence.id, propertyId: activeBooking.propertyId,
+            roomIndex: instance.roomIndex, file, answeredBy: currentUser.uid, existing: keys,
+            onProgress: pct => { btn.textContent = `Envoi ${pct} %`; },
+          });
+          const id = exigenceAnswerDocId(activeBooking.id, exigence.id, instance.roomIndex);
+          activeExigenceAnswers[id] = { ...activeExigenceAnswers[id], ...saved };
+          renderActiveBooking();
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = '+ Ajouter une photo';
+          setWorkStatus(`Photo non envoyée : ${storageErrorMessage(e)}`);
+        }
+      };
+      input.click();
+    };
+    wrap.appendChild(btn);
+  }
+  return wrap;
 }
 
 function buildPhotoSlotControl(exigence, instance, canAnswer, slotIndex, slotLabel) {
@@ -1133,6 +1204,7 @@ function buildExigenceRow(exigence, instance, canAnswer) {
     row.appendChild(slotsWrap);
   } else if (exigence.requiresPhoto) {
     row.appendChild(buildPhotoSlotControl(exigence, instance, canAnswer, null, null));
+    row.appendChild(buildExtraPhotos(exigence, instance, canAnswer, answer));
   }
 
   if (exigence.allowsComment) {
@@ -1229,13 +1301,44 @@ function renderTimerBlock(canUpload) {
   };
   wrap.appendChild(btn);
 
+  const allotted = Number(activeBooking.hours) || 0;
+  const budget = document.createElement('span');
+  budget.className = 'timer-budget';
+  const paintBudget = () => {
+    if (!allotted) { budget.textContent = ''; return; }
+    const used = currentTimerElapsedSeconds();
+    const left = allotted * 3600 - used;
+    budget.classList.toggle('over', left < 0);
+    budget.textContent = left >= 0
+      ? `Temps alloué ${fmtHours(allotted)}, il reste ${formatElapsed(left).slice(0, 5)}`
+      : `Temps alloué ${fmtHours(allotted)}, dépassé de ${formatElapsed(-left).slice(0, 5)}`;
+  };
+  paintBudget();
+  wrap.appendChild(budget);
+
   if (running) {
     timerTickId = setInterval(() => {
       display.textContent = formatElapsed(currentTimerElapsedSeconds());
+      paintBudget();
     }, 1000);
   }
 
   return wrap;
+}
+
+function fmtHours(h) {
+  const n = Number(h) || 0;
+  const whole = Math.floor(n);
+  const min = Math.round((n - whole) * 60);
+  return min ? `${whole} h ${String(min).padStart(2, '0')}` : `${whole} h`;
+}
+function bookingWhen(b) {
+  const day = formatShortDate(b.scheduledDate);
+  if (b.startTime && b.endTime) {
+    const f = t => { const [h, m] = t.split(':'); return m === '00' ? `${Number(h)} h` : `${Number(h)} h ${m}`; };
+    return `${day}, ${f(b.startTime)} à ${f(b.endTime)}`;
+  }
+  return day;
 }
 
 function buildCostsTile() {
@@ -1411,6 +1514,26 @@ function renderActiveBooking() {
     activeBookingContainer.appendChild(note);
   }
 
+  // Résumé toujours visible, quelle que soit la section ouverte : adresse
+  // complète, date et plage horaire, temps alloué, accès et clés.
+  const summaryBox = document.createElement('div');
+  summaryBox.className = 'mission-summary';
+  const sumRow = (label, value, strong) => {
+    if (!value) return;
+    const r = document.createElement('div');
+    r.className = 'mission-summary-row';
+    const l = document.createElement('span'); l.textContent = label;
+    const v = document.createElement('b'); v.textContent = value;
+    if (strong) v.className = 'key-text';
+    r.append(l, v);
+    summaryBox.appendChild(r);
+  };
+  sumRow('Adresse', activeBooking.propertyAddress || activeBooking.propertyId);
+  sumRow('Quand', bookingWhen(activeBooking));
+  sumRow('Temps alloué', activeBooking.hours ? fmtHours(activeBooking.hours) : '');
+  sumRow('Accès et clés', activeBooking.keyAccess, true);
+  activeBookingContainer.appendChild(summaryBox);
+
   // Une mission = des sections : checklist, infos du logement, répartition
   // d'équipe, rapport (coûts, pièces jointes, commentaires) et incidents de
   // CETTE mission. Une seule section visible à la fois.
@@ -1436,15 +1559,6 @@ function renderActiveBooking() {
     panes[sg.key] = pane;
     activeBookingContainer.appendChild(pane);
   });
-
-  if (activeBooking.keyAccess) {
-    const keyBox = document.createElement('div');
-    keyBox.className = 'key-access';
-    const kh = document.createElement('div'); kh.className = 'key-access-head'; kh.textContent = '🔑 Accès & clés';
-    const kt = document.createElement('div'); kt.className = 'key-access-body'; kt.textContent = activeBooking.keyAccess;
-    keyBox.append(kh, kt);
-    panes.infos.appendChild(keyBox);
-  }
 
   panes.infos.appendChild(buildOrderPanel(activeBooking));
   panes.infos.appendChild(buildCalendarButtons(activeBooking, 'cleaning'));
@@ -1520,7 +1634,7 @@ function renderActiveBooking() {
     const releaseBtn = document.createElement('button');
     releaseBtn.className = 'btn ghost danger';
     releaseBtn.type = 'button';
-    releaseBtn.style.marginTop = '18px';
+    releaseBtn.style.marginTop = '14px';
     // Confirmation en deux temps sur le bouton lui-même : pas de window.confirm
     // (qui reste muet si les boîtes de dialogue ont été bloquées par le
     // navigateur), donc un clic produit toujours un retour visible.
@@ -1560,7 +1674,7 @@ function renderActiveBooking() {
         setWorkStatus(`Impossible de décliner la mission : ${authErrorMessage(e)}`);
       }
     };
-    panes.infos.appendChild(releaseBtn);
+    summaryBox.appendChild(releaseBtn);
   }
 }
 

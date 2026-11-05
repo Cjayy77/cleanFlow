@@ -300,7 +300,7 @@ function renderNextCleaning() {
     return;
   }
   const property = properties.find(p => p.id === booking.propertyId);
-  const address = property ? `${property.street}, ${property.city}` : (booking.propertyAddress || 'Logement supprimé');
+  const address = property ? `${property.street}, ${property.postalCode ? `${property.postalCode} ` : ''}${property.city}` : (booking.propertyAddress || 'Logement supprimé');
   nextCleaningBody.innerHTML = '';
 
   const addr = document.createElement('div');
@@ -357,7 +357,7 @@ function renderBookings() {
   });
   ordered.forEach(booking => {
     const property = properties.find(p => p.id === booking.propertyId);
-    const address = property ? `${property.street}, ${property.city}` : (booking.propertyAddress || 'Bien supprimé');
+    const address = property ? `${property.street}, ${property.postalCode ? `${property.postalCode} ` : ''}${property.city}` : (booking.propertyAddress || 'Bien supprimé');
     const card = document.createElement('div');
     card.id = `booking-${booking.id}`;
     card.className = 'dossier' + (booking.status === 'cancelled' ? ' cancelled' : '');
@@ -1007,7 +1007,7 @@ propertyForm.addEventListener('submit', async event => {
   try {
     if (editingPropertyId) {
       const propertyId = editingPropertyId;
-      const newAddress = `${street}, ${city}`;
+      const newAddress = `${street}, ${postalCode} ${city}`;
       // Recopie la nouvelle adresse sur les réservations en cours de ce bien
       // pour que prestataire et livreur ne voient jamais l'ancienne.
       const affected = bookings.filter(b => b.propertyId === propertyId && ACTIVE_BOOKING_STATUSES.includes(b.status));

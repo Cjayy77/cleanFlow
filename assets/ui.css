@@ -393,7 +393,7 @@ textarea{ min-height:110px; resize:vertical; }
 .exigence-room .exigence-row{ border-top:none; padding-top:4px; }
 .exigence-room > summary .status-pill{ margin:0; }
 
-.exigence-timer{ display:flex; align-items:center; gap:14px; margin:14px 0; padding:12px 14px; border-radius:var(--radius-md); background:var(--soft); border:1px solid var(--line); }
+.exigence-timer{ flex-wrap:wrap; display:flex; align-items:center; gap:14px; margin:14px 0; padding:12px 14px; border-radius:var(--radius-md); background:var(--soft); border:1px solid var(--line); }
 .exigence-timer-elapsed{ font-size:18px; font-weight:700; color:var(--ink); min-width:76px; }
 
 /* Signalement d'anomalie, replié par défaut sous chaque ligne d'exigence :
@@ -760,3 +760,22 @@ details.as-view .collapse-body{ margin-top:0; }
 .add-to-cal{ margin-top:12px; padding:14px 16px; border-radius:14px; background:var(--surface-2); }
 .add-to-cal-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
 a.pill-btn{ display:inline-flex; align-items:center; text-decoration:none; }
+
+/* Résumé de mission */
+.mission-summary{ margin:16px 0 4px; padding:16px 18px; border-radius:16px; background:var(--surface-2); }
+.mission-summary-row{ display:grid; grid-template-columns:110px 1fr; gap:12px; padding:7px 0; font-size:14px; }
+.mission-summary-row span{ color:var(--muted); }
+.mission-summary-row b{ font-weight:600; color:var(--ink); white-space:pre-wrap; }
+.mission-summary-row b.key-text{ font-weight:500; }
+.mission-summary .btn{ width:100%; }
+@media (max-width:520px){ .mission-summary-row{ grid-template-columns:1fr; gap:2px; } }
+.timer-budget{ display:block; width:100%; margin-top:8px; font-size:12.5px; color:var(--muted); }
+.timer-budget.over{ color:var(--danger-ink); font-weight:600; }
+
+/* Tâches en séquence */
+.exigence-row.locked{ opacity:.5; }
+.exigence-row.locked .btn, .exigence-row.locked .photo-slot{ pointer-events:none; }
+.exigence-row.current{ border-color:rgba(242,237,225,.5); background:rgba(242,237,225,.07); }
+.lock-note{ margin:4px 0 8px; }
+.extra-photos{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+.extra-photo{ width:72px; height:72px; object-fit:cover; border-radius:12px; border:1px solid var(--line); background:var(--surface-2); }

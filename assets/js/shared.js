@@ -567,14 +567,14 @@ export const PROTOCOL_CATEGORIES = [
   { key: 'wc', label: 'WC', phase: 'menage' },
   { key: 'cuisine', label: 'Cuisine', phase: 'menage' },
   { key: 'salon', label: 'Salon', phase: 'menage' },
-  { key: 'sols_entree', label: 'Sols et entrée', phase: 'menage' },
   { key: 'securite', label: 'Sécurité et équipements', phase: 'menage' },
   { key: 'terrasse', label: 'Terrasse', phase: 'menage' },
+  { key: 'sols_entree', label: 'Entrée, aspirateur et sols (en dernier)', phase: 'menage' },
   { key: 'linge', label: 'Vérification du linge', phase: 'apres' },
   { key: 'chauffage_clim', label: 'Chauffage et climatisation', phase: 'apres' },
   { key: 'cles', label: 'Contrôle des clés', phase: 'apres' },
   { key: 'presentation', label: 'Présentation finale', phase: 'apres' },
-  { key: 'entree', label: "Contrôle de l'entrée", phase: 'apres' },
+  { key: 'entree', label: 'Contrôle final du logement', phase: 'apres' },
   { key: 'parties_communes_apres', label: 'Parties communes', phase: 'apres' },
   { key: 'dechets', label: 'Gestion des déchets', phase: 'apres' },
 ];
@@ -679,8 +679,15 @@ export const DEFAULT_PROTOCOL_TEMPLATES = [
   },
   {
     phase: 'avant', category: 'etat_initial', order: 0,
-    text: 'Vérifier l’absence d’objets oubliés par les précédents occupants',
+    key: 'avant_objet_trouve',
+    text: 'Avez-vous trouvé un objet oublié par le voyageur précédent ?',
     roomScope: 'none', requiresYesNo: true,
+  },
+  {
+    phase: 'avant', category: 'etat_initial', order: 0.5,
+    text: 'Photographiez l’objet trouvé là où il se trouve et décrivez-le',
+    roomScope: 'none', requiresPhoto: true, allowsComment: true,
+    dependsOn: { key: 'avant_objet_trouve', equals: true },
   },
   {
     phase: 'avant', category: 'etat_initial', order: 1,
@@ -738,6 +745,11 @@ export const DEFAULT_PROTOCOL_TEMPLATES = [
   {
     phase: 'menage', category: 'chambre', order: 1,
     text: 'Nettoyer et dépoussiérer le mobilier (placards, bureaux, étagères, interrupteurs, poignées, luminaires, tiroirs)',
+    roomScope: 'bedroom', requiresConfirmation: true, requiresPhoto: true,
+  },
+  {
+    phase: 'menage', category: 'chambre', order: 1.5,
+    text: 'Plafond et lampe suspendue : dépoussiérer le plafond, les angles et le luminaire',
     roomScope: 'bedroom', requiresConfirmation: true, requiresPhoto: true,
   },
   {
@@ -887,17 +899,17 @@ export const DEFAULT_PROTOCOL_TEMPLATES = [
   },
 
   {
-    phase: 'menage', category: 'sols_entree', order: 0,
+    phase: 'menage', category: 'sols_entree', order: 1,
     text: 'Aspirer l’ensemble du logement, y compris sous les meubles accessibles',
     roomScope: 'none', requiresConfirmation: true,
   },
   {
-    phase: 'menage', category: 'sols_entree', order: 1,
+    phase: 'menage', category: 'sols_entree', order: 2,
     text: 'Laver les sols de toutes les pièces accessibles',
     roomScope: 'none', requiresPhoto: true,
   },
   {
-    phase: 'menage', category: 'sols_entree', order: 2,
+    phase: 'menage', category: 'sols_entree', order: 0,
     text: 'Nettoyer l’entrée du logement (porte, poignées, murs accessibles, sol)',
     roomScope: 'none', requiresConfirmation: true,
   },
@@ -951,8 +963,8 @@ export const DEFAULT_PROTOCOL_TEMPLATES = [
   },
   {
     phase: 'apres', category: 'entree', order: 0,
-    text: 'Contrôle final de l’entrée (propreté, rangement, présentation, absence de matériel oublié)',
-    roomScope: 'none', requiresPhoto: true,
+    text: 'Contrôle final du logement (propreté, rangement, présentation, absence de matériel oublié)',
+    roomScope: 'none', requiresConfirmation: true,
   },
   {
     phase: 'apres', category: 'parties_communes_apres', order: 0,
@@ -1226,6 +1238,17 @@ export async function uploadExigenceAnswerImage({ bookingId, exigenceId, propert
   const answerDoc = { bookingId, exigenceId, propertyId, roomIndex, slotIndex, answeredBy, photoKey, answeredAt: serverTimestamp() };
   await setDoc(doc(db, 'exigenceAnswers', id), answerDoc, { merge: true });
   return answerDoc;
+}
+
+// Photos supplémentaires d'une tâche : la photo principale reste dans
+// photoKey, les suivantes s'ajoutent à extraPhotoKeys (même document de
+// réponse, donc même règle d'écriture et même visibilité pour l'admin).
+export async function addExigenceExtraPhoto({ bookingId, exigenceId, propertyId, roomIndex = null, file, answeredBy, existing = [], onProgress }) {
+  const id = exigenceAnswerDocId(bookingId, exigenceId, roomIndex, null);
+  const key = await uploadPhotoToR2({ bookingId, scope: 'bookings', file, onProgress });
+  const extraPhotoKeys = [...existing, key];
+  await setDoc(doc(db, 'exigenceAnswers', id), { bookingId, exigenceId, propertyId, roomIndex, slotIndex: null, answeredBy, extraPhotoKeys, answeredAt: serverTimestamp() }, { merge: true });
+  return { extraPhotoKeys };
 }
 
 export async function loadProtocolTemplates() {
