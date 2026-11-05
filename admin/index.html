@@ -82,6 +82,7 @@
 
     <div class="tabbar" id="adminTabs" role="tablist">
       <button type="button" class="tab active" data-tab="assign">À assigner<span class="tab-badge hidden" id="badgeAssign"></span></button>
+      <button type="button" class="tab" data-tab="missions">Missions<span class="tab-badge hidden" id="badgeMissions"></span></button>
       <button type="button" class="tab" data-tab="cal">Calendrier</button>
       <button type="button" class="tab" data-tab="verify">Vérification<span class="tab-badge hidden" id="badgeVerify"></span></button>
       <button type="button" class="tab" data-tab="inbox">Messages<span class="tab-badge hidden" id="badgeInbox"></span></button>
@@ -131,6 +132,11 @@
       </details>
     </section>
 
+    <section class="admin-section hidden" data-tab="missions">
+      <div class="card view-bare">
+        <div id="missionsOverview"></div>
+      </div>
+    </section>
     <section class="admin-section hidden" data-tab="cal">
       <div class="card">
         <div class="eyebrow">Vue d’ensemble</div>

@@ -12,6 +12,7 @@ import {
   resetPassword,
   requestTeamAccess,
   segmentedControl,
+  buildCalendarButtons,
   storageErrorMessage,
 } from './shared.js';
 import { uploadPhotoToR2, getPhotoDownloadUrl } from './r2-upload.js';
@@ -138,6 +139,7 @@ function renderTasks(bookings) {
       box.appendChild(row);
     });
     card.appendChild(box);
+    if (!booking.linenDone) card.appendChild(buildCalendarButtons(booking, 'delivery'));
     if (booking.keyAccess) {
       const keyBox = document.createElement('div');
       keyBox.className = 'key-access';

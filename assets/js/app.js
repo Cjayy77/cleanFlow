@@ -39,6 +39,7 @@ import {
   EXIGENCE_PHASES,
   ANOMALY_CATEGORIES,
   initSectionTabs,
+  fetchIcalDepartures,
 } from './shared.js';
 import {
   collection,
@@ -56,7 +57,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { mount as mountBookingFlow, reset as resetBookingFlow } from './booking-flow.js';
+import { mount as mountBookingFlow, reset as resetBookingFlow, prefill as prefillBookingFlow } from './booking-flow.js';
 import { getPhotoDownloadUrl } from './r2-upload.js';
 
 const loadingScreen = document.getElementById('loadingScreen');
@@ -82,6 +83,7 @@ const propertyBedrooms = document.getElementById('propertyBedrooms');
 const propertyBathrooms = document.getElementById('propertyBathrooms');
 const propertyBeds = document.getElementById('propertyBeds');
 const propertyNotes = document.getElementById('propertyNotes');
+const propertyIcal = document.getElementById('propertyIcal');
 const propertyKeyAccess = document.getElementById('propertyKeyAccess');
 const propertyAccessMeeting = document.getElementById('propertyAccessMeeting');
 const propertyAccessMeetingRow = document.getElementById('propertyAccessMeetingRow');
@@ -132,6 +134,7 @@ function setPropertyFormMode(property = null) {
   propertyBathrooms.value = property && property.bathrooms != null ? property.bathrooms : '';
   propertyBeds.value = property && property.beds != null ? property.beds : '';
   propertyNotes.value = property ? (property.notes || '') : '';
+  propertyIcal.value = property ? (property.icalUrl || '') : '';
   if (propertyKeyAccess) propertyKeyAccess.value = property ? (property.keyAccess || '') : '';
   propertyAccessMeeting.checked = !!(property && property.accessMeeting);
   propertyAccessMeetingNote.value = property ? (property.accessMeetingNote || '') : '';
@@ -165,7 +168,7 @@ function showApp() {
   userNameLabel.textContent = currentUser.name || currentUser.email;
   const first = (currentUser.name || '').split(' ')[0];
   shell = initSectionTabs(appScreen, [
-    { ids: ['nextCleaningCard', 'bookingFlowSection'], key: 'accueil', label: 'Accueil', icon: 'home', title: first ? `Bonjour ${first}` : 'Accueil', subtitle: 'Votre prochain ménage, et une nouvelle réservation en quelques étapes.', heading: false },
+    { ids: ['nextCleaningCard', 'departuresCard', 'bookingFlowSection'], key: 'accueil', label: 'Accueil', icon: 'home', title: first ? `Bonjour ${first}` : 'Accueil', subtitle: 'Votre prochain ménage, et une nouvelle réservation en quelques étapes.', heading: false },
     { id: 'propertiesCard', key: 'logements', label: 'Logements', icon: 'building', title: 'Vos logements', subtitle: 'Adresse, accès et informations utiles au prestataire.' },
     { id: 'historyCard', key: 'suivi', label: 'Suivi', icon: 'clock', title: 'Suivi des interventions', subtitle: 'Chaque ménage, sa vérification photo et son rapport.' },
   ]);
@@ -736,6 +739,85 @@ function buildContactTeam(booking, address) {
   return wrap;
 }
 
+// Départs de voyageurs lus dans les calendriers iCal des logements. Un départ
+// dont la date a déjà une réservation de ménage pour ce logement est marqué
+// « Ménage réservé » ; les autres proposent de réserver en un clic.
+const departuresCache = new Map(); // icalUrl -> { at, rows } | { at, error }
+async function departuresFor(url) {
+  const hit = departuresCache.get(url);
+  if (hit && Date.now() - hit.at < 5 * 60000) return hit;
+  let entry;
+  try { entry = { at: Date.now(), rows: await fetchIcalDepartures(url) }; }
+  catch (e) { entry = { at: Date.now(), error: e.message || 'Calendrier illisible.' }; }
+  departuresCache.set(url, entry);
+  return entry;
+}
+let departuresRun = 0;
+async function renderDepartures() {
+  const card = document.getElementById('departuresCard');
+  const host = document.getElementById('departuresList');
+  if (!card || !host) return;
+  const linked = properties.filter(p => p.icalUrl);
+  card.classList.toggle('hidden', linked.length === 0);
+  if (!linked.length) return;
+  const run = ++departuresRun;
+  const results = await Promise.all(linked.map(async p => ({ p, ...(await departuresFor(p.icalUrl)) })));
+  if (run !== departuresRun) return;
+  host.innerHTML = '';
+  let any = false;
+  results.forEach(({ p, rows, error }) => {
+    const group = document.createElement('div');
+    group.className = 'dep-group';
+    const head = document.createElement('div');
+    head.className = 'photo-group-head';
+    head.textContent = `${p.street}, ${p.city}`;
+    group.appendChild(head);
+    if (error) {
+      const err = document.createElement('div');
+      err.className = 'task-meta';
+      err.textContent = `Calendrier non lu : ${error}`;
+      group.appendChild(err);
+    } else if (!rows.length) {
+      const none = document.createElement('div');
+      none.className = 'task-meta';
+      none.textContent = 'Aucun départ dans les 90 prochains jours.';
+      group.appendChild(none);
+    }
+    (rows || []).forEach(r => {
+      any = true;
+      const booked = bookings.some(b => b.propertyId === p.id && b.scheduledDate === r.checkOut && b.status !== 'cancelled');
+      const row = document.createElement('div');
+      row.className = 'dep-row';
+      const info = document.createElement('div');
+      const day = new Date(`${r.checkOut}T12:00:00`);
+      const t = document.createElement('div');
+      t.className = 'task-title';
+      t.textContent = `Départ ${day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`;
+      const m = document.createElement('div');
+      m.className = 'task-meta';
+      m.textContent = `Séjour du ${formatShortDate(r.checkIn)} au ${formatShortDate(r.checkOut)}`;
+      info.append(t, m);
+      row.appendChild(info);
+      if (booked) {
+        const done = document.createElement('div');
+        done.className = 'status-pill verified';
+        done.textContent = 'Ménage réservé';
+        row.appendChild(done);
+      } else {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn primary';
+        btn.textContent = 'Réserver le ménage';
+        btn.onclick = () => { prefillBookingFlow(p, r.checkOut); showBookingFlow(); };
+        row.appendChild(btn);
+      }
+      group.appendChild(row);
+    });
+    host.appendChild(group);
+  });
+  if (!any && results.every(r => r.error)) host.classList.add('dep-error'); else host.classList.remove('dep-error');
+}
+
 function subscribeData() {
   if (propertiesUnsub) propertiesUnsub();
   if (bookingsUnsub) bookingsUnsub();
@@ -750,6 +832,7 @@ function subscribeData() {
     updateOnboardingState();
     renderBookings();
     renderNextCleaning();
+    renderDepartures();
   }, error => setAppStatus(`Impossible de charger vos logements : ${authErrorMessage(error)}`, 'error'));
 
   const bookingsQuery = query(collection(db, 'bookings'), where('clientId', '==', currentUser.uid));
@@ -760,6 +843,7 @@ function subscribeData() {
     renderBookings();
     updateOnboardingState();
     renderNextCleaning();
+    renderDepartures();
   }, error => setAppStatus(`Impossible de charger vos réservations : ${authErrorMessage(error)}`, 'error'));
 }
 
@@ -904,6 +988,11 @@ propertyForm.addEventListener('submit', async event => {
   const beds = propertyBeds.value === '' ? null : Math.max(0, Math.floor(Number(propertyBeds.value) || 0));
   const notes = propertyNotes.value.trim();
   const keyAccess = propertyKeyAccess ? propertyKeyAccess.value.trim() : '';
+  const icalUrl = propertyIcal.value.trim().replace(/^webcal:\/\//i, 'https://');
+  if (icalUrl && !/^https:\/\/[^\s]+$/i.test(icalUrl)) {
+    setAppStatus('Le lien du calendrier doit commencer par https:// (ou webcal://).', 'error');
+    return;
+  }
   const accessMeeting = propertyAccessMeeting.checked;
   const accessMeetingNote = accessMeeting ? propertyAccessMeetingNote.value.trim() : '';
   if (!street || !city || !postalCode) {
@@ -914,7 +1003,7 @@ propertyForm.addEventListener('submit', async event => {
     setAppStatus('Indiquez la surface du logement (en m²) : elle détermine le tarif.', 'error');
     return;
   }
-  const fields = { street, city, postalCode, surface, zone, propertyType, bedrooms, bathrooms, beds, notes, keyAccess, accessMeeting, accessMeetingNote };
+  const fields = { street, city, postalCode, surface, zone, propertyType, bedrooms, bathrooms, beds, notes, keyAccess, accessMeeting, accessMeetingNote, icalUrl };
   try {
     if (editingPropertyId) {
       const propertyId = editingPropertyId;

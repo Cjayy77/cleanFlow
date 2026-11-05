@@ -40,6 +40,7 @@ import {
   formatShortDate,
   welcomerTier,
   segmentedControl,
+  buildCalendarButtons,
   formatBookingStatus,
   authErrorMessage,
   withButtonLoading,
@@ -1446,6 +1447,7 @@ function renderActiveBooking() {
   }
 
   panes.infos.appendChild(buildOrderPanel(activeBooking));
+  panes.infos.appendChild(buildCalendarButtons(activeBooking, 'cleaning'));
   panes.incidents.appendChild(buildMissionIncidents());
 
   const canUpload = ['accepted', 'rejected'].includes(activeBooking.status);
