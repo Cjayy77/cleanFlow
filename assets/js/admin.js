@@ -2440,6 +2440,7 @@ function appendAssignCard(container, booking, members, placeholder, noMembersNot
 }
 
 function renderAssignments() {
+  renderMissionsOverview();
   renderMissionsToAssign();
   renderKitsToAssign();
   renderWelcomersToAssign();
@@ -3467,6 +3468,100 @@ async function focusCalendarBooking(booking) {
   }
 }
 
+// ---- Vue d'ensemble : toutes les missions en cours, assignées ou non ----
+let overviewFilter = 'all';
+function memberLabel(list, id) {
+  if (!id) return '';
+  const m = list.find(x => x.id === id);
+  return m ? (m.name || m.email) : 'compte inconnu';
+}
+const OVERVIEW_FILTERS = [
+  { key: 'all', label: 'Toutes', test: () => true },
+  { key: 'unassigned', label: 'À assigner', test: b => b.status === 'pending' },
+  { key: 'running', label: 'En cours', test: b => b.status === 'accepted' || b.status === 'rejected' },
+  { key: 'review', label: 'À vérifier', test: b => b.status === 'submitted' },
+  { key: 'delivery', label: 'Livraison', test: b => b.linenRequested === true && !b.linenDone },
+];
+function overviewBookings() {
+  return workBookings()
+    .filter(b => ['pending', 'accepted', 'submitted', 'rejected'].includes(b.status))
+    .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+}
+function renderMissionsOverview() {
+  const host = document.getElementById('missionsOverview');
+  if (!host) return;
+  const all = overviewBookings();
+  setBadge(document.getElementById('badgeMissions'), all.length);
+  host.innerHTML = '';
+  const ctl = segmentedControl({
+    items: OVERVIEW_FILTERS.map(f => ({ key: f.key, label: f.label, count: all.filter(f.test).length })),
+    current: overviewFilter,
+    onChange: key => { overviewFilter = key; renderMissionsOverview(); },
+  });
+  host.appendChild(ctl.el);
+  const filter = OVERVIEW_FILTERS.find(f => f.key === overviewFilter) || OVERVIEW_FILTERS[0];
+  const rows = all.filter(filter.test);
+  if (!rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Aucune mission dans cette catégorie.';
+    host.appendChild(empty);
+    return;
+  }
+  const list = document.createElement('div');
+  list.className = 'ov-list';
+  let lastDate = '';
+  rows.forEach(b => {
+    if (b.scheduledDate !== lastDate) {
+      lastDate = b.scheduledDate;
+      const dh = document.createElement('div');
+      dh.className = 'ov-date';
+      const d = new Date(`${b.scheduledDate}T12:00:00`);
+      dh.textContent = Number.isNaN(d.getTime()) ? b.scheduledDate : d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      if (b.scheduledDate < isoInDays(0)) dh.classList.add('late');
+      list.appendChild(dh);
+    }
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'ov-row';
+    const main = document.createElement('div');
+    main.className = 'ov-main';
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = b.propertyAddress || b.propertyId;
+    const meta = document.createElement('div');
+    meta.className = 'task-meta';
+    meta.textContent = `${b.serviceType === 'deep' ? 'En profondeur' : 'Normal'}${b.surface ? ` · ${b.surface} m²` : ''} · ${b.price}€ HT · Réf ${b.id.slice(0, 6).toUpperCase()}`;
+    main.append(title, meta);
+    const who = document.createElement('div');
+    who.className = 'ov-who';
+    const line = (label, value, missing) => {
+      const el = document.createElement('div');
+      el.className = missing ? 'ov-miss' : '';
+      el.textContent = `${label} : ${value || 'à assigner'}`;
+      who.appendChild(el);
+    };
+    line('Ménage', memberLabel(prestataires, b.prestataireId), !b.prestataireId);
+    if (b.linenRequested) line('Livraison', b.linenDone ? 'livrée' : memberLabel(livreurs, b.livreurId), !b.livreurId && !b.linenDone);
+    if (b.welcomerService) line('Contrôle', memberLabel(welcomers, b.welcomerId), !b.welcomerId);
+    const pill = document.createElement('div');
+    pill.className = `status-pill ${b.status}`;
+    pill.textContent = bookingIsUrgent(b) ? 'Urgent' : formatBookingStatus(b.status);
+    if (bookingIsUrgent(b)) pill.classList.add('anomaly');
+    row.append(main, who, pill);
+    row.onclick = () => {
+      if (b.status === 'submitted' || b.status === 'pending') { focusCalendarBooking(b); return; }
+      selectedCalDay = b.scheduledDate;
+      const d = new Date(`${b.scheduledDate}T12:00:00`);
+      if (!Number.isNaN(d.getTime())) adminCalMonthDate = startOfMonth(d);
+      activateTab('cal');
+      renderAdminCalendar();
+    };
+    list.appendChild(row);
+  });
+  host.appendChild(list);
+}
+
 function renderMissionsToAssign() {
   if (!missionsToAssign) return;
   missionsToAssign.innerHTML = '';
@@ -4408,8 +4503,9 @@ rejectBtn.addEventListener('click', () => resolveBooking('rejected'));
 // Navigation : chaque onglet devient une vue de la coquille commune (barre
 // latérale sur ordinateur, barre d'onglets en bas sur téléphone). Les
 // pastilles de compteur sont déplacées telles quelles sur les nouveaux liens.
-const ADMIN_VIEW_ORDER = ['assign', 'verify', 'inbox', 'team', 'cal', 'dashboard', 'compta', 'prospects', 'catalog', 'properties', 'suggestions', 'protocols', 'tarifs'];
+const ADMIN_VIEW_ORDER = ['assign', 'missions', 'verify', 'inbox', 'team', 'cal', 'dashboard', 'compta', 'prospects', 'catalog', 'properties', 'suggestions', 'protocols', 'tarifs'];
 const ADMIN_VIEW_META = {
+  missions: { icon: 'list', subtitle: 'Toutes les missions en cours, assignées ou non, en un coup d’œil.' },
   assign: { icon: 'missions', subtitle: 'Missions, livraisons et contrôles en attente d’une équipe.' },
   verify: { icon: 'check', subtitle: 'Les dossiers photo soumis, à valider ou à renvoyer.' },
   inbox: { icon: 'chat', subtitle: 'Messages des clients et incidents ouverts.' },

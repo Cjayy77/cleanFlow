@@ -736,3 +736,22 @@ details.as-view .collapse-body{ margin-top:0; }
 /* Preuve de livraison */
 .delivery-proof{ margin-top:14px; }
 .delivery-proof img, .delivery-photo{ display:block; width:100%; max-width:320px; margin-top:10px; border-radius:14px; border:1px solid var(--line); background:var(--surface-2); min-height:80px; object-fit:cover; }
+
+/* Vue d'ensemble des missions (admin) */
+.ov-list{ display:flex; flex-direction:column; gap:8px; }
+.ov-date{ margin:14px 4px 4px; font-family:var(--font-nav); font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.ov-date.late{ color:var(--danger-ink); }
+.ov-row{ display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto; gap:16px; align-items:center; text-align:left; width:100%; padding:14px 18px; border-radius:16px; border:1px solid transparent; background:var(--paper); color:var(--ink); font-family:var(--font-body); cursor:pointer; transition:border-color .15s ease-out, background .15s ease-out; }
+.ov-row:hover{ border-color:var(--line-strong); background:var(--surface-2); }
+.ov-who{ font-size:12.5px; color:var(--muted); line-height:1.6; }
+.ov-miss{ color:var(--gold); font-weight:600; }
+@media (max-width:760px){
+  .ov-row{ grid-template-columns:1fr auto; }
+  .ov-who{ grid-column:1 / -1; order:3; }
+}
+
+/* Départs de voyageurs (calendrier connecté) */
+.dep-group{ margin-top:16px; }
+.dep-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; margin-bottom:8px; border-radius:16px; background:var(--surface-2); }
+
+@media (max-width:520px){ .dep-row{ flex-direction:column; align-items:stretch; } .dep-row .btn{ width:100%; } }

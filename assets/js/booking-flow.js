@@ -1114,6 +1114,28 @@ function renderConfirmStep() {
   return panel;
 }
 
+// Démarre une réservation pour un logement et une date connus (départ d'un
+// voyageur lu dans un calendrier externe). L'écran date s'ouvre avec le jour
+// déjà choisi ; le client confirme avec « Continuer ».
+export function prefill(property, isoDate) {
+  clearDraft();
+  stepHistory = [];
+  authMode = 'signin';
+  authError = '';
+  lastBookingSummary = null;
+  draft.propertyId = property.id;
+  draft.propertyLabel = `${property.street}, ${property.city}`;
+  draft.bedrooms = property.bedrooms != null ? property.bedrooms : null;
+  draft.bathrooms = property.bathrooms != null ? property.bathrooms : null;
+  draft.beds = property.beds != null ? property.beds : null;
+  draft.selectedDate = isoDate;
+  const d = new Date(`${isoDate}T12:00:00`);
+  if (!Number.isNaN(d.getTime())) calendarMonth = startOfMonth(d);
+  saveDraft();
+  step = (draft.bedrooms == null || draft.bathrooms == null || draft.beds == null) ? 'bedrooms' : 'date';
+  render();
+}
+
 // Réinitialise le module (utile si on veut relancer un parcours propre,
 // par ex. « réserver un autre ménage » depuis le tableau de bord).
 export function reset() {

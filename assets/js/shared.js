@@ -1923,3 +1923,66 @@ if (typeof MutationObserver === 'function' && typeof document !== 'undefined') {
   };
   if (document.body) watch(); else document.addEventListener('DOMContentLoaded', watch);
 }
+
+
+// ---- Calendriers externes (iCal) ---------------------------------------
+// Un lien iCal (Airbnb, Booking, Google Agenda, Smoobu…) liste les séjours
+// d'un logement. La date de fin d'un séjour est le jour du départ du
+// voyageur : c'est la date de ménage naturelle.
+function unfoldIcs(text) {
+  return String(text).replace(/\r\n?/g, '\n').replace(/\n[ \t]/g, '').split('\n');
+}
+function icsDate(value) {
+  const m = /^(\d{4})(\d{2})(\d{2})/.exec(String(value || '').trim());
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+}
+export function parseIcsEvents(text) {
+  const events = [];
+  let cur = null;
+  unfoldIcs(text).forEach(line => {
+    if (line === 'BEGIN:VEVENT') { cur = {}; return; }
+    if (line === 'END:VEVENT') { if (cur && cur.start) events.push(cur); cur = null; return; }
+    if (!cur) return;
+    const i = line.indexOf(':');
+    if (i < 0) return;
+    const key = line.slice(0, i).split(';')[0].toUpperCase();
+    const val = line.slice(i + 1);
+    if (key === 'DTSTART') cur.start = icsDate(val);
+    else if (key === 'DTEND') cur.end = icsDate(val);
+    else if (key === 'SUMMARY') cur.summary = val.replace(/\\,/g, ',').replace(/\\n/gi, ' ').trim();
+    else if (key === 'UID') cur.uid = val.trim();
+    else if (key === 'STATUS') cur.status = val.trim().toUpperCase();
+  });
+  return events.map(e => ({ ...e, end: e.end || e.start }));
+}
+
+// Départs de voyageurs à venir. Les blocages du propriétaire (« Not available »,
+// « Blocked », « Indisponible ») ne sont pas des séjours et sont ignorés.
+export function icsDepartures(text, { days = 90, today = new Date() } = {}) {
+  const from = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const limit = new Date(today.getTime() + days * 86400000);
+  const to = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, '0')}-${String(limit.getDate()).padStart(2, '0')}`;
+  const blocked = /not available|blocked|indisponible|unavailable|closed/i;
+  const seen = new Set();
+  return parseIcsEvents(text)
+    .filter(e => e.status !== 'CANCELLED' && !blocked.test(e.summary || ''))
+    .filter(e => e.end >= from && e.end <= to)
+    .filter(e => { const k = `${e.uid || ''}|${e.end}`; if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => a.end.localeCompare(b.end))
+    .map(e => ({ checkIn: e.start, checkOut: e.end, summary: e.summary || 'Séjour' }));
+}
+
+export async function fetchIcalDepartures(feedUrl, options) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Non connecté');
+  const token = await user.getIdToken();
+  const res = await withTimeout(fetch(`/api/ical?url=${encodeURIComponent(feedUrl)}`, { headers: { Authorization: `Bearer ${token}` } }), 15000);
+  if (!res.ok) {
+    let message = `Calendrier illisible (${res.status})`;
+    try { const j = await res.json(); if (j && j.error) message = j.error; } catch { /* corps non JSON */ }
+    const err = new Error(message);
+    err.status = res.status;
+    throw err;
+  }
+  return icsDepartures(await res.text(), options);
+}
