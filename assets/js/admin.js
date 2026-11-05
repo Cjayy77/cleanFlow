@@ -3531,7 +3531,7 @@ function renderMissionsOverview() {
     title.textContent = b.propertyAddress || b.propertyId;
     const meta = document.createElement('div');
     meta.className = 'task-meta';
-    meta.textContent = `${b.serviceType === 'deep' ? 'En profondeur' : 'Normal'}${b.surface ? ` · ${b.surface} m²` : ''} · ${b.price}€ HT · Réf ${b.id.slice(0, 6).toUpperCase()}`;
+    meta.textContent = `${b.startTime ? `${b.startTime.replace(':00', ' h')} à ${(b.endTime || '').replace(':00', ' h')} · ` : ''}${b.serviceType === 'deep' ? 'En profondeur' : 'Normal'}${b.surface ? ` · ${b.surface} m²` : ''} · ${b.price}€ HT · Réf ${b.id.slice(0, 6).toUpperCase()}`;
     main.append(title, meta);
     const who = document.createElement('div');
     who.className = 'ov-who';
@@ -4136,6 +4136,21 @@ function renderExigenceAnswers() {
     return slotEl;
   };
 
+  const buildExtraCell = (label, photoKey) => {
+    const slotEl = document.createElement('div');
+    slotEl.className = 'photo-slot uploaded';
+    const img = document.createElement('img');
+    img.alt = label;
+    slotEl.appendChild(img);
+    const link = document.createElement('a');
+    link.target = '_blank'; link.rel = 'noopener';
+    link.className = 'photo-caption'; link.textContent = label;
+    slotEl.appendChild(link);
+    getPhotoDownloadUrl({ bookingId: selectedBooking.id, scope: 'bookings', objectKey: photoKey })
+      .then(url => { img.src = url; link.href = url; }).catch(() => {});
+    return slotEl;
+  };
+
   const buildTextCell = (label, text, done) => {
     const slotEl = document.createElement('div');
     slotEl.className = 'photo-slot' + (done ? ' uploaded' : '');
@@ -4198,6 +4213,9 @@ function renderExigenceAnswers() {
           });
         } else if (exigence.requiresPhoto) {
           grid.appendChild(buildPhotoCell(label, answer && answer.photoKey));
+          ((answer && answer.extraPhotoKeys) || []).forEach((key, i) => {
+            grid.appendChild(buildExtraCell(`${label}, photo ${i + 2}`, key));
+          });
         }
       });
     });
